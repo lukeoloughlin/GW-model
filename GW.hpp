@@ -3,8 +3,8 @@
 
 #include <iostream>
 #include <array>
-#include <Eigen/Core>
-#include <unsupported/Eigen/CXX11/Tensor>
+#include <eigen3/Eigen/Core>
+#include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include <cmath>
 #include <ctime>
 #include <random>
@@ -31,7 +31,7 @@ const double R = 8.314;
 const double FRT = F / (R*T);
 
 // This holds the model parameters with defaults specified.
-typedef struct {
+struct GW_parameters {
     double CSA = 153.4;
     double Vcyto = 25.84;
     double VNSR = 1.113;
@@ -147,10 +147,10 @@ typedef struct {
     double Kmr = 1.8;
     double Hf = 0.75;
     double Hr = 0.75;
-} GW_parameters;
+};
 
 // This holds constant values when the simulation is executed, preventing unnecessary recalculations.
-typedef struct {
+struct Constants {
     double FRT;
     double riss;
     double rxfer;
@@ -201,7 +201,7 @@ typedef struct {
     double rRyR;
     // Jtr constants
     double rtr;
-} Constants;
+};
 
 Constants consts_from_params(const GW_parameters &params)
 {
@@ -267,7 +267,8 @@ void update_CaSS(double* const, int*, const double* const, const double* const, 
 void update_state(int* const, int* const, int* const, double* const, int* const, const double* const, const double* const, const double* const, const double* const, const double* const, const int, const int, const double* const, double*, double*, const double, const double, const double, const Constants&);
 void sample_LCC(int* const, const double* const, const double, const int* const, const double* const, double*, const int, const int, const double, const double, const Constants&);
 void sample_RyR(int* const, double* const, const double* const, const double, double*, const int, const int, const double* const, const double ,  const Constants&);
-void SSA_subunit(MatrixMapi&, MatrixMapi&, Array3dMapi&, MatrixMapi&, MatrixMap&, VectorMap&, const double, const double, MatrixMap&, MatrixMap&, VectorMap&, const double, const double, const double, const double, const double, const double, const double, const int, const Constants&);
+//void SSA_subunit(MatrixMapi&, MatrixMapi&, Array3dMapi&, MatrixMapi&, MatrixMap&, VectorMap&, const double, const double, MatrixMap&, MatrixMap&, VectorMap&, const double, const double, const double, const double, const double, const double, const double, const int, const Constants&);
+void SSA_subunit(int* const, int* const, int* const, double* const, int* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const int, double* const, const Constants&);
 void SSA(MatrixMapi&, MatrixMapi&, Array3dMapi&, MatrixMapi&, MatrixMap&, VectorMap&, const double, const double, MatrixMap&, MatrixMap&, VectorMap&, const double, const double, const double, const int, const Constants&);
 
 double urand(){

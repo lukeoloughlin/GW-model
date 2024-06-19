@@ -1,4 +1,5 @@
-#define EIGEN_RUNTIME_NO_MALLOC
+#ifndef _CURRENTSH
+#define _CURRENTSH
 
 #include "GW.hpp"
 
@@ -35,13 +36,12 @@ double IKs(double V, double XKs, double Ki, double Nai, double Nao, double Ko, d
 inline double IKv43(double V, double XKv43, double EK, double GKv43){
     return GKv43 * XKv43 * (V - EK);
 }
-inline double IKv14(double VFRT, double expVFRT, double XKv14, double Ki, double Nai, double PKv14_Csc, double Nao, double Ko){
-    double exp_term = 1.0 / expVFRT;
+inline double IKv14(double VFRT, double exp_term, double XKv14, double Ki, double Nai, double PKv14_Csc, double Nao, double Ko){
     double m = (PKv14_Csc) * (F*VFRT) * XKv14 / (1 - exp_term); // PKv14_Csc = PKv14 / Csc
     return m * ((Ki - Ko*exp_term) + 0.02*(Nai - Nao*exp_term)) * 1.0e9; // 1e9 required to convert to mV / ms
 }
-double Ito1(double V, double VFRT, double expVFRT, double XKv14, double XKv43, double Ki, double Nai, double EK, double PKv14_Csc, double Nao, double Ko, double GKv43){
-    return IKv14(VFRT, expVFRT, XKv14, Ki, Nai, PKv14_Csc, Nao, Ko) + IKv43(V, XKv43, EK, GKv43);
+double Ito1(double V, double VFRT, double expmVFRT, double XKv14, double XKv43, double Ki, double Nai, double EK, double PKv14_Csc, double Nao, double Ko, double GKv43){
+    return IKv14(VFRT, expmVFRT, XKv14, Ki, Nai, PKv14_Csc, Nao, Ko) + IKv43(V, XKv43, EK, GKv43);
 }
 
 
@@ -62,22 +62,22 @@ double IKp(double V, double EK, double GKp){
 
 
 
-double INaCa(double VFRT, double expVFRT, double Nai, double Cai, double Nao3, double Cao, double eta, double INaCa_const, double ksat){
+double INaCa(double VFRT, double expmVFRT, double Nai, double Cai, double Nao3, double Cao, double eta, double INaCa_const, double ksat){
     // saturation_const = 5000*kNaCa / ((KmNa^3 + Nao^3) * (KmCa + Cao))
     double exp_term1 = exp(eta*VFRT);
-    double exp_term2 = exp_term1 / expVFRT;
+    double exp_term2 = exp_term1 * expmVFRT;
     return INaCa_const * (exp_term1*(Nai*Nai*Nai)*Cao - exp_term2*Nao3*Cai) / (1.0 + ksat*exp_term2);
 }
 
 
 
-inline double fNaK(double VFRT, double expVFRT, double sigma){
+inline double fNaK(double VFRT, double expmVFRT, double sigma){
     // sigma = (exp(Nao/67.3) - 1) / 7
-    return 1.0 / (1.0 + 0.1245*exp(-0.1*VFRT) + 0.0365*sigma/expVFRT);
+    return 1.0 / (1.0 + 0.1245*exp(-0.1*VFRT) + 0.0365*sigma*expmVFRT);
 }
-double INaK(double VFRT, double expVFRT, double Nai, double sigma, double KmNai, double INaK_const){
+double INaK(double VFRT, double expmVFRT, double Nai, double sigma, double KmNai, double INaK_const){
     // INaK_const = INaKmax * Ko / (Ko + KmKo)
-    return INaK_const * fNaK(VFRT, expVFRT, sigma) / (1.0 + pow(KmNai/Nai, 1.5));
+    return INaK_const * fNaK(VFRT, expmVFRT, sigma) / (1.0 + pow(KmNai/Nai, 1.5));
 }
 
 
@@ -100,18 +100,27 @@ double INab(double V, double ENa, double GNab){
 
 
 
-double ICaL(const MatrixMap &JLCC, double ICaL_const){
+double ICaL(const std::vector<double> &JLCC, double ICaL_const){
     // ICaL_const = -1000. * (2F * VSS) * (NCaRU / size) / CSA
-    return JLCC.sum() * ICaL_const;
+    double acc = 0.0;
+    for (int i = 0; i < JLCC.size(); i++){
+        acc += JLCC[i];   
+    }
+    return acc * ICaL_const;
 }
 
 
 
-double Ito2(const MatrixMap &ClCh, double VFRT, double expmVFRT, double Cl_cyto, double Clo, double Ito2_const){
+double Ito2(const std::vector<int> &ClCh, double VFRT, double expmVFRT, double Cl_cyto, double Clo, double Ito2_const){
     // Ito2_const = 1e9 * Pto2 * F * (NCaRU / size) / CSA
     // expmVFRT = exp(-VFRT)
     const double m = VFRT * (Cl_cyto * expmVFRT - Clo) / (expmVFRT - 1.0);
-    return ClCh.sum() * m;
+    int acc = 0;
+    #pragma omd simd
+    for (int i = 0; i < ClCh.size(); i++){
+        acc += ClCh[i]; 
+    }
+    return double(acc) * m;
 }
 
 
@@ -132,6 +141,17 @@ double beta_cyto(double Cai, double CMDNconst, double KCMDN){
     const double x = KCMDN + Cai;
     return 1.0 / (1.0 + CMDNconst / (x*x));
 }
+
+double flux_average(const std::vector<double> &flux_container, const double CRU_factor)
+{
+    double acc = 0.0;
+    for (int i = 0; i < flux_container.size(); i++){
+        acc += flux_container[i];
+    }
+    return acc * CRU_factor;
+}
+
+
 
 
 
@@ -205,9 +225,9 @@ void update_betaJSR(VectorMap &betaJSR, const VectorMap &CaJSR, const double KCS
 }
     
 
+#endif
 
-
-
+/*
 int main(int argc, char* argv[]){
     const int nCRU = 1000;
     const double riss = 1.0;
@@ -283,7 +303,7 @@ int main(int argc, char* argv[]){
     return 0;
 }
 
-
+*/
 
 
 

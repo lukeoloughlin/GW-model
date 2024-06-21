@@ -37,6 +37,7 @@ inline double tauXKs(const double V){
 }
 
 // Make sure to set Q(2,3) and Q(3,2) ahead of time
+/*
 void update_QKrHERG(GeneratorKr &Q, const double V){
     Q(1,2) = 0.0069*exp(0.0272*V);
     Q(1,1) = -Q(1,2);
@@ -58,7 +59,9 @@ void update_QKrHERG(GeneratorKr &Q, const double V){
     Q(5,3) = Q(4,3)*Q(5,4)*Q(3,5)/(Q(3,4)*Q(4,5));
     Q(5,5) = -(Q(5,3) + Q(5,4));
 }
+*/
 
+/*
 void update_QKrHERGhKCNE2(GeneratorKr &Q, const double V){
     Q(1,2) = 0.0171*exp(0.0330*V);
     Q(1,1) = -Q(1,2);
@@ -80,6 +83,7 @@ void update_QKrHERGhKCNE2(GeneratorKr &Q, const double V){
     Q(5,3) = Q(4,3)*Q(5,4)*Q(3,5)/(Q(3,4)*Q(4,5));
     Q(5,5) = -(Q(5,3) + Q(5,4));
 }
+*/
 
 void update_QKv(GeneratorKv &Q, const double V, const double alphaa0, const double aa, const double alphai0, const double ai, 
                 const double betaa0, const double ba, const double betai0, const double bi, const double f1, const double f2,

@@ -20,8 +20,8 @@ int sample_weights(const double* const weights, const double total_weight, const
 
 
 inline void initialise_temp_states(int* const LCC_i, int* const RyR_i, double* const open_RyR, int* const LCC_a_i, int* const ClCh_i, double* const LCC_i_rates, double* const RyR_i_rates, double* const LCC_a_i_rates, double* const ClCh_i_rates, 
-                                   double* const subunit_i_rates, double* const CaSS_i, double* const JLCC_i, double* const Jrel_i, double* const Jxfer_i, double* const Jiss_i, const MatrixMapi &LCC, const MatrixMapi &LCC_a, const Array3dMapi &RyR,
-                                   const MatrixMapi &ClCh, const MatrixMap &CaSS, const MatrixMap &JLCC, const double CaJSR_i, const int i, const Constants &consts)
+                                   double* const subunit_i_rates, double* const CaSS_i, double* const JLCC_i, double* const Jrel_i, double* const Jxfer_i, double* const Jiss_i, const NDArray<int,2> &LCC, const NDArray<int,2> &LCC_a, const NDArray<int,3> &RyR,
+                                   const NDArray<int,2> &ClCh, const NDArray<double,2> &CaSS, const NDArray<double,2> &JLCC, const double CaJSR_i, const int i, const Constants &consts)
 {
 for (int j = 0; j < 4; j++){
         open_RyR[j] = 0.0;
@@ -56,8 +56,8 @@ for (int j = 0; j < 4; j++){
 }
 
 inline void record_from_temp(const int* const LCC_i, const int* const RyR_i, const int* const LCC_a_i, const int* const ClCh_i, double* const CaSS_i, double* const JLCC_i, 
-                            const double* const Jrel_i, const double* const Jxfer_i, const double* const Jiss_i, const double* const out_vals, MatrixMapi &LCC, MatrixMapi &LCC_a, Array3dMapi &RyR,
-                            MatrixMapi &ClCh, MatrixMap &CaSS, VectorMap &CaJSR, MatrixMap &JLCC, MatrixMap &Jxfer, VectorMap &Jtr, const int i)
+                            const double* const Jrel_i, const double* const Jxfer_i, const double* const Jiss_i, const double* const out_vals, NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR,
+                            NDArray<int,2> &ClCh, NDArray<double,2> &CaSS, NDArray<double,1> &CaJSR, NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const int i)
 {
     for (int j = 0; j < 4; j++){
         LCC(i,j) = LCC_i[j];
@@ -75,15 +75,15 @@ inline void record_from_temp(const int* const LCC_i, const int* const RyR_i, con
 
 }
 
-void SSA(MatrixMapi &LCC, MatrixMapi &LCC_a, Array3dMapi &RyR, MatrixMapi &ClCh, MatrixMap &CaSS, VectorMap &CaJSR, const double Cai, const double CaNSR, 
-         MatrixMap &JLCC, MatrixMap &Jxfer, VectorMap &Jtr, const double V, const double expVFRT, const double T, const int nCRU, const Constants &consts)
+void SSA(NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR, NDArray<int,2> &ClCh, NDArray<double,2> &CaSS, NDArray<double,1> &CaJSR, const double Cai, const double CaNSR, 
+         NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const double V, const double expmVFRT, const double T, const int nCRU, const Constants &consts)
 {
     const double alpha = alphaLCC(V);
     const double beta = betaLCC(V);
     const double yinf = yinfLCC(V);
     const double tau = tauLCC(V);
-    const double JLCC_exp = square(expVFRT);
-    const double JLCC_mult = consts.JLCC_const * V * consts.FRT / (JLCC_exp - 1.0);
+    const double JLCC_exp = square(1.0 / expmVFRT);
+    const double JLCC_mult = consts.JLCC_const * V * FRT / (JLCC_exp - 1.0);
 
     #pragma omp parallel
     {
@@ -121,8 +121,8 @@ void SSA(MatrixMapi &LCC, MatrixMapi &LCC_a, Array3dMapi &RyR, MatrixMapi &ClCh,
 }
 
 
-//void SSA_subunit(MatrixMapi &LCC, MatrixMapi &LCC_a, Array3dMapi &RyR, MatrixMapi &ClCh, MatrixMap &CaSS, VectorMap &CaJSR, const double Cai, const double CaNSR, 
-//                 MatrixMap &JLCC, MatrixMap &Jxfer, VectorMap &Jtr, const double alpha, const double beta, const double yinf, const double tau, const double JLCC_mult, 
+//void SSA_subunit(NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR, NDArray<int,2> &ClCh, NDArray<double,2> &CaSS, NDArray<double,1> &CaJSR, const double Cai, const double CaNSR, 
+//                 NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const double alpha, const double beta, const double yinf, const double tau, const double JLCC_mult, 
  //                const double JLCC_exp, const double T, const int i, const Constants &consts)
 void SSA_subunit(int* const LCC_i, int* const LCC_a_i, int* const RyR_i, double* const open_RyR, int* const ClCh_i, double* const LCC_i_rates, double* const RyR_i_rates, double* const LCC_a_i_rates, double* const ClCh_i_rates, double* const subunit_rates, 
                  double* const CaSS_i, double* const JLCC_i, double* const Jrel_i, double* const Jxfer_i, double* const Jiss_i, double CaJSR_i, const double Cai, const double CaNSR, const double alpha, const double beta, const double yinf, const double tau, 
@@ -144,10 +144,10 @@ void SSA_subunit(int* const LCC_i, int* const LCC_a_i, int* const RyR_i, double*
         dt = -log(urand()) / total_rate;
         if (t + dt < T){
             update_CaSS(CaSS_i, RyR_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, dt, i, consts);
-            CaJSR_i += dt * (Jtr_i - consts.VSS_VJSR * (Jrel_i[0] + Jrel_i[1] + Jrel_i[2] + Jrel_i[3])) / (consts.CSQN_const / square(consts.KCSQN + CaJSR_i));
+            CaJSR_i += dt * (Jtr_i - consts.VSS_VJSR * (Jrel_i[0] + Jrel_i[1] + Jrel_i[2] + Jrel_i[3])) / (1.0 + consts.CSQN_const / square(consts.KCSQN + CaJSR_i));
         } else {
             update_CaSS(CaSS_i, RyR_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, T-t, i, consts);
-            CaJSR_i += dt * (Jtr_i - consts.VSS_VJSR * (Jrel_i[0] + Jrel_i[1] + Jrel_i[2] + Jrel_i[3])) / (consts.CSQN_const / square(consts.KCSQN + CaJSR_i));
+            CaJSR_i += dt * (Jtr_i - consts.VSS_VJSR * (Jrel_i[0] + Jrel_i[1] + Jrel_i[2] + Jrel_i[3])) / (1.0 + consts.CSQN_const / square(consts.KCSQN + CaJSR_i));
             break;
         }
         t += dt;
@@ -181,7 +181,6 @@ double update_rates(const int* const LCC, const int* const LCC_a, const int* con
         subunit_rates[j] += update_RyR_rates(RyR_rates+12*j, RyR+6*j, CaSS, i, j, consts); // Using pointer arithmetic here
         subunit_rates[j] += (LCC_a_rates[j] + ClCh_rates[j] + LCC_rates[3*j] + LCC_rates[3*j+1] + LCC_rates[3*j+2]);
         total_rate += subunit_rates[j];
-
     }
     return total_rate;
 }
@@ -280,13 +279,20 @@ void sample_LCC(int* LCC, const double* const LCC_rates, const double total_LCC_
         else { LCC[subunit_idx] = 10; }
         break;
     case 5:
-        if (transition == 0){ LCC[subunit_idx] = 4; }
-        else if (transition == 1){ LCC[subunit_idx] = 6; }
-        else { LCC[subunit_idx] = 11; }
+        if (transition == 0){ 
+            LCC[subunit_idx] = 4; 
+        }
+        else if (transition == 1){ 
+            LCC[subunit_idx] = 6; 
+            JLCC[subunit_idx] = (LCC_a[subunit_idx] == 1) ? JLCC_mult * (consts.Cao_scaled - JLCC_exp * CaSS[subunit_idx]) : 0.0; 
+        }
+        else { 
+            LCC[subunit_idx] = 11; 
+        }
         break;
     case 6:
         LCC[subunit_idx] = 5;
-        JLCC[subunit_idx] = LCC_a[subunit_idx] == 1 ? JLCC_mult * (consts.Cao_scaled - JLCC_exp * CaSS[subunit_idx]) : 0.0; 
+        JLCC[subunit_idx] = 0.0;
         break;
     case 7:
         if (transition == 0){ LCC[subunit_idx] = 1; }
@@ -308,13 +314,20 @@ void sample_LCC(int* LCC, const double* const LCC_rates, const double total_LCC_
         else { LCC[subunit_idx] = 11; }
         break;
     case 11:
-        if (transition == 0){ LCC[subunit_idx] = 5; }
-        else if (transition == 1){ LCC[subunit_idx] = 12; }
-        else { LCC[subunit_idx] = 10; }
+        if (transition == 0){ 
+            LCC[subunit_idx] = 5; 
+        }
+        else if (transition == 1){ 
+            LCC[subunit_idx] = 10; 
+        }
+        else { 
+            LCC[subunit_idx] = 12; 
+            JLCC[subunit_idx] = (LCC_a[subunit_idx] == 1) ? JLCC_mult * (consts.Cao_scaled - JLCC_exp * CaSS[subunit_idx]) : 0.0; 
+        }
         break;
     case 12:
         LCC[subunit_idx] = 11;
-        JLCC[subunit_idx] = LCC_a[subunit_idx] == 1 ? JLCC_mult * (consts.Cao_scaled - JLCC_exp * CaSS[subunit_idx]) : 0.0; 
+        JLCC[subunit_idx] = 0.0;
         break;    
     default:
         break;

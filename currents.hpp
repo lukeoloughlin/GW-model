@@ -6,7 +6,7 @@
 
 // The global currents
 
-inline double Nernst(double Xi, double Xo){
+inline double Nernst(const double Xi, const double Xo){
     return log(Xo/Xi) / FRT;
 }
 
@@ -19,7 +19,7 @@ inline double RKr(double V){
     return 1.0 / (1.0 + 1.4945*exp(0.0446*V));
 }
 double IKr(double V, double XKr, double EK, double GKr, double sqrtKo){
-    return GKr * sqrtKo * RKr(V) * XKr * (V - EK) / 2.0;
+    return GKr * sqrtKo * RKr(V) * XKr * (V - EK) * 0.5;
 }
 
 
@@ -46,11 +46,11 @@ double Ito1(double V, double VFRT, double expmVFRT, double XKv14, double XKv43, 
 
 
 inline double K1inf(double V, double EK){
-    return 1. / (2. + exp(1.5*(V-EK)*FRT));
+    return 1.0 / (2.0 + exp(1.5*(V-EK)*FRT));
 }
-double IK1(double V, double EK, double GK1, double K_const){
+double IK1(double V, double EK, double GK1, double IK1_const){
     // K_const = Ko / (Ko + KmK1)
-    return GK1 * K1inf(V, EK) * K_const * (V - EK);
+    return GK1 * K1inf(V, EK) * IK1_const * (V - EK);
 }
 
 inline double Kp(double V){
@@ -63,7 +63,7 @@ double IKp(double V, double EK, double GKp){
 
 
 double INaCa(double VFRT, double expmVFRT, double Nai, double Cai, double Nao3, double Cao, double eta, double INaCa_const, double ksat){
-    // saturation_const = 5000*kNaCa / ((KmNa^3 + Nao^3) * (KmCa + Cao))
+    // INaCa_const = 5000*kNaCa / ((KmNa^3 + Nao^3) * (KmCa + Cao))
     double exp_term1 = exp(eta*VFRT);
     double exp_term2 = exp_term1 * expmVFRT;
     return INaCa_const * (exp_term1*(Nai*Nai*Nai)*Cao - exp_term2*Nao3*Cai) / (1.0 + ksat*exp_term2);
@@ -100,27 +100,17 @@ double INab(double V, double ENa, double GNab){
 
 
 
-double ICaL(const std::vector<double> &JLCC, double ICaL_const){
+double ICaL(const NDArray<double,2> &JLCC, double ICaL_const){
     // ICaL_const = -1000. * (2F * VSS) * (NCaRU / size) / CSA
-    double acc = 0.0;
-    for (int i = 0; i < JLCC.size(); i++){
-        acc += JLCC[i];   
-    }
-    return acc * ICaL_const;
+    return JLCC.sum() * ICaL_const;
 }
 
 
 
-double Ito2(const std::vector<int> &ClCh, double VFRT, double expmVFRT, double Cl_cyto, double Clo, double Ito2_const){
+double Ito2(const NDArray<int,2> &ClCh, double VFRT, double expmVFRT, double Cl_cyto, double Clo, double Ito2_const){
     // Ito2_const = 1e9 * Pto2 * F * (NCaRU / size) / CSA
     // expmVFRT = exp(-VFRT)
-    const double m = VFRT * (Cl_cyto * expmVFRT - Clo) / (expmVFRT - 1.0);
-    int acc = 0;
-    #pragma omd simd
-    for (int i = 0; i < ClCh.size(); i++){
-        acc += ClCh[i]; 
-    }
-    return double(acc) * m;
+    return double(ClCh.sum()) * Ito2_const * VFRT * (Cl_cyto * expmVFRT - Clo) / (expmVFRT - 1.0);
 }
 
 
@@ -142,19 +132,13 @@ double beta_cyto(double Cai, double CMDNconst, double KCMDN){
     return 1.0 / (1.0 + CMDNconst / (x*x));
 }
 
-double flux_average(const std::vector<double> &flux_container, const double CRU_factor)
-{
-    double acc = 0.0;
-    for (int i = 0; i < flux_container.size(); i++){
-        acc += flux_container[i];
-    }
-    return acc * CRU_factor;
-}
+template <std::size_t N>
+double flux_average(const NDArray<double,N> &flux_container, const double CRU_factor){ return flux_container.sum() * CRU_factor; }
 
 
 
 
-
+/*
 void update_Jiss(MatrixMap &Jiss, const MatrixMap &CaSS, const double riss, const int size){
     #pragma omp simd
     for (int i = 0; i < size; i++){
@@ -223,6 +207,7 @@ void update_betaJSR(VectorMap &betaJSR, const VectorMap &CaJSR, const double KCS
         betaJSR(i) = 1. / (1. + (CSQN_const / square(KCSQN + CaJSR(i))));
     }
 }
+*/
     
 
 #endif

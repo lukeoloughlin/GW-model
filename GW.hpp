@@ -3,8 +3,6 @@
 
 #include <iostream>
 #include <array>
-#include <eigen3/Eigen/Core>
-#include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include <cmath>
 #include <ctime>
 #include <random>
@@ -12,19 +10,6 @@
 
 
 using namespace std;
-using VectorMap = Eigen::Map<Eigen::VectorXd>;
-
-using MatrixX4d = Eigen::Matrix<double,Eigen::Dynamic,4,Eigen::RowMajor>;
-using MatrixX4i = Eigen::Matrix<int,Eigen::Dynamic,4,Eigen::RowMajor>;
-using MatrixMap = Eigen::Map<MatrixX4d>;
-using MatrixMapi = Eigen::Map<MatrixX4i>;
-
-using Array3dMap = Eigen::TensorMap<Eigen::Tensor<double,3>>;
-using Array3dMapi = Eigen::TensorMap<Eigen::Tensor<int,3>>;
-using Array4dMap = Eigen::TensorMap<Eigen::Tensor<double,4>>;
-
-//using GeneratorKr = Eigen::Map<Eigen::Matrix<double,5,5>>;
-using GeneratorKv = Eigen::Map<Eigen::Matrix<double, 10, 10>>;
 
 const double F = 96.5;
 const double T = 310.;
@@ -58,6 +43,7 @@ struct GW_parameters {
     double kfClCh = 13.3156;
     double kbClCh = 2.0;
     double Pto2 = 2.65e-15;
+
     double k12 = 877.5;
     double k21 = 250.0;
     double k23 = 2.358e8;
@@ -71,6 +57,7 @@ struct GW_parameters {
     double k25 = 2.358e6;
     double k52 = 0.001235;
     double rRyR = 3.92;
+
     double rxfer = 200.0;
     double rtr = 0.333;
     double riss = 20.0;
@@ -138,11 +125,11 @@ struct GW_parameters {
     double GCab = 0.0002536;
     double GNab = 0.00264;
     double kHTRPNp = 20.0;
-    double kHTRPNm = 66.0e-6;
+    double kHTRPNm = 6.60e-5;
     double kLTRPNp = 40.0;
     double kLTRPNm = 0.04;
-    double HTRPNtot = 140.0e-3;
-    double LTRPNtot = 70.0e-3;
+    double HTRPNtot = 0.140;
+    double LTRPNtot = 0.070;
     double Vmaxf = 0.0002096;
     double Vmaxr = 0.0002096;
     double Kmf = 0.000260;
@@ -252,6 +239,8 @@ Constants consts_from_params(const GW_parameters &params, const int nCRU_simulat
     consts.bi2 = consts.bi*consts.bi; // 1/b^2
     consts.bi3 = consts.bi2*consts.bi; // 1/b^3
     consts.bi4 = consts.bi3*consts.bi; // 1/b^4
+    std::cout << consts.a << " " << consts.a2 << " " << consts.a3 << " " << consts.a4 << endl;
+    std::cout << consts.bi << " " << consts.bi2 << " " << consts.bi3 << " " << consts.bi4 << endl;
     consts.f = params.f;
     consts.g = params.g;
     consts.f1 = params.f1;
@@ -299,7 +288,7 @@ Constants consts_from_params(const GW_parameters &params, const int nCRU_simulat
     // Ito1 consts
     consts.PKv14_Csc = params.PKv14 / params.Csc;
     // Ito2 consts
-    consts.Ito2_const = 1e9 * params.Pto2 * F * (double(params.NCaRU) / double(nCRU_simulated)) / params.CSA;
+    consts.Ito2_const = 1.0e9 * params.Pto2 * F * (double(params.NCaRU) / double(nCRU_simulated)) / params.CSA;
     // IK1 consts
     consts.IK1_const = params.Ko / (params.Ko + params.KmK1);
     // ICaL consts
@@ -311,59 +300,48 @@ Constants consts_from_params(const GW_parameters &params, const int nCRU_simulat
 }
 
 
-void update_Kr_derivative(double* const deriv, const double* const state, const NDArrayMap<double,2> &Q){
-    deriv[0] = Q(1,0)*state[1] + Q(0,0)*state[0];
-    std::cout << deriv[0] << std::endl;
-    deriv[1] = Q(0,1)*state[0] + Q(2,1)*state[1] + Q(1,1)*state[1];
-    std::cout << deriv[1] << std::endl;
-    deriv[2] = Q(1,2)*state[1] + Q(3,2)*state[3] + Q(4,2)*state[4] + Q(2,2)*state[2];
-    std::cout << deriv[2] << std::endl;
-    deriv[3] = Q(2,3)*state[2] + Q(4,3)*state[4] + Q(3,3)*state[3];
-    std::cout << deriv[3] << std::endl;
-    deriv[4] = Q(2,4)*state[2] + Q(3,4)*state[3] + Q(4,4)*state[4];
-    std::cout << deriv[5] << std::endl << std::endl;
+void update_Kr_derivative(double* const deriv, const double* const state, const NDArrayMap<double,2> &Q, const double dt){
+    deriv[0] = dt*(Q(1,0)*state[1] + Q(0,0)*state[0]);
+    deriv[1] = dt*(Q(0,1)*state[0] + Q(2,1)*state[2] + Q(1,1)*state[1]);
+    deriv[2] = dt*(Q(1,2)*state[1] + Q(3,2)*state[3] + Q(4,2)*state[4] + Q(2,2)*state[2]);
+    deriv[3] = dt*(Q(2,3)*state[2] + Q(4,3)*state[4] + Q(3,3)*state[3]);
+    deriv[4] = dt*(Q(2,4)*state[2] + Q(3,4)*state[3] + Q(4,4)*state[4]);
 }
 
-void update_Kv_derivative(double* const deriv, const double* const state, const NDArrayMap<double,2> &Q){
-    deriv[0] = Q(1,0)*state[1] + Q(5,0)*state[5] + Q(0,0)*state[0];
-    deriv[1] = Q(0,1)*state[0] + Q(2,1)*state[2] + Q(6,1)*state[6] + Q(1,1)*state[1];
-    deriv[2] = Q(1,2)*state[1] + Q(3,2)*state[3] + Q(7,2)*state[7] + Q(2,2)*state[2];
-    deriv[3] = Q(2,3)*state[2] + Q(4,3)*state[4] + Q(8,3)*state[8] + Q(3,3)*state[3];
-    deriv[4] = Q(3,4)*state[3] + Q(9,4)*state[9] + Q(4,4)*state[4];
+void update_Kv_derivative(double* const deriv, const double* const state, const NDArrayMap<double,2> &Q, const double dt){
+    deriv[0] = dt*(Q(1,0)*state[1] + Q(5,0)*state[5] + Q(0,0)*state[0]);
+    deriv[1] = dt*(Q(0,1)*state[0] + Q(2,1)*state[2] + Q(6,1)*state[6] + Q(1,1)*state[1]);
+    deriv[2] = dt*(Q(1,2)*state[1] + Q(3,2)*state[3] + Q(7,2)*state[7] + Q(2,2)*state[2]);
+    deriv[3] = dt*(Q(2,3)*state[2] + Q(4,3)*state[4] + Q(8,3)*state[8] + Q(3,3)*state[3]);
+    deriv[4] = dt*(Q(3,4)*state[3] + Q(9,4)*state[9] + Q(4,4)*state[4]);
     
-    deriv[5] = Q(6,5)*state[6] + Q(0,5)*state[0] + Q(5,5)*state[5];
-    deriv[6] = Q(5,6)*state[5] + Q(7,6)*state[7] + Q(1,6)*state[1] + Q(6,6)*state[6];
-    deriv[7] = Q(6,7)*state[6] + Q(8,7)*state[8] + Q(2,7)*state[2] + Q(7,7)*state[7];
-    deriv[8] = Q(7,8)*state[7] + Q(9,8)*state[9] + Q(3,8)*state[3] + Q(8,8)*state[8];
+    deriv[5] = dt*(Q(6,5)*state[6] + Q(0,5)*state[0] + Q(5,5)*state[5]);
+    deriv[6] = dt*(Q(5,6)*state[5] + Q(7,6)*state[7] + Q(1,6)*state[1] + Q(6,6)*state[6]);
+    deriv[7] = dt*(Q(6,7)*state[6] + Q(8,7)*state[8] + Q(2,7)*state[2] + Q(7,7)*state[7]);
+    deriv[8] = dt*(Q(7,8)*state[7] + Q(9,8)*state[9] + Q(3,8)*state[3] + Q(8,8)*state[8]);
+    deriv[9] = dt*(Q(8,9)*state[8] + Q(4,9)*state[4] + Q(9,9)*state[9]);
 }
 
-void update_QKr(NDArrayMap<double,2> &Q, const double V){
+void update_QKr(NDArrayMap<double,2> &Q, const double V, const GW_parameters &params){
     Q(0,1) = 0.0069*exp(0.0272*V);
     Q(0,0) = -Q(0,1);
 
-    std::cout << Q(0,1) + Q(0,0) << std::endl;
-
-
     Q(1,0) = 0.0227*exp(-0.0431*V);
-    //Q(2,3) = Kf;
+    Q(1,2) = params.Kf;
     Q(1,1) = -(Q(1,0) + Q(1,2));
-    //Q(3,2) = Kb;
+
+    Q(2,1) = params.Kb;
     Q(2,3) = 0.0218*exp(0.0262*V);
     Q(2,4) = 1.29e-5*exp(2.71e-6 * V);
-    Q(2,2) = -(Q(2,1) + Q(2,3) + Q(2,4));
-    
-    std::cout << Q(1,1) + Q(1,0) + Q(1,2) << std::endl;
-    std::cout << Q(2,2) + Q(2,1) + Q(2,3) + Q(2,4) << std::endl;
+    Q(2,2) = -(Q(2,1) + Q(2,3) + Q(2,4));    
 
     Q(3,2) = 0.0009*exp(-0.0269*V);
     Q(3,4) = 0.0622*exp(0.0120*V);
     Q(3,3) = -(Q(3,2) + Q(3,4));
-    std::cout << Q(3,3) + Q(3,2) + Q(3,4) << std::endl;
 
-    Q(4,3) = 0.0059 * exp(-0.0443*V);
+    Q(4,3) = 0.0059*exp(-0.0443*V);
     Q(4,2) = Q(3,2)*Q(4,3)*Q(2,4)/(Q(2,3)*Q(3,4));
     Q(4,4) = -(Q(4,2) + Q(4,3));
-    std::cout << Q(4,4) + Q(4,3) + Q(4,2) << std::endl;
 }
 
 void update_QKv(NDArrayMap<double,2> &Q, const double V, const double alphaa0, const double aa, const double alphai0, const double ai, 
@@ -375,49 +353,49 @@ void update_QKv(NDArrayMap<double,2> &Q, const double V, const double alphaa0, c
     const double betaa = betaa0 * exp(-ba * V);
     const double betai = betai0 * exp(bi * V);
 
-    Q(0,1) = 4*alphaa,0,1;
+    Q(0,1) = 4.0*alphaa;
     Q(0,5) = betai;
     Q(0,0) = -(Q(0,1)+Q(0,5));
 
     Q(1,0) = betaa;
-    Q(1,2) = 3*alphaa;
+    Q(1,2) = 3.0*alphaa;
     Q(1,6) = f1*betai;
     Q(1,1) = -(Q(1,0) + Q(1,2) + Q(1,6));
     
-    Q(2,1) = 2*betaa;
-    Q(2,3) = 2*alphaa;
+    Q(2,1) = 2.0*betaa;
+    Q(2,3) = 2.0*alphaa;
     Q(2,7) = f2*betai;
     Q(2,2) = -(Q(2,1) + Q(2,3) + Q(2,7));
     
-    Q(3,2) = 3*betaa;
+    Q(3,2) = 3.0*betaa;
     Q(3,4) = alphaa;
     Q(3,8) = f3*betai;
     Q(3,3) = -(Q(3,2) + Q(3,4) + Q(3,8));
     
-    Q(4,3) = 4*betaa;
+    Q(4,3) = 4.0*betaa;
     Q(4,9) = f4*betai;
     Q(4,4) = -(Q(4,3) + Q(4,9));
     
-    Q(5,6) = 4*alphaa*b1;
+    Q(5,6) = 4.0*alphaa*b1;
     Q(5,0) = alphai;
     Q(5,5) = -(Q(5,6) + Q(5,0));
 
     Q(6,5) = betaa / f1;
-    Q(6,7) = 3*alphaa * b2/b1;
+    Q(6,7) = 3.0*alphaa * b2/b1;
     Q(6,1) = alphai / b1;
     Q(6,6) = -(Q(6,5) + Q(6,7) + Q(6,1));
     
-    Q(7,6) = 2*betaa * f1/f2;
-    Q(7,8) = 2*alphaa * b3/b2;
+    Q(7,6) = 2.0*betaa * f1/f2;
+    Q(7,8) = 2.0*alphaa * b3/b2;
     Q(7,2) = alphai / b2;
     Q(7,7) = -(Q(7,6) + Q(7,8) + Q(7,2));
     
-    Q(8,7) = 3*betaa * f2/f3;
+    Q(8,7) = 3.0*betaa * f2/f3;
     Q(8,9) = alphaa * b4/b3;
     Q(8,3) = alphai/b3;
     Q(8,8) = -(Q(8,7) + Q(8,9) + Q(8,3));
     
-    Q(9,8) = 4*alphaa * f3/f4;
+    Q(9,8) = 4.0*betaa * f3/f4;
     Q(9,4) = alphai/b4;
     Q(9,9) = -(Q(9,8) + Q(9,4));
 }
@@ -430,14 +408,13 @@ void initialise_QKv14(NDArrayMap<double,2> &Q, const GW_parameters &params){
 }
 
 
-double update_rates(const int* const, const int* const, const int* const, const int* const, double* const, double* const, double* const, double* const, const double* const, double*, const double, const double, const double, const double, const int, const Constants&);
-void update_fluxes(const double* const, const double, double*, double*,const int, const Constants&);
-void update_CaSS(double* const, int*, const double* const, const double* const, const double* const, const double* const, const double, const int, const Constants&);
-void update_state(int* const, int* const, int* const, double* const, int* const, const double* const, const double* const, const double* const, const double* const, const double* const, const int, const int, const double* const, double*, double*, const double, const double, const double, const Constants&);
-void sample_LCC(int* const, const double* const, const double, const int* const, const double* const, double*, const int, const int, const double, const double, const Constants&);
-void sample_RyR(int* const, double* const, const double* const, const double, double*, const int, const int, const double* const, const double ,  const Constants&);
-//void SSA_subunit(NDArray<int,2>&, NDArray<int,2>&, NDArray<int,3>&, NDArray<int,2>&, NDArray<double,2>&, NDArray<double,1>&, const double, const double, NDArray<double,2>&, NDArray<double,2>&, NDArray<double,1>&, const double, const double, const double, const double, const double, const double, const double, const int, const Constants&);
-void SSA_subunit(int* const, int* const, int* const, double* const, int* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const int, double* const, const Constants&);
+double update_rates(const int* const, const int* const, const int* const, const int* const, double* const, double* const, double* const, double* const, const double* const, double*, const double, const double, const double, const double, const Constants&);
+void update_fluxes(const double* const, const double, double*, double*, const Constants&);
+void update_CaSS(double* const, int*, const double* const, const double* const, const double* const, const double* const, const double, const Constants&);
+void update_state(int* const, int* const, int* const, double* const, int* const, const double* const, const double* const, const double* const, const double* const, const double* const, const int, const double* const, double*, double*, const double, const double, const double, const Constants&);
+void sample_LCC(int* const, const double* const, const double, const int* const, const double* const, double*, const int, const double, const double, const Constants&);
+void sample_RyR(int* const, double* const, const double* const, const double, double*, const int, const double* const, const double ,  const Constants&);
+void SSA_subunit(int* const, int* const, int* const, double* const, int* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double, const double, const double, const double, const double, const double, const double, const double, const double, const double, double* const, const Constants&);
 void SSA(NDArray<int,2>&, NDArray<int,2>&, NDArray<int,3>&, NDArray<int,2>&, NDArray<double,2>&, NDArray<double,1>&, const double, const double, NDArray<double,2>&, NDArray<double,2>&, NDArray<double,1>&, const double, const double, const double, const int, const Constants&);
 
 double urand(){

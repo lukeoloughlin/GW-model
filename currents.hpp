@@ -6,6 +6,8 @@
 
 // The global currents
 
+namespace currents{
+
 inline double Nernst(const double Xi, const double Xo){
     return log(Xo/Xi) / FRT;
 }
@@ -135,160 +137,10 @@ double beta_cyto(double Cai, double CMDNconst, double KCMDN){
 template <std::size_t N>
 double flux_average(const NDArray<double,N> &flux_container, const double CRU_factor){ return flux_container.sum() * CRU_factor; }
 
-
-
-
-/*
-void update_Jiss(MatrixMap &Jiss, const MatrixMap &CaSS, const double riss, const int size){
-    #pragma omp simd
-    for (int i = 0; i < size; i++){
-        Jiss(i,0) = riss * ((CaSS(i,1) + CaSS(i,3)) - (2 * CaSS(i,0)));
-        Jiss(i,1) = riss * ((CaSS(i,2) + CaSS(i,0)) - (2 * CaSS(i,1)));
-        Jiss(i,2) = riss * ((CaSS(i,3) + CaSS(i,1)) - (2 * CaSS(i,2)));
-        Jiss(i,3) = riss * ((CaSS(i,0) + CaSS(i,2)) - (2 * CaSS(i,3)));
-    }
 }
-
-void update_Jxfer(MatrixMap &Jxfer, const MatrixMap &CaSS, const double Cai, const double rxfer, const int size){
-    #pragma omp simd collapse(2)
-    for (int i = 0; i < 4; i++){
-        for (int j = 0; j < size; j++){
-            Jxfer(j,i) = rxfer * (CaSS(j,i) - Cai);
-        }
-    }
-}
-
-
-void update_JLCC(MatrixMap &JLCC, const Array3dMap &LCC, const MatrixMap &LCC_a, const MatrixMap &CaSS, const double VFRT, const double expVFRT, const double JLCC_const1, const double JLCC_const2, const int size){
-    // JLCC_const1 = 1e6 * PCaL / VSS
-    // JLCC_const2 = 0.341*Cao
-    const double exp_term = expVFRT * expVFRT;
-    const double m = -2.0 * VFRT * JLCC_const1 / (exp_term-1.0);
-    #pragma omp simd collapse(2)
-    for (int i = 0; i < 4; i++){
-        for (int j = 0; j < size; j++){
-            JLCC(j,i) = m * (LCC_a(j,i) * (LCC(j,i,5) + LCC(j,i,11)) * ((exp_term * CaSS(j,i)) - JLCC_const2));
-        }
-    }
-}
-
-void update_Jrel(MatrixMap &Jrel, const Array3dMap &RyR, const VectorMap &CaJSR, const MatrixMap &CaSS, const double rRyR, const int size){
-    #pragma omp simd collapse(2)
-    for (int i = 0; i < 4; i++){
-        for (int j = 0; j < size; j++){
-            Jrel(j,i) = rRyR * (RyR(j,i,3) + RyR(j,i,4)) * (CaJSR(j) - CaSS(j,i));
-        }
-    }
-}
-
-void update_Jtr(VectorMap &Jtr, const VectorMap &CaJSR, const double CaNSR, const double rtr, const int size){
-    #pragma omp simd collapse(2)
-    for (int i = 0; i < 4; i++){
-        for (int j = 0; j < size; j++){
-            Jtr(j,i) = rtr * (CaNSR - CaJSR(j,i));
-        }
-    }
-}
-
-void update_betaSS(MatrixMap &betaSS, const MatrixMap &CaSS, const double KBSL, const double KBSR, const double BSR_const, const double BSL_const, const int size){
-    // BSR_const = KBSR*BSRT, BSL_const = KBSL*BSLT
-    #pragma omp simd collapse(2)
-    for (int i = 0; i < 4; i++){
-        for (int j = 0; j < size; j++){
-            betaSS(j,i) = 1. / (1. + BSR_const / square(KBSR + CaSS(j,i)) + BSL_const / square(KBSL + CaSS(j,i)));
-        }
-    }
-}
-
-void update_betaJSR(VectorMap &betaJSR, const VectorMap &CaJSR, const double KCSQN, const double CSQN_const, const int size){
-    // CSQN_const = KCSQN*CSQNT
-    #pragma omp simd
-    for (int i = 0; i < size; i++){
-        betaJSR(i) = 1. / (1. + (CSQN_const / square(KCSQN + CaJSR(i))));
-    }
-}
-*/
     
 
 #endif
-
-/*
-int main(int argc, char* argv[]){
-    const int nCRU = 1000;
-    const double riss = 1.0;
-    const double JLCC_const1 = 1.0;
-    const double JLCC_const2 = 1.0;
-    const double expVFRT = 0.1;
-    double VFRT = 0.1;
-    double Cai = 1e-3;
-    
-    double* Jiss_storage = new double[nCRU*4];
-    double* CaSS_storage = new double [nCRU*4];
-    double* LCC_storage = new double [nCRU*4*12];
-    double* JLCC_storage = new double [nCRU*4];
-    double* LCC_a_storage = new double [nCRU*4];
-
-
-    MatrixMap Jiss(Jiss_storage,nCRU,4);
-    MatrixMap CaSS(CaSS_storage,nCRU,4);
-    Array3dMap LCC(LCC_storage,nCRU,4,12);
-    MatrixMap JLCC(JLCC_storage,nCRU,4);
-    MatrixMap LCC_a(LCC_a_storage,nCRU,4);
-    
-    Eigen::internal::set_is_malloc_allowed(false);
-    for (int i = 0; i < nCRU; i++){
-        for (int j = 0; j < 4; j++){
-            Jiss(i,j) = 1.0;
-            CaSS(i,j) = 1.0;
-            LCC_a(i,j) = 1.0;
-            JLCC(i,j) = 0.0;
-            for (int k = 0; k < 12; k++){
-                LCC(i,j,k) = 1.0;
-            }
-        }
-    }
-
-
-    clock_t tstart;
-    clock_t tfin;
-
-    tstart = clock();
-    for (int i = 0; i < 100000; i++){
-        update_JLCC(JLCC, LCC, LCC_a, CaSS, VFRT, expVFRT, JLCC_const1, JLCC_const2, nCRU);
-        VFRT += 1e-10;
-    }
-    tfin = clock();
-    std::cout << JLCC(1,1) << endl;
-    std::cout << "Not unrolled: 100000 iterations finished in " << float(tfin - tstart)/CLOCKS_PER_SEC << " seconds" << endl;
-
-    for (int i = 0; i < nCRU; i++){
-        for (int j = 0; j < 4; j++){
-            Jiss(i,j) = 1.0;
-            CaSS(i,j) = 1.0;
-        }
-    }
-
-    //tstart = clock();
-    //for (int i = 0; i < 1000000; i++){
-    //    update_Jxfer_unrolled(Jiss, CaSS, Cai, riss, nCRU);
-    //    Cai += 1e-10;
-    //}
-    //tfin = clock();
-    //std::cout << Jiss(1,1) << endl;
-    //std::cout << "Unrolled: 1000000 iterations finished in " << float(tfin - tstart)/CLOCKS_PER_SEC << " seconds" << endl;
-
-
-    Eigen::internal::set_is_malloc_allowed(true);
-    delete[] Jiss_storage;
-    delete[] CaSS_storage;
-    delete[] LCC_storage;
-    delete[] JLCC_storage;
-    delete[] LCC_a_storage;
-
-    return 0;
-}
-
-*/
 
 
 

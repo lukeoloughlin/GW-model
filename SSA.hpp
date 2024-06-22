@@ -21,23 +21,17 @@ int sample_weights(const double* const weights, const double total_weight, const
 
 inline void initialise_temp_states(int* const LCC_i, int* const RyR_i, double* const open_RyR, int* const LCC_a_i, int* const ClCh_i, double* const LCC_i_rates, double* const RyR_i_rates, double* const LCC_a_i_rates, double* const ClCh_i_rates, 
                                    double* const subunit_i_rates, double* const CaSS_i, double* const JLCC_i, double* const Jrel_i, double* const Jxfer_i, double* const Jiss_i, const NDArray<int,2> &LCC, const NDArray<int,2> &LCC_a, const NDArray<int,3> &RyR,
-                                   const NDArray<int,2> &ClCh, const NDArray<double,2> &CaSS, const NDArray<double,2> &JLCC, const double CaJSR_i, const int i, const Constants &consts)
-{
+                                   const NDArray<int,2> &ClCh, const NDArray<double,2> &CaSS, const NDArray<double,2> &JLCC, const double CaJSR_i, const int i, const Constants &consts){
 for (int j = 0; j < 4; j++){
-        open_RyR[j] = 0.0;
-        for (int k = 0; k < 6; k++){
+        for (int k = 0; k < 6; k++)
             RyR_i[6*j+k] = RyR(i,j,k);
-            if (k == 2 || k == 3){
-                open_RyR[j] += double(RyR(i,j,k));
-            }
-            // Set all 12 RyR rates to 0 in two parts so the loop isn't split up
-            RyR_i_rates[6*(2*j)+k] = 0.0;
-            RyR_i_rates[6*(2*j+1)+k] = 0.0;
-        }
+        for (int k = 0; k < 12; k++)
+            RyR_i_rates[12*j+k] = 0.0;
 
         LCC_i[j] = LCC(i,j);
         LCC_a_i[j] = LCC_a(i,j);
         ClCh_i[j] = ClCh(i,j);
+        open_RyR[j] = double(RyR(i,j,2) + RyR(i,j,3));
 
         LCC_i_rates[3*j] = 0.0;
         LCC_i_rates[3*j+1] = 0.0;
@@ -57,8 +51,7 @@ for (int j = 0; j < 4; j++){
 
 inline void record_from_temp(const int* const LCC_i, const int* const RyR_i, const int* const LCC_a_i, const int* const ClCh_i, double* const CaSS_i, double* const JLCC_i, 
                             const double* const Jrel_i, const double* const Jxfer_i, const double* const Jiss_i, const double* const out_vals, NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR,
-                            NDArray<int,2> &ClCh, NDArray<double,2> &CaSS, NDArray<double,1> &CaJSR, NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const int i)
-{
+                            NDArray<int,2> &ClCh, NDArray<double,2> &CaSS, NDArray<double,1> &CaJSR, NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const int i){
     for (int j = 0; j < 4; j++){
         LCC(i,j) = LCC_i[j];
         LCC_a(i,j) = LCC_a_i[j];
@@ -76,8 +69,7 @@ inline void record_from_temp(const int* const LCC_i, const int* const RyR_i, con
 }
 
 void SSA(NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR, NDArray<int,2> &ClCh, NDArray<double,2> &CaSS, NDArray<double,1> &CaJSR, const double Cai, const double CaNSR, 
-         NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const double V, const double expmVFRT, const double T, const int nCRU, const Constants &consts)
-{
+         NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const double V, const double expmVFRT, const double T, const int nCRU, const Constants &consts){
     const double alpha = alphaLCC(V);
     const double beta = betaLCC(V);
     const double yinf = yinfLCC(V);
@@ -112,7 +104,7 @@ void SSA(NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR, NDArra
             CaJSR_i = CaJSR(i);
             initialise_temp_states(LCC_i, RyR_i, open_RyR, LCC_a_i, ClCh_i, LCC_i_rates, RyR_i_rates, LCC_a_i_rates, ClCh_i_rates, subunit_rates, CaSS_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, LCC, LCC_a, RyR, ClCh, CaSS, JLCC, CaJSR_i, i, consts);
 
-            SSA_subunit(LCC_i, LCC_a_i, RyR_i, open_RyR, ClCh_i, LCC_i_rates, RyR_i_rates, LCC_a_i_rates, ClCh_i_rates, subunit_rates, CaSS_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, CaJSR_i, Cai, CaNSR, alpha, beta, yinf, tau, JLCC_mult, JLCC_exp, T, i, out_vals, consts);
+            SSA_subunit(LCC_i, LCC_a_i, RyR_i, open_RyR, ClCh_i, LCC_i_rates, RyR_i_rates, LCC_a_i_rates, ClCh_i_rates, subunit_rates, CaSS_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, CaJSR_i, Cai, CaNSR, alpha, beta, yinf, tau, JLCC_mult, JLCC_exp, T, out_vals, consts);
 
             record_from_temp(LCC_i, RyR_i, LCC_a_i, ClCh_i, CaSS_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, out_vals, LCC, LCC_a, RyR, ClCh, CaSS, CaJSR, JLCC, Jxfer, Jtr, i);
 
@@ -121,13 +113,9 @@ void SSA(NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR, NDArra
 }
 
 
-//void SSA_subunit(NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR, NDArray<int,2> &ClCh, NDArray<double,2> &CaSS, NDArray<double,1> &CaJSR, const double Cai, const double CaNSR, 
-//                 NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const double alpha, const double beta, const double yinf, const double tau, const double JLCC_mult, 
- //                const double JLCC_exp, const double T, const int i, const Constants &consts)
 void SSA_subunit(int* const LCC_i, int* const LCC_a_i, int* const RyR_i, double* const open_RyR, int* const ClCh_i, double* const LCC_i_rates, double* const RyR_i_rates, double* const LCC_a_i_rates, double* const ClCh_i_rates, double* const subunit_rates, 
                  double* const CaSS_i, double* const JLCC_i, double* const Jrel_i, double* const Jxfer_i, double* const Jiss_i, double CaJSR_i, const double Cai, const double CaNSR, const double alpha, const double beta, const double yinf, const double tau, 
-                 const double JLCC_mult, const double JLCC_exp, const double T, const int i, double* const out_vals, const Constants &consts)
-{
+                 const double JLCC_mult, const double JLCC_exp, const double T, double* const out_vals, const Constants &consts){
     double Jtr_i;
     double total_rate;
     int subunit_idx;
@@ -136,30 +124,31 @@ void SSA_subunit(int* const LCC_i, int* const LCC_a_i, int* const RyR_i, double*
     double dt = 0.0;
     while (1)
     {
-        update_fluxes(CaSS_i, Cai, Jiss_i, Jxfer_i, i, consts);
+        update_fluxes(CaSS_i, Cai, Jiss_i, Jxfer_i, consts);
         Jtr_i = consts.rtr * (CaNSR - CaJSR_i);
-        total_rate = update_rates(LCC_i, LCC_a_i, RyR_i, ClCh_i, LCC_i_rates, LCC_a_i_rates, RyR_i_rates, ClCh_i_rates, CaSS_i, subunit_rates, alpha, beta, yinf, tau, i, consts);
+        total_rate = update_rates(LCC_i, LCC_a_i, RyR_i, ClCh_i, LCC_i_rates, LCC_a_i_rates, RyR_i_rates, ClCh_i_rates, CaSS_i, subunit_rates, alpha, beta, yinf, tau, consts);
         
         subunit_idx = sample_weights(subunit_rates, total_rate, 4);
         dt = -log(urand()) / total_rate;
         if (t + dt < T){
-            update_CaSS(CaSS_i, RyR_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, dt, i, consts);
-            CaJSR_i += dt * (Jtr_i - consts.VSS_VJSR * (Jrel_i[0] + Jrel_i[1] + Jrel_i[2] + Jrel_i[3])) / (1.0 + consts.CSQN_const / square(consts.KCSQN + CaJSR_i));
-        } else {
-            update_CaSS(CaSS_i, RyR_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, T-t, i, consts);
-            CaJSR_i += dt * (Jtr_i - consts.VSS_VJSR * (Jrel_i[0] + Jrel_i[1] + Jrel_i[2] + Jrel_i[3])) / (1.0 + consts.CSQN_const / square(consts.KCSQN + CaJSR_i));
+            update_CaSS(CaSS_i, RyR_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, dt, consts);
+            CaJSR_i += (dt * (Jtr_i - consts.VSS_VJSR * (Jrel_i[0] + Jrel_i[1] + Jrel_i[2] + Jrel_i[3])) / (1.0 + consts.CSQN_const / square(consts.KCSQN + CaJSR_i)));
+        } 
+        else {
+            update_CaSS(CaSS_i, RyR_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, T-t, consts);
+            CaJSR_i += ((T-t) * (Jtr_i - consts.VSS_VJSR * (Jrel_i[0] + Jrel_i[1] + Jrel_i[2] + Jrel_i[3])) / (1.0 + consts.CSQN_const / square(consts.KCSQN + CaJSR_i)));
             break;
         }
         t += dt;
 
-        update_state(LCC_i, LCC_a_i, RyR_i, open_RyR, ClCh_i, LCC_i_rates, LCC_a_i_rates, RyR_i_rates, ClCh_i_rates, subunit_rates, subunit_idx, i, CaSS_i, JLCC_i, Jrel_i, JLCC_mult, JLCC_exp, CaJSR_i, consts);
+        update_state(LCC_i, LCC_a_i, RyR_i, open_RyR, ClCh_i, LCC_i_rates, LCC_a_i_rates, RyR_i_rates, ClCh_i_rates, subunit_rates, subunit_idx, CaSS_i, JLCC_i, Jrel_i, JLCC_mult, JLCC_exp, CaJSR_i, consts);
     }
     
     out_vals[0] = CaJSR_i;
     out_vals[1] = Jtr_i;
 }
 
-void update_fluxes(const double* const CaSS, const double Cai, double* const Jiss, double* const Jxfer, const int i, const Constants &consts){
+void update_fluxes(const double* const CaSS, const double Cai, double* const Jiss, double* const Jxfer, const Constants &consts){
     Jiss[0] = consts.riss * (CaSS[1] + CaSS[3] - 2.0*CaSS[0]);
     Jiss[1] = consts.riss * (CaSS[2] + CaSS[0] - 2.0*CaSS[1]);
     Jiss[2] = consts.riss * (CaSS[3] + CaSS[1] - 2.0*CaSS[2]);
@@ -170,29 +159,30 @@ void update_fluxes(const double* const CaSS, const double Cai, double* const Jis
 }
 
 double update_rates(const int* const LCC, const int* const LCC_a, const int* const RyR, const int* const ClCh, double* const LCC_rates, double* const LCC_a_rates, double* const RyR_rates, 
-                 double* const ClCh_rates, const double* const CaSS, double* const subunit_rates, const double alpha, const double beta, const double yinf, const double tau, const int i, const Constants &consts){
+                 double* const ClCh_rates, const double* const CaSS, double* const subunit_rates, const double alpha, const double beta, const double yinf, const double tau, const Constants &consts){
     double total_rate = 0.0;
 
     LCC_activation_rate(LCC_a_rates, LCC_a, yinf, tau);
-    ClCh_rate(ClCh_rates, ClCh, CaSS, consts.kfClCh, consts.kbClCh, i);
+    ClCh_rate(ClCh_rates, ClCh, CaSS, consts.kfClCh, consts.kbClCh);
     for (int j = 0; j < 4; j++){
         subunit_rates[j] = 0.0;
-        update_LCC_rates(LCC_rates, LCC, CaSS, i, j, alpha, beta, consts);
-        subunit_rates[j] += update_RyR_rates(RyR_rates+12*j, RyR+6*j, CaSS, i, j, consts); // Using pointer arithmetic here
-        subunit_rates[j] += (LCC_a_rates[j] + ClCh_rates[j] + LCC_rates[3*j] + LCC_rates[3*j+1] + LCC_rates[3*j+2]);
+        update_LCC_rates(LCC_rates, LCC, CaSS, j, alpha, beta, subunit_rates, consts);
+        update_RyR_rates(RyR_rates, RyR, CaSS, j, subunit_rates, consts); 
+        subunit_rates[j] += LCC_a_rates[j];
+        subunit_rates[j] += ClCh_rates[j];
         total_rate += subunit_rates[j];
     }
     return total_rate;
 }
 
-void update_CaSS(double* const CaSS, int* const RyR, const double* const JLCC, const double* const Jrel, const double* const Jxfer, const double* const Jiss, const double dt, const int i, const Constants &consts){
+void update_CaSS(double* const CaSS, int* const RyR, const double* const JLCC, const double* const Jrel, const double* const Jxfer, const double* const Jiss, const double dt, const Constants &consts){
     double dCaSS;
     double CaSS_tmp;
     int n56;
     int n34;
     double p;
     for (int j = 0; j < 4; j++){
-        dCaSS = dt * (JLCC[j] + Jrel[j] - Jxfer[j] + Jiss[j]) / (1.0 + consts.BSR_const / square(consts.KBSR + CaSS[j]) + consts.BSL_const / square(consts.KBSL + CaSS[j]));
+        dCaSS = dt * (JLCC[j] + Jrel[j] - Jxfer[j] + Jiss[j]) / (1.0 + (consts.BSR_const / square(consts.KBSR + CaSS[j])) + (consts.BSL_const / square(consts.KBSL + CaSS[j])));
         CaSS_tmp = CaSS[j] + dCaSS;
         if (CaSS[j] > 1.15e-4 && CaSS_tmp <= 1.15e-4){
             n56 = RyR[4+6*j] + RyR[5+6*j];
@@ -223,7 +213,7 @@ void update_CaSS(double* const CaSS, int* const RyR, const double* const JLCC, c
 }
 
 void update_state(int* const LCC, int* const LCC_a, int* const RyR, double* const open_RyR, int* const ClCh, const double* const LCC_rates, const double* const LCC_a_rates, const double* const RyR_rates, 
-                 const double* const ClCh_rates, const double* const subunit_rates, const int subunit_idx, const int i, const double* const CaSS, double* JLCC, 
+                 const double* const ClCh_rates, const double* const subunit_rates, const int subunit_idx, const double* const CaSS, double* JLCC, 
                  double* Jrel, const double JLCC_mult, const double JLCC_exp, const double CaJSR, const Constants &consts){
     double subunit_total = subunit_rates[subunit_idx];
     double LCC_rate_tot = LCC_rates[3*subunit_idx] + LCC_rates[3*subunit_idx+1] + LCC_rates[3*subunit_idx+2];
@@ -233,96 +223,108 @@ void update_state(int* const LCC, int* const LCC_a, int* const RyR, double* cons
 
     double u = urand() * subunit_total;
 
-    if (u < LCC_rate_tot){
-        sample_LCC(LCC, LCC_rates, LCC_rate_tot, LCC_a, CaSS, JLCC, i, subunit_idx, JLCC_mult, JLCC_exp, consts);
-    }
-    else if (u < LCC_rate_tot + LCC_a_rate) {
+    if (u < LCC_rate_tot)
+        sample_LCC(LCC, LCC_rates, LCC_rate_tot, LCC_a, CaSS, JLCC, subunit_idx, JLCC_mult, JLCC_exp, consts);
+    else if (u < (LCC_rate_tot + LCC_a_rate)) {
         LCC_a[subunit_idx] = 1 - LCC_a[subunit_idx];
-        if (LCC_a[subunit_idx] == 1 && (LCC[subunit_idx] == 6 || LCC[subunit_idx] == 12)){
+        if (LCC_a[subunit_idx] == 0)
+            JLCC[subunit_idx] = 0.0;
+        else if ((LCC[subunit_idx] == 6) || (LCC[subunit_idx] == 12))
             JLCC[subunit_idx] = JLCC_mult * (consts.Cao_scaled - JLCC_exp * CaSS[subunit_idx]);
-        }
     } 
-    else if (u < LCC_rate_tot + LCC_a_rate + ClCh_rate){
+    else if (u < (LCC_rate_tot + LCC_a_rate + ClCh_rate))
         ClCh[subunit_idx] = 1 - ClCh[subunit_idx];
-    }
-    else {
-        sample_RyR(RyR, open_RyR, RyR_rates, RyR_rate_tot, Jrel, subunit_idx, i, CaSS, CaJSR, consts);
-    }
+    else 
+        sample_RyR(RyR, open_RyR, RyR_rates, RyR_rate_tot, Jrel, subunit_idx, CaSS, CaJSR, consts);
 }
 
-void sample_LCC(int* LCC, const double* const LCC_rates, const double total_LCC_rate, const int* const LCC_a, const double* const CaSS, double* JLCC, const int i, 
+void sample_LCC(int* const LCC, const double* const LCC_rates, const double total_LCC_rate, const int* const LCC_a, const double* const CaSS, double* const JLCC, 
                 const int subunit_idx, const double JLCC_mult, const double JLCC_exp, const Constants &consts){
 
-    //double u = urand() * total_LCC_rate;
     const int transition = sample_weights(LCC_rates + 3*subunit_idx, total_LCC_rate, 3); // using pointer arithmetic here
-    //const double cw1 = LCC_rates[3*subunit_idx];
-    //const double cw2 = cw1 + LCC_rates[3*subunit_idx+1];
-    switch (LCC[subunit_idx])
-    {
+    switch (LCC[subunit_idx]){
     case 1:
-        if (transition == 0){ LCC[subunit_idx] = 2;}
-        else { LCC[subunit_idx] = 7;}
+        if (transition == 0)
+            LCC[subunit_idx] = 2;
+        else 
+            LCC[subunit_idx] = 7;
         break;
     case 2:
-        if (transition == 0){ LCC[subunit_idx] = 1; }
-        else if (transition == 1){ LCC[subunit_idx] = 3; }
-        else { LCC[subunit_idx] = 8; }
+        if (transition == 0)
+            LCC[subunit_idx] = 1;
+        else if (transition == 1)
+            LCC[subunit_idx] = 3;
+        else 
+            LCC[subunit_idx] = 8;
         break;
     case 3:
-        if (transition == 0){ LCC[subunit_idx] = 2; }
-        else if (transition == 1){ LCC[subunit_idx] = 4; }
-        else { LCC[subunit_idx] = 9; }
+        if (transition == 0)
+            LCC[subunit_idx] = 2;
+        else if (transition == 1)
+            LCC[subunit_idx] = 4;
+        else 
+            LCC[subunit_idx] = 9;
         break;
     case 4:
-        if (transition == 0){ LCC[subunit_idx] = 3; }
-        else if (transition == 1){ LCC[subunit_idx] = 5; }
-        else { LCC[subunit_idx] = 10; }
+        if (transition == 0)
+            LCC[subunit_idx] = 3;
+        else if (transition == 1)
+            LCC[subunit_idx] = 5;
+        else 
+            LCC[subunit_idx] = 10;
         break;
     case 5:
-        if (transition == 0){ 
+        if (transition == 0)
             LCC[subunit_idx] = 4; 
-        }
         else if (transition == 1){ 
             LCC[subunit_idx] = 6; 
             JLCC[subunit_idx] = (LCC_a[subunit_idx] == 1) ? JLCC_mult * (consts.Cao_scaled - JLCC_exp * CaSS[subunit_idx]) : 0.0; 
         }
-        else { 
-            LCC[subunit_idx] = 11; 
-        }
+        else 
+            LCC[subunit_idx] = 11;
         break;
     case 6:
         LCC[subunit_idx] = 5;
         JLCC[subunit_idx] = 0.0;
         break;
     case 7:
-        if (transition == 0){ LCC[subunit_idx] = 1; }
-        else { LCC[subunit_idx] = 8; }
+        if (transition == 0)
+            LCC[subunit_idx] = 1;
+        else 
+            LCC[subunit_idx] = 8;
         break;
     case 8:
-        if (transition == 0){ LCC[subunit_idx] = 2; }
-        else if (transition == 1){ LCC[subunit_idx] = 7; }
-        else { LCC[subunit_idx] = 9; }
+        if (transition == 0)
+            LCC[subunit_idx] = 2;
+        else if (transition == 1)
+            LCC[subunit_idx] = 7;
+        else 
+            LCC[subunit_idx] = 9;
         break;
     case 9:
-        if (transition == 0){ LCC[subunit_idx] = 3; }
-        else if (transition == 1){ LCC[subunit_idx] = 8; }
-        else { LCC[subunit_idx] = 10; }
+        if (transition == 0)
+            LCC[subunit_idx] = 3;
+        else if (transition == 1)
+            LCC[subunit_idx] = 8;
+        else 
+            LCC[subunit_idx] = 10;
         break;
     case 10:
-        if (transition == 0){ LCC[subunit_idx] = 4; }
-        else if (transition == 1){ LCC[subunit_idx] = 9; }
-        else { LCC[subunit_idx] = 11; }
+        if (transition == 0)
+            LCC[subunit_idx] = 4;
+        else if (transition == 1)
+            LCC[subunit_idx] = 9;
+        else 
+            LCC[subunit_idx] = 11;
         break;
     case 11:
-        if (transition == 0){ 
+        if (transition == 0)
             LCC[subunit_idx] = 5; 
-        }
-        else if (transition == 1){ 
+        else if (transition == 1)
             LCC[subunit_idx] = 10; 
-        }
-        else { 
+        else {
             LCC[subunit_idx] = 12; 
-            JLCC[subunit_idx] = (LCC_a[subunit_idx] == 1) ? JLCC_mult * (consts.Cao_scaled - JLCC_exp * CaSS[subunit_idx]) : 0.0; 
+            JLCC[subunit_idx] = (LCC_a[subunit_idx] == 1) ? JLCC_mult * (consts.Cao_scaled - JLCC_exp * CaSS[subunit_idx]) : 0.0;
         }
         break;
     case 12:
@@ -334,10 +336,9 @@ void sample_LCC(int* LCC, const double* const LCC_rates, const double total_LCC_
     }
 }
 
-void sample_RyR(int* RyR, double* open_RyR, const double* const RyR_rates, const double total_RyR_rate, double* Jrel, const int subunit_idx, const int i, const double* const CaSS, const double CaJSR,  const Constants &consts){
+void sample_RyR(int* RyR, double* open_RyR, const double* const RyR_rates, const double total_RyR_rate, double* Jrel, const int subunit_idx, const double* const CaSS, const double CaJSR,  const Constants &consts){
     const int transition = sample_weights(RyR_rates + 12*subunit_idx, total_RyR_rate, 12); // using pointer arithmetic here
-    switch (transition)
-    {
+    switch (transition){
     case 0: // 1 -> 2
         RyR[6*subunit_idx]--;
         RyR[6*subunit_idx+1]++;   
@@ -384,7 +385,7 @@ void sample_RyR(int* RyR, double* open_RyR, const double* const RyR_rates, const
     case 10: // 5 -> 4
         RyR[6*subunit_idx+4]--;
         RyR[6*subunit_idx+3]++;
-        open_RyR[6*subunit_idx]++;
+        open_RyR[subunit_idx]++;
         break;
     case 11: // 6 -> 5
         RyR[6*subunit_idx+5]--;

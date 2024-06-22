@@ -1,6 +1,7 @@
 #include "SSA.hpp"
 #include "currents.hpp"
 #include <iostream>
+#include <iomanip>
 #include <functional>
 #include <fstream>
 
@@ -74,8 +75,8 @@ void initialise_RyR(NDArray<int,3> &RyR){
 void initialise_ClCh(NDArray<int,2> &ClCh){
     const double weights[2] = { 0.998, 0.002 };
     int idx;
-    for (unsigned int i = 0; i < ClCh.shape(0); i++){
-        for (unsigned int j = 0; j < 4; j++){
+    for (int i = 0; i < ClCh.shape(0); i++){
+        for (int j = 0; j < 4; j++){
             idx = sample_weights(weights, 1.0, 2);
             if (idx == 0){
                 ClCh(i,j) = 0;
@@ -89,8 +90,8 @@ void initialise_ClCh(NDArray<int,2> &ClCh){
 
 void initialise_JLCC(NDArray<double,2> &JLCC, const NDArray<int,2> &LCC, const NDArray<int,2> &LCC_a, const NDArray<double,2> &CaSS, const double VFRT, const Constants &consts){
     double exp_term = exp(2*VFRT);
-    for (unsigned int i = 0; i < JLCC.shape(0); i++){
-        for (unsigned int j = 0; j < 4; j++){
+    for (int i = 0; i < JLCC.shape(0); i++){
+        for (int j = 0; j < 4; j++){
             if ((LCC_a(i,j) == 1) && (LCC(i,j) == 6 || LCC(i,j) == 12))
                 JLCC(i,j) = consts.JLCC_const * VFRT * (consts.Cao_scaled - exp_term * CaSS(i,j));
             else
@@ -154,8 +155,8 @@ private:
     Concentrations dconc;
     Gates dgates; 
     double dKr[5];
-    double dKv43[9];
-    double dKv14[9];
+    double dKv43[10];
+    double dKv14[10];
 
     NDArray<double,2> JLCC;
     NDArray<double,2> Jxfer;
@@ -163,10 +164,30 @@ private:
 
     double Istim;
 
+    double INa;
+    double INab;
+    double INaCa;
+    double INaK;
 
-    void update_dconc_and_dV();
-    void update_dgates();
-    void update_dKr_and_dKV();
+    double IKr;
+    double IKs;
+    double Ito1;
+    double Ito2;
+    double IK1;
+    double IKp;
+
+    double ICaL;
+    double ICab;
+    double IpCa;
+    
+    double Jup;
+    double Jtr_tot;
+    double Jxfer_tot;
+
+
+    void update_dconc_and_dV(const double dt);
+    void update_dgates(const double dt);
+    void update_dKr_and_dKV(const double dt);
     
     void write_state(ofstream &file, const double t);
     
@@ -262,10 +283,6 @@ public:
         dgates.xKs = 0.0;
 
         Istim = 0.0;
-
-        std::cout << consts.CRU_factor << std::endl;
-        std::cout << consts.ICaL_const << std::endl;
-        std::cout << consts.JLCC_const << std::endl;
     }
 
     void euler_step(const double dt);
@@ -275,62 +292,59 @@ public:
 
 };
 
-void GW_model::update_dconc_and_dV()
+void GW_model::update_dconc_and_dV(const double dt)
 {
-    double INa_, INab_, INaCa_, INaK_, IKr_, IKs_, Ito1_, Ito2_, IK1_, IKp_, ICaL_, ICab_, IpCa_; 
-    double Jup_, Jtr_av_, Jxfer_av_, dCaLTRPN_, dCaHTRPN_, beta_cyto_;
+    double beta_cyto_;
 
     double Nai = concentrations.Nai, Ki = concentrations.Ki, Cai = concentrations.Cai, CaNSR = concentrations.CaNSR;
     double CaLTRPN = concentrations.CaLTRPN, CaHTRPN = concentrations.CaHTRPN;
 
-    const double ENa = Nernst(Nai, parameters.Nao);
-    const double EK = Nernst(Ki, parameters.Ko);
+    const double ENa = currents::Nernst(Nai, parameters.Nao);
+    const double EK = currents::Nernst(Ki, parameters.Ko);
 
-    INa_ = INa(V, gates.m, gates.h, gates.j, ENa, parameters.GNa);
-    INab_ = INab(V, ENa, parameters.GNab);
-    INaCa_ = INaCa(VFRT, expmVFRT, Nai, Cai, consts.Nao3, parameters.Cao, parameters.eta, consts.INaCa_const, parameters.ksat);
-    INaK_ = INaK(VFRT, expmVFRT, Nai, consts.sigma, parameters.KmNai, consts.INaK_const);
+    INa = currents::INa(V, gates.m, gates.h, gates.j, ENa, parameters.GNa);
+    INab = currents::INab(V, ENa, parameters.GNab);
+    INaCa = currents::INaCa(VFRT, expmVFRT, Nai, Cai, consts.Nao3, parameters.Cao, parameters.eta, consts.INaCa_const, parameters.ksat);
+    INaK = currents::INaK(VFRT, expmVFRT, Nai, consts.sigma, parameters.KmNai, consts.INaK_const);
 
-    IKr_ = IKr(V, Kr[3], EK, parameters.GKr, consts.sqrtKo);
-    IKs_ = IKs(V, gates.xKs, Ki, Nai, parameters.Nao, parameters.Ko, parameters.GKs);
-    Ito1_ = Ito1(V, VFRT, expmVFRT, Kv14[4], Kv43[4], Ki, Nai, EK, consts.PKv14_Csc, parameters.Nao, parameters.Ko, parameters.GKv43);
-    Ito2_ = Ito2(ClCh, VFRT, expmVFRT, parameters.Clcyto, parameters.Clo, consts.Ito2_const);
-    IK1_ = IK1(V, EK, parameters.GK1, consts.IK1_const);
-    IKp_ = IKp(V, EK, parameters.GKp);
+    IKr = currents::IKr(V, Kr[3], EK, parameters.GKr, consts.sqrtKo);
+    IKs = currents::IKs(V, gates.xKs, Ki, Nai, parameters.Nao, parameters.Ko, parameters.GKs);
+    Ito1 = currents::Ito1(V, VFRT, expmVFRT, Kv14[4], Kv43[4], Ki, Nai, EK, consts.PKv14_Csc, parameters.Nao, parameters.Ko, parameters.GKv43);
+    Ito2 = currents::Ito2(ClCh, VFRT, expmVFRT, parameters.Clcyto, parameters.Clo, consts.Ito2_const);
+    IK1 = currents::IK1(V, EK, parameters.GK1, consts.IK1_const);
+    IKp = currents::IKp(V, EK, parameters.GKp);
 
+    ICaL = currents::ICaL(JLCC, consts.ICaL_const);
+    ICab = currents::ICab(V, Cai, parameters.Cao, parameters.GCab);
+    IpCa = currents::IpCa(Cai, parameters.IpCamax, parameters.KmpCa);
 
-    ICaL_ = ICaL(JLCC, consts.ICaL_const);
-    ICab_ = ICab(V, Cai, parameters.Cao, parameters.GCab);
-    IpCa_ = IpCa(Cai, parameters.IpCamax, parameters.KmpCa);
+    Jup = currents::Jup(Cai, CaNSR, parameters.Vmaxf, parameters.Vmaxr, parameters.Kmf, parameters.Kmr, parameters.Hf, parameters.Hr);
+    Jtr_tot = currents::flux_average(Jtr, consts.CRU_factor);
+    Jxfer_tot = currents::flux_average(Jxfer, consts.CRU_factor);
+    beta_cyto_ = currents::beta_cyto(Cai, consts.CMDN_const, parameters.KCMDN);
 
-    Jup_ = Jup(Cai, CaNSR, parameters.Vmaxf, parameters.Vmaxr, parameters.Kmf, parameters.Kmr, parameters.Hf, parameters.Hr);
-    Jtr_av_ = flux_average(Jtr, consts.CRU_factor);
-    Jxfer_av_ = flux_average(Jxfer, consts.CRU_factor);
+    dconc.CaLTRPN = currents::dTRPNCa(CaLTRPN, Cai, parameters.LTRPNtot, parameters.kLTRPNp, parameters.kLTRPNm);
+    dconc.CaHTRPN = currents::dTRPNCa(CaHTRPN, Cai, parameters.HTRPNtot, parameters.kHTRPNp, parameters.kHTRPNm);
 
-    dCaLTRPN_ = dTRPNCa(CaLTRPN, Cai, parameters.LTRPNtot, parameters.kLTRPNp, parameters.kLTRPNm);
-    dCaHTRPN_ = dTRPNCa(CaHTRPN, Cai, parameters.HTRPNtot, parameters.kHTRPNp, parameters.kHTRPNm);
-    
-    beta_cyto_ = beta_cyto(Cai, consts.CMDN_const, parameters.KCMDN);
+    dconc.Nai = -dt*consts.CSA_FVcyto * (INa + INab + 3*INaCa + 3*INaK);
+    dconc.Ki = -dt*consts.CSA_FVcyto * (IKr + IKs + Ito1 + IK1 + IKp - 2*INaK);
+    dconc.Cai = dt*beta_cyto_ * (-0.5*consts.CSA_FVcyto*(ICab + IpCa - 2*INaCa) + consts.VSS_Vcyto*Jxfer_tot - Jup - (dconc.CaLTRPN + dconc.CaHTRPN));
+    dconc.CaNSR = dt*(consts.Vcyto_VNSR * Jup - consts.VJSR_VNSR * Jtr_tot);
+    dconc.CaLTRPN *= dt;
+    dconc.CaHTRPN *= dt;
 
-    dconc.Nai = -consts.CSA_FVcyto * (INa_ + INab_ + 3*INaCa_ + 3*INaK_);
-    dconc.Ki = -consts.CSA_FVcyto * (IKr_ + IKs_ + Ito1_ + IK1_ + IKp_ - 2*INaK_);
-    dconc.Cai = beta_cyto_ * (-0.5*consts.CSA_FVcyto*(ICab_ + IpCa_ - 2*INaCa_) + consts.VSS_Vcyto*Jxfer_av_ - Jup_ - (dCaLTRPN_ + dCaHTRPN_));
-    dconc.CaNSR = consts.Vcyto_VNSR * Jup_ - consts.VJSR_VNSR * Jtr_av_;
-    dconc.CaLTRPN = dCaLTRPN_;
-    dconc.CaHTRPN = dCaHTRPN_;
-
-    dV = Istim -(INa_ + ICaL_ + IKr_ + IKs_ + Ito1_ + IK1_ + IKp_ + Ito2_ + INaK_ + INaCa_ + IpCa_ + ICab_ + INab_);
+    dV = dt*(Istim - (INa + ICaL + IKr + IKs + Ito1 + IK1 + IKp + Ito2 + INaK + INaCa + IpCa + ICab + INab));
 }
 
-void GW_model::update_dgates(){
-    dgates.m = alpham(V) * (1.0 - gates.m) - betam(V) * gates.m;
-    dgates.h = alphah(V) * (1.0 - gates.h) - betah(V) * gates.h;
-    dgates.j = alphaj(V) * (1.0 - gates.j) - betaj(V) * gates.j;
-    dgates.xKs =  (XKsinf(V) - gates.xKs) / tauXKs(V);
+void GW_model::update_dgates(const double dt){
+    dgates.m = dt * (alpham(V) * (1.0 - gates.m) - betam(V) * gates.m);
+    dgates.h = dt * (alphah(V) * (1.0 - gates.h) - betah(V) * gates.h);
+    dgates.j = dt * (alphaj(V) * (1.0 - gates.j) - betaj(V) * gates.j);
+    dgates.xKs =  dt * (XKsinf(V) - gates.xKs) / tauXKs(V);
 }
     
-void GW_model::update_dKr_and_dKV(){
-    update_QKr(QKr, V);
+void GW_model::update_dKr_and_dKV(const double dt){
+    update_QKr(QKr, V, parameters);
     update_QKv(QKv14, V, parameters.alphaa0Kv14, parameters.aaKv14, parameters.alphai0Kv14, parameters.aiKv14, parameters.betaa0Kv14, 
                parameters.baKv14, parameters.betai0Kv14, parameters.biKv14, parameters.f1Kv14, parameters.f2Kv14, parameters.f3Kv14,
                parameters.f4Kv14, parameters.b1Kv14, parameters.b2Kv14, parameters.b3Kv14, parameters.b4Kv14);
@@ -338,56 +352,48 @@ void GW_model::update_dKr_and_dKV(){
                parameters.baKv43, parameters.betai0Kv43, parameters.biKv43, parameters.f1Kv43, parameters.f2Kv43, parameters.f3Kv43,
                parameters.f4Kv43, parameters.b1Kv43, parameters.b2Kv43, parameters.b3Kv43, parameters.b4Kv43);
 
-    update_Kr_derivative(dKr, Kr, QKr);
-    update_Kv_derivative(dKv43, Kv43, QKv43);
-    update_Kv_derivative(dKv14, Kv14, QKv14);
+    update_Kr_derivative(dKr, Kr, QKr, dt);
+    update_Kv_derivative(dKv43, Kv43, QKv43, dt);
+    update_Kv_derivative(dKv14, Kv14, QKv14, dt);
 }
 
 
 void GW_model::euler_step(const double dt){
     VFRT = V*FRT;
     expmVFRT = exp(-VFRT);
-    update_dconc_and_dV();
-    update_dgates();
-    update_dKr_and_dKV();
+    update_dconc_and_dV(dt);
+    update_dgates(dt);
+    update_dKr_and_dKV(dt);
 
     SSA(LCC, LCC_activation, RyR, ClCh, CaSS, CaJSR, concentrations.Cai, concentrations.CaNSR, JLCC, Jxfer, Jtr, V, expmVFRT, dt, nCRU, consts);
 
-    V += (dt*dV);
+    V += dV;
 
-    concentrations.Nai += (dt*dconc.Nai);
-    concentrations.Ki += (dt*dconc.Ki);
-    concentrations.Cai += (dt*dconc.Cai);
-    concentrations.CaNSR += (dt*dconc.CaNSR);
-    concentrations.CaLTRPN += (dt*dconc.CaLTRPN);
-    concentrations.CaHTRPN += (dt*dconc.CaHTRPN);
+    concentrations.Nai += dconc.Nai;
+    concentrations.Ki += dconc.Ki;
+    concentrations.Cai += dconc.Cai;
+    concentrations.CaNSR += dconc.CaNSR;
+    concentrations.CaLTRPN += dconc.CaLTRPN;
+    concentrations.CaHTRPN += dconc.CaHTRPN;
 
-    gates.m += (dt*dgates.m);
-    gates.h += (dt*dgates.h);
-    gates.j += (dt*dgates.j);
-    gates.xKs += (dt*dgates.xKs);
+    gates.m += dgates.m;
+    gates.h += dgates.h;
+    gates.j += dgates.j;
+    gates.xKs += dgates.xKs;
 
-    assert((dKr[0]+dKr[1]+dKr[2]+dKr[3]+dKr[4]) == 0.0);
+    Kr[0] += dKr[0];
+    Kr[1] += dKr[1];
+    Kr[2] += dKr[2];
+    Kr[3] += dKr[3];
+    Kr[4] += dKr[4];
 
-    Kr[0] += (dt*dKr[0]);
-    Kr[1] += (dt*dKr[1]);
-    Kr[2] += (dt*dKr[2]);
-    Kr[3] += (dt*dKr[3]);
-    Kr[4] += (dt*dKr[4]);
-
-    double sum_Kv14 = 0.0, sum_Kv43 = 0.0;
-    for (int j = 0; j < 9; j++){
-        Kv14[j] += (dt*dKv14[j]);
-        Kv43[j] += (dt*dKv14[j]);
-        sum_Kv14 += Kv14[j];
-        sum_Kv43 += Kv43[j];
+    for (int j = 0; j < 10; j++){
+        Kv14[j] += dKv14[j];
+        Kv43[j] += dKv43[j];
     }
-    Kv14[9] = 1.0 - sum_Kv14;
-    Kv43[9] = 1.0 - sum_Kv43;
 }
 
-void GW_model::euler(const double dt, const int nstep, const std::function<double(double)> Ist)
-{
+void GW_model::euler(const double dt, const int nstep, const std::function<double(double)> Ist){
     double t = 0.0;
     for (int i = 0; i < nstep; i++){
         Istim = Ist(t);
@@ -398,22 +404,54 @@ void GW_model::euler(const double dt, const int nstep, const std::function<doubl
 
 void write_header(ofstream &file, const int nCRU){
     file << "t,V,m,h,j,Nai,Ki,Cai,CaNSR,CaLTRPN,CaHTRPN,xKs,Kr1,Kr2,Kr3,Kr4,Kr5,Kv14_1,Kv14_2,Kv14_3,Kv14_4,Kv14_5,Kv14_6,Kv14_7,Kv14_8,Kv14_9,Kv14_10,Kv43_1,Kv43_2,Kv43_3,Kv43_4,Kv43_5,Kv43_6,Kv43_7,Kv43_8,Kv43_9,Kv43_10,";
-    file << "CaJSRs,CaSSs,LCCs,LCCas,RyRs,ClChs" << std::endl;
-    //for (int i = 0; i < nCRU; i++){
-    //    file << ",CaJSR" << i << ",CaSS1" << i << ",CaSS2" << i << ",CaSS3" << i << ",CaSS4" << i 
-    //         << ",LCC1" << i << ",LCC2" << i << ",LCC3" << i << ",LCC4" << i << ",LCCa1" << i << ",LCCa2" << i << ",LCCa3" 
-    //         << i << ",LCCa4" << i << ",RyR1" << i << ",RyR2" << i << ",RyR3" << i << ",RyR4"
-    //         << i << ",ClCh1" << i << ",ClCh2" << i << ",ClCh3" << i << ",ClCh4" << i; 
-    //}i
-    //file << '\n';
+    file << "CaJSRs,CaSSs,LCC1,LCC2,LCC3,LCC4,LCC5,LCC6,LCC7,LCC8,LCC9,LCC10,LCC11,LCC12,LCCas,RyRs,ClChs,";
+    file << "INa,ICaL,IKr,IKs,Ito1,IK1,IKp,Ito2,INaK,INaCa,IpCa,ICab,INab,JLCC" << std::endl;
 }
 
 void GW_model::write_state(ofstream &file, const double t){
-    int nlcc = 0, nryr = 0;
+    int nlcc1 = 0, nlcc2 = 0, nlcc3 = 0, nlcc4 = 0, nlcc5 = 0, nlcc6 = 0, nlcc7 = 0, nlcc8 = 0, nlcc9 = 0, nlcc10 = 0, nlcc11 = 0, nlcc12 = 0, nryr = 0;
     for (int i = 0; i < nCRU; i++){
         for (int j = 0; j < 4; j++){
-            if ((LCC(i,j) == 6 || LCC(i,j) == 12) && LCC_activation(i,j) == 1)
-                nlcc++;
+            switch (LCC(i,j)){
+            case 1:
+                nlcc1++;
+                break;
+            case 2:
+                nlcc2++;
+                break;
+            case 3:
+                nlcc3++;
+                break;
+            case 4:
+                nlcc4++;
+                break;
+            case 5:
+                nlcc5++;
+                break;
+            case 6:
+                nlcc6++;
+                break;
+            case 7:
+                nlcc7++;
+                break;
+            case 8:
+                nlcc8++;
+                break;
+            case 9:
+                nlcc9++;
+                break;
+            case 10:
+                nlcc10++;
+                break;
+            case 11:
+                nlcc11++;
+                break;
+            case 12:
+                nlcc12++;
+                break;
+            default:
+                break;
+            }
             
             nryr += (RyR(i,j,2) + RyR(i,j,3));
         }
@@ -424,35 +462,27 @@ void GW_model::write_state(ofstream &file, const double t){
          << Kv14[1] << ',' << Kv14[2] << ',' << Kv14[3] << ',' << Kv14[4] << ',' << Kv14[5] << ',' << Kv14[6] << ',' << Kv14[7]
          << ',' << Kv14[8] << ',' << Kv14[9] << ',' << Kv43[0] << ',' << Kv43[1] << ',' << Kv43[2] << ',' << Kv43[3] << ',' << Kv43[4]
          << ',' << Kv43[5] << ',' << Kv43[6] << ',' << Kv43[7] << ',' << Kv43[8] << ',' << Kv43[9];
-    file << ',' << CaJSR.sum() << ',' << CaSS.sum() << ',' << nlcc << ',' << LCC_activation.sum() << ',' << nryr << ',' << ClCh.sum() << std::endl;
-    //for (int i = 0; i < nCRU; i++){
-    //    file << ',' << CaJSR(i) << ',' << CaSS(i,0) << ',' << CaSS(i,1) << ',' << CaSS(i,2) << ',' << CaSS(i,3) << ','
-    //         << LCC(i,0) << ',' << LCC(i,1) << ',' << LCC(i,2) << ',' << LCC(i,3) << ',' << LCC_activation(i,0) << ','
-    //         << LCC_activation(i,1) << ',' << LCC_activation(i,2) << ',' << LCC_activation(i,3) << ',' << RyR(i,0,2)+RyR(i,0,3) << ','
-   //          << RyR(i,1,2)+RyR(i,1,3) << ',' << RyR(i,2,2)+RyR(i,2,3) << ',' << RyR(i,3,2)+RyR(i,3,3) << ','
-   //          << ClCh(i,0) << ',' << ClCh(i,1) << ',' << ClCh(i,2) << ',' << ClCh(i,3);
-    //}
-    //file << '\n';
+         
+    file << ',' << CaJSR.sum() << ',' << CaSS.sum() << ',' << nlcc1 << ',' << nlcc2 << ',' << nlcc3 << ',' << nlcc4 << ',' 
+         << nlcc5 << ',' << nlcc6 << ',' << nlcc7 << ',' << nlcc8 << ',' << nlcc9 << ',' << nlcc10 << ',' << nlcc11 << ',' << nlcc12 << ',' 
+         << LCC_activation.sum() << ',' << nryr << ',' << ClCh.sum();
+
+    file << ',' << INa << ',' << ICaL << ',' << IKr << ',' << IKs << ',' << Ito1 << ',' << IK1 << ',' << IKp << ',' << Ito2 << ',' << INaK
+         <<  ',' << INaCa << ',' << IpCa << ',' << ICab << ',' << INab << std::endl; 
 }
 
 
-void GW_model::euler_write(const double dt, const int nstep, const std::function<double(double)> Ist, ofstream &file, const int record_every)
-{
+void GW_model::euler_write(const double dt, const int nstep, const std::function<double(double)> Ist, ofstream &file, const int record_every){
     double t = 0.0;
     write_header(file, nCRU);
-    for (int i = 0; i < nstep; i++){
-        if (i % record_every == 0){
-            write_state(file, t);
-            //std::cout << "dV: " << dV << std::endl;
-            //std::cout << "dNai: " << dconc.Nai << std::endl;
-            //std::cout << "dKi: " << dconc.Ki << std::endl;
-            //std::cout << "dCai: " << dconc.Cai << std::endl;
-            //std::cout << "dCaNSR: " << dconc.CaNSR << std::endl << std::endl;
-        }
-        
+    for (int i = 0; i < nstep; i++){ 
         Istim = Ist(t);
         euler_step(dt);
         t += dt;
+
+         if (i % record_every == 0){
+            write_state(file, t);
+        }
 
     }
 }
@@ -461,24 +491,12 @@ double Ist(double t) { return (t < 2.0) ? 35.0 : 0.0; }
 
 int main(int argc, char* argv[])
 {
-    GW_model model(1000);
-
-    /*
-    cout << model.V << endl;
-    cout << model.Kr[0] << endl;
-    cout << model.Kv14[0] << endl;
-    cout << model.Kv43[0] << endl;
-    cout << model.CaSS(0,0) << endl;
-    cout << model.CaJSR(0) << endl;
-    cout << model.LCC(50,2) << endl;
-    cout << model.LCC_activation(54,3) << endl;
-    cout << model.RyR(32,1,4) << endl;
-    cout << model.ClCh(11,0) << endl;
-    */
+    GW_model model(2000);
 
     ofstream file;
     file.open("data.csv", std::ofstream::out | std::ofstream::trunc );
-    model.euler_write(1e-3, 50000, &Ist, file, 100);
+    file << std::setprecision(12);
+    model.euler_write(1e-3, 500000, &Ist, file, 2000);
     file.close();
     cout << model.V << endl;
 

@@ -7,6 +7,8 @@
 
 using namespace std;
 
+/*
+
 void initialise_CaSS(NDArray<double,2> &CaSS){ CaSS.set_to_val(1.45370e-4); }
 void initialise_CaJSR(NDArray<double,1> &CaJSR){ CaJSR.set_to_val(0.908408); }
 
@@ -292,6 +294,7 @@ public:
 
 };
 
+
 void GW_model::update_dconc_and_dV(const double dt)
 {
     double beta_cyto_;
@@ -342,6 +345,7 @@ void GW_model::update_dgates(const double dt){
     dgates.j = dt * (alphaj(V) * (1.0 - gates.j) - betaj(V) * gates.j);
     dgates.xKs =  dt * (XKsinf(V) - gates.xKs) / tauXKs(V);
 }
+*/
     
 void GW_model::update_dKr_and_dKV(const double dt){
     update_QKr(QKr, V, parameters);

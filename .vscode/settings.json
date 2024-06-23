@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "tensor": "cpp"
-    }
+        "tensor": "cpp",
+        "*.tpp": "cpp"
+    },
+    "C_Cpp.intelliSenseEngineFallback": "enabled"
 }

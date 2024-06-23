@@ -18,7 +18,7 @@ protected:
     void set_storage(T* storage_){ storage = storage_; }
 
     void set_dims(const int dims_[N]){
-        for (unsigned int i = 0; i < N; i++){
+        for (unsigned int i = 0; i < N; ++i){
             dims[i] = dims_[i];
         }
     }
@@ -35,14 +35,13 @@ protected:
         int i = 0;
         for (const auto p : {indices...}){
             assert((p > 0, "Invalid indexing argument. A non-positive index was passed."));
-            if (i == 0) {
+            if (i == 0)
                 idx += p;
-            }
             else {
                 idx *= dims[i];
                 idx += p;
             }
-            i++;
+            ++i;
         }
         return idx;
     }
@@ -81,7 +80,7 @@ public:
     T sum() const {
         T acc = 0;
         #pragma omp simd reduction(+:acc)
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             acc += storage[i];
         }
         return acc;
@@ -89,14 +88,14 @@ public:
 
     void add(const T val){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] += val;
         }
     }
     
     void sub(const T val){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] -= val;
         }
     }
@@ -104,7 +103,7 @@ public:
     
     void mul(const T val){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] *= val;
         }
     }
@@ -112,16 +111,17 @@ public:
     void div(const T val){
         const T vali = 1 / val;
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] *= vali;
         }
     }
     
     void set_to_val(const T val){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
-            storage[i] = val;
-        }
+        memset(storage, val, size * sizeof(T));
+        //#pragma omp simd
+        //for (unsigned int i = 0; i < size; ++i){
+        //    storage[i] = val;
+        //}
     }
 
     void set_to_zeros(){ set_to_val(0.0); }
@@ -131,7 +131,7 @@ public:
     
     NDArrayBase& operator+=(const T val){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] += val;
         }
         return *this;
@@ -140,7 +140,7 @@ public:
     NDArrayBase& operator+=(const NDArrayBase<T,N> &val){
         //const T* const val_data = val.data();
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] += val[i];
         }
         return *this;
@@ -148,7 +148,7 @@ public:
 
     NDArrayBase& operator-=(const T val){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] -= val;
         }
         return *this;
@@ -157,7 +157,7 @@ public:
     NDArrayBase& operator-=(const NDArrayBase<T,N> &val){
         //const T* const val_data = val.data();
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] -= val[i];
         }
         return *this;
@@ -165,7 +165,7 @@ public:
 
     NDArrayBase& operator*=(const T val){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] *= val;
         }
         return *this;
@@ -174,7 +174,7 @@ public:
     NDArrayBase& operator*=(const NDArrayBase<T,N> &val){
         //const T* const val_data = val.data();
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] *= val[i];
         }
         return *this;
@@ -183,7 +183,7 @@ public:
     NDArrayBase& operator/=(const T val){
         const T vali = 1 / val;
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] *= vali;
         }
         return *this;
@@ -192,7 +192,7 @@ public:
     NDArrayBase& operator/=(const NDArrayBase<T,N> &val){
         //const T* const val_data = val.data();
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] /= val[i];
         }
         return *this;
@@ -200,70 +200,70 @@ public:
 
     void exp(){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] = std::exp(storage[i]);
         }
     }
 
     void log(){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] = std::log(storage[i]);
         }
     }
 
     void sin(){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] = std::sin(storage[i]);
         }
     }
 
     void cos(){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] = std::cos(storage[i]);
         }
     }
 
     void tan(){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] = std::tan(storage[i]);
         }
     }
 
     void sinh(){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] = std::sinh(storage[i]);
         }
     }
 
     void cosh(){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] = std::cosh(storage[i]);
         }
     }
 
     void tanh(){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] = std::tanh(storage[i]);
         }
     }
 
     void pow(const T exponent){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] = std::pow(storage[i], exponent);
         }
     }
 
     void abs(){
         #pragma omp simd
-        for (unsigned int i = 0; i < size; i++){
+        for (unsigned int i = 0; i < size; ++i){
             storage[i] = std::abs(storage[i]);
         }
     }
@@ -302,6 +302,22 @@ class NDArrayMap : public NDArrayBase<T,N>
 {
 public:
     NDArrayMap<T,N>() { };
+    
+    template <typename... Dimensions>
+    NDArrayMap<T,N>(T* arr, Dimensions... indices){
+        int size_ = 1;
+        int i = 0;
+        int dims_[N];
+        for (const auto p : {indices...}){
+            dims_[i] = p;
+            size_ *= p;
+            ++i;
+        }
+        this->set_storage(arr);
+        this->set_dims(dims_);
+        this->set_size(size_);
+        
+    }
 
     NDArrayMap<T,N>(T* arr, const int dims_[N], const int size_) { 
         this->set_storage(arr);
@@ -347,7 +363,7 @@ public:
         for (const auto p : {indices...}){
             sz *= p;
             dims_[i] = p;
-            i++;
+            ++i;
         }
 
         T* arr = new T[sz];

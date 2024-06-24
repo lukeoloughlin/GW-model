@@ -2,185 +2,13 @@
 
 namespace GW {
 
-template <typename FloatType>
-Constants<FloatType>::Constants(const Parameters<FloatType> &params, const int nCRU_simulated){
-    RT_F = GAS_CONST * params.T / FARADAY;
-    CRU_factor = FloatType(params.NCaRU) / FloatType(nCRU_simulated);
-    CSA_FVcyto = params.CSA / (1000.0 * params.Vcyto * FARADAY);
-    VSS_Vcyto = params.VSS / params.Vcyto;
-    Vcyto_VNSR = params.Vcyto / params.VNSR;
-    VJSR_VNSR = params.VJSR / params.VNSR;
-    FRT = FARADAY / (GAS_CONST * params.T);
-    riss = params.riss;
-    rxfer = params.rxfer;
-    // LCC rates
-    gamma0 = params.gamma0;
-    omega = params.omega;
-    a = params.a;
-    a2 = consts.a*params.a;
-    a3 = consts.a2*params.a;
-    a4 = consts.a3*params.a;
-    bi = 1.0 / params.b; // 1/b
-    bi2 = consts.bi*consts.bi; // 1/b^2
-    bi3 = consts.bi2*consts.bi; // 1/b^3
-    bi4 = consts.bi3*consts.bi; // 1/b^4
-    f = params.f;
-    g = params.g;
-    f1 = params.f1;
-    g1 = params.g1;
-    // RyR rates
-    k12 = params.k12;
-    k21 = params.k21;
-    k23 = params.k23;
-    k32 = params.k32;
-    k34 = params.k34;
-    k43 = params.k43;
-    k45 = params.k45;
-    k54 = params.k54;
-    k56 = params.k56;
-    k65 = params.k65;
-    k25 = params.k25;
-    k52 = params.k52;
-    // ClCh rates
-    kfClCh = params.kfClCh;
-    kbClCh = params.kbClCh;
-    // CaSS constants
-    KBSR = params.KBSR;
-    BSR_const = params.KBSR * params.BSRT;
-    KBSL = params.KBSL;
-    BSL_const = params.KBSL * params.BSLT;
-    
-    VSS_VJSR = params.VSS / params.VJSR;
-    KCSQN = params.KCSQN;
-    CSQN_const = params.KCSQN * params.CSQNT;
-    // JLCC constants
-    JLCC_const = 2.0e6 * params.PCaL / params.VSS;
-    Cao_scaled = 0.341 * params.Cao;
-    // Jrel constants
-    rRyR = params.rRyR;
-    // Jtr constants
-    rtr = params.rtr;
-    // INaCa consts
-    Nao3 = params.Nao*params.Nao*params.Nao;
-    INaCa_const = 5000.0 * params.kNaCa / ((params.KmNa*params.KmNa*params.KmNa + params.Nao*params.Nao*params.Nao) * (params.KmCa + params.Cao));
-    // INaK coonsts
-    sigma = (exp(params.Nao / 67.3) - 1.0) / 7.0;
-    INaK_const = params.INaKmax * params.Ko / (params.Ko + params.KmKo);
-    // IKr consts
-    sqrtKo = sqrt(params.Ko);
-    // Ito1 consts
-    PKv14_Csc = params.PKv14 / params.Csc;
-    // Ito2 consts
-    Ito2_const = 1.0e9 * params.Pto2 * FARADAY * (double(params.NCaRU) / double(nCRU_simulated)) / params.CSA;
-    // IK1 consts
-    IK1_const = params.Ko / (params.Ko + params.KmK1);
-    // ICaL consts
-    ICaL_const = -1000.0 * (2.0*FARADAY * params.VSS) * (double(params.NCaRU) / double(nCRU_simulated)) / params.CSA;
-    // CMDN_consts
-    CMDN_const = params.KCMDN * params.CMDNT;
-}
-
-void initialise_LCC(NDArray<int,2> &LCC){
-    const double weights[3] = { 0.958, 0.038, 0.004 };
-    int idx;
-
-    for (unsigned int i = 0; i < LCC.shape(0); i++){
-        for (unsigned int j = 0; j < 4; j++){
-            idx = sample_weights(weights, 1.0, 3);
-            if (idx == 0){
-                LCC(i,j) = 1;
-            } 
-            else if (idx == 1){
-                LCC(i,j) = 2;
-            }
-            else {
-                LCC(i,j) = 7;
-            }
-        }
-    }
-}
-
-void initialise_LCC_a(NDArray<int,2> &LCC_a){
-    const double weights[2] = { 0.9425, 0.0575 };
-    int idx;
-    for (unsigned int i = 0; i < LCC_a.shape(0); i++){
-        for (unsigned int j = 0; j < 4; j++){
-            idx = sample_weights(weights, 1.0, 2);
-            if (idx == 0){
-                LCC_a(i,j) = 1;
-            } 
-            else {
-                LCC_a(i,j) = 0;
-            }
-        }
-    }
-}
-
-
-void initialise_RyR(NDArray<int,3> &RyR){
-    const double weights[3] = { 0.609, 0.5*0.391, 0.5*0.391 };
-    int idx;
-    for (int i = 0; i < RyR.shape(0); i++){
-        for (int j = 0; j < 4; j++){
-            for (int k = 0; k < 5; k++){
-                idx = sample_weights(weights, 1.0, 3);
-                if (idx == 0){
-                    RyR(i,j,0)++;
-                } 
-                else if (idx == 1){
-                    RyR(i,j,4)++;
-                }
-                else {
-                    RyR(i,j,5)++;
-                }
-            }    
-        }
-    }
-}
-
-
-void initialise_ClCh(NDArray<int,2> &ClCh){
-    const double weights[2] = { 0.998, 0.002 };
-    int idx;
-    for (int i = 0; i < ClCh.shape(0); i++){
-        for (int j = 0; j < 4; j++){
-            idx = sample_weights(weights, 1.0, 2);
-            if (idx == 0){
-                ClCh(i,j) = 0;
-            } 
-            else {
-                ClCh(i,j) = 1;
-            }
-        }
-    }
-}
-
-template <typename FloatType>
-GlobalState<FloatType>::GlobalState(FloatType val){
-    V = val;
-    Nai = val;
-    Ki = val;
-    Cai = val;
-    CaNSR = val;
-    CaLTRPN = val;
-    CaHTRPN = val;
-    m = val;
-    h = val;
-    j = val;
-    xKs = val;
-
-    memset(Kr, val, 5*sizeof(FloatType));
-    memset(Kv43, val, 10*sizeof(FloatType));
-    memset(Kv14, val, 10*sizeof(FloatType));
-}
 
 template <typename FloatType>
 void GW_model<FloatType>::initialise_JLCC(){
-    const FloatType exp_term = exp(2*VFRT);
     for (int i = 0; i < JLCC.shape(0); ++i){
         for (int j = 0; j < 4; j++){
             if ((CRUs.LCC_activation(i,j) == 1) && (CRUs.LCC(i,j) == 6 || CRUs.LCC(i,j) == 12))
-                JLCC(i,j) = consts.JLCC_const * VFRT * (consts.Cao_scaled - exp_term * CRUs.CaSS(i,j));
+                JLCC(i,j) = consts.JLCC_const * consts.VF_RT * (consts.Cao_scaled - consts.JLCC_exp * CRUs.CaSS(i,j));
             else
                 JLCC(i,j) = 0.0;
         }
@@ -192,7 +20,7 @@ void GW_model<FloatType>::initialise_Jxfer(){
     Jxfer.set_to_zeros();
     Jxfer += CRUs.CaSS;
     Jxfer -= globals.Cai;
-    Jxfer *= params.rxfer;
+    Jxfer *= parameters.rxfer;
 }
 
 template <typename FloatType>
@@ -200,7 +28,7 @@ void GW_model<FloatType>::initialise_Jtr(){
     Jtr.set_to_zeros();
     Jtr += globals.CaNSR;
     Jtr -= CRUs.CaJSR;
-    Jtr *= params.rtr;
+    Jtr *= parameters.rtr;
 }
 
 template <typename FloatType>
@@ -210,18 +38,6 @@ void GW_model<FloatType>::initialise_QKr(){
     QKr(2,1) = parameters.Kb;
 }
 
-template <typename FloatType>
-CRUState<FloatType>::CRUState(const int nCRU) : CaSS(NDArray<FloatType,2>(nCRU,4)), CaJSR(NDArray<FloatType,1>(nCRU)), 
-                                                LCC(NDArray<int,2>(nCRU,4)), LCC_activation(NDArray<int,2>(nCRU,,4)),
-                                                RyR(NDArray<int,3>(nCRU,4,6)), ClCh(NDArray<int,2>(nCRU,4))
-{
-    CaSS.set_to_val(1.45370e-4);
-    CaJSR.set_to_val(0.908408);
-    initialise_LCC(LCC);
-    initialise_LCC_a(LCC_activation);
-    initialise_RyR(RyR);
-    initialise_ClCh(ClCh);
-}
 
 template <typename FloatType>
 void GW_model<FloatType>::update_QKr(){
@@ -245,6 +61,24 @@ void GW_model<FloatType>::update_QKr(){
     QKr(4,2) = QKr(3,2)*QKr(4,3)*QKr(2,4)/(QKr(2,3)*QKr(3,4));
     QKr(4,4) = -(QKr(4,2) + QKr(4,3));
 }
+
+
+    template <typename FloatType>
+    void GW_model<FloatType>::update_CRUstate_from_temp(const CRUStateThread<FloatType> &temp, const int idx){
+        for (int j = 0; j < 4; j++){
+            CRUs.LCC(idx,j) = temp.LCC[j];
+            CRUs.LCC_activation(idx,j) = temp.LCC_activation[j];
+            for (int k = 0; k < 6; k++)
+                CRUs.RyR(idx,j,k) = temp.RyR[6*j+k];
+            CRUs.ClCh(idx,j) = temp.ClCh[j];
+            CRUs.CaSS(idx,j) = temp.CaSS[j];
+
+            JLCC(idx,j) = temp.JLCC[j];
+            Jxfer(idx,j) = temp.Jxfer[j];
+        }
+        CRUs.CaJSR(idx) = temp.CaJSR;
+        Jtr(idx) = temp.Jtr;
+    }
 
 //void update_QKv(NDArrayMap<double,2> &Q, const double V, const double alphaa0, const double aa, const double alphai0, const double ai, 
 //                const double betaa0, const double ba, const double betai0, const double bi, const double f1, const double f2,
@@ -349,10 +183,10 @@ void GW_model<FloatType>::update_Kv_derivatives(const FloatType dt){
 
 template <typename FloatType>
 void GW_model<FloatType>::update_gate_derivatives(const FloatType dt){
-    dGlobals.m = dt * (common::alpham(globals.V) * (1.0 - globals.m) - common::betam(globals.V) * globals.m);
-    dGlobals.h = dt * (common::alphah(globals.V) * (1.0 - globals.h) - common::betah(globals.V) * globals.h);
-    dGlobals.j = dt * (common::alphaj(globals.V) * (1.0 - globals.j) - common::betaj(globals.V) * globals.j);
-    dGlobals.xKs =  dt * (GW::XKsinf(globals.V) - globals.xKs) * GW::tauXKs_inv(globls.V);
+    dGlobals.m = dt * (common::alpha_m(globals.V) * (1.0 - globals.m) - common::beta_m(globals.V) * globals.m);
+    dGlobals.h = dt * (common::alpha_h(globals.V) * (1.0 - globals.h) - common::beta_h(globals.V) * globals.h);
+    dGlobals.j = dt * (common::alpha_j(globals.V) * (1.0 - globals.j) - common::beta_j(globals.V) * globals.j);
+    dGlobals.xKs =  dt * (XKsinf(globals.V) - globals.xKs) * tauXKs_inv(globals.V);
 }
 
 template <typename FloatType>
@@ -364,44 +198,199 @@ void GW_model<FloatType>::update_V_and_concentration_derivatives(const FloatType
     //double CaLTRPN = concentrations.CaLTRPN, CaHTRPN = concentrations.CaHTRPN;
     FloatType IKv14, IKv43;
 
-    const FloatType ENa = common::Nernst(globals.Nai, parameters.Nao, consts.RT_F, 1.0);
-    const FloatType EK = common::Nernst(globals.Ki, parameters.Ko, consts.RT_F, 1.0);
-    const FloatType ECa = common::Nernst(globals.Ki, parameters.Ko, consts.RT_F, 2.0);
+    const FloatType ENa = common::Nernst<FloatType>(globals.Nai, parameters.Nao, consts.RT_F, 1.0);
+    const FloatType EK = common::Nernst<FloatType>(globals.Ki, parameters.Ko, consts.RT_F, 1.0);
+    const FloatType ECa = common::Nernst<FloatType>(globals.Ki, parameters.Ko, consts.RT_F, 2.0);
 
-    INa = common::INa(globals.V, globals.m, globals.h, globals.j, ENa, parameters.GNa);
-    INab = common::Ib(globals.V, ENa, parameters.GNab);
-    INaCa = common::INaCa(VFRT, expmVFRT, globals.Nai, globals.Cai, consts.Nao3, parameters.Cao, parameters.eta, consts.INaCa_const, parameters.ksat);
-    INaK = common::INaK(VFRT, expmVFRT, globals.Nai, consts.sigma, parameters.KmNai, consts.INaK_const);
-
-    IKr = GW::IKr(globals.V, globals.Kr[3], EK, parameters.GKr, consts.sqrtKo);
-    IKs = GW::IKs(globals.V, gates.xKs, globals.Ki, globals.Nai, parameters.Nao, parameters.Ko, parameters.GKs);
-    IKv14 = GW::IKv14(VFRT, expmVFRT, globals.Kv14[4], globals.Ki, globals.Nai, consts.PKv14_Csc, parameters.Nao, parameters.Ko);
-    IKv43 = GW::IKv43(globals.V, globals.XKv43[4], EK, parameters.GKv43);
+    INa = common::INa<FloatType>(globals.V, globals.m, globals.h, globals.j, parameters.GNa, ENa);
+    INab = common::Ib<FloatType>(globals.V, parameters.GNab, ENa);
+    INaCa = common::INaCa<FloatType>(consts.VF_RT, consts.expmVF_RT, globals.Nai, globals.Cai, consts.Nao3, parameters.Cao, parameters.eta, parameters.ksat, consts.INaCa_const);
+    INaK = common::INaK<FloatType>(consts.VF_RT, consts.expmVF_RT, globals.Nai, consts.sigma, parameters.KmNai, consts.INaK_const);
+    
+    IKr = GW::IKr<FloatType>(globals.V, globals.Kr[3], EK, parameters.GKr, consts.sqrtKo);
+    IKs = GW::IKs<FloatType>(globals.V, globals.xKs, globals.Ki, globals.Nai, parameters.Nao, parameters.Ko, parameters.GKs, consts.RT_F);
+    IKv14 = GW::IKv14<FloatType>(consts.VF_RT, consts.expmVF_RT, globals.Kv14[4], globals.Ki, globals.Nai, consts.PKv14_Csc, parameters.Nao, parameters.Ko);
+    IKv43 = GW::IKv43<FloatType>(globals.V, globals.Kv43[4], EK, parameters.GKv43);
     Ito1 = IKv14 + IKv43;
-    Ito2 = GW::Ito2(CRUs.ClCh, VFRT, expmVFRT, parameters.Clcyto, parameters.Clo, consts.Ito2_const);
-    IK1 = GW::IK1(globals.V, EK, parameters.GK1, consts.IK1_const);
-    IKp = GW::IKp(globals.V, EK, parameters.GKp);
+    Ito2 = GW::Ito2<FloatType>(CRUs.ClCh, consts.VF_RT, consts.expmVF_RT, parameters.Clcyto, parameters.Clo, consts.Ito2_const);
+    IK1 = GW::IK1<FloatType>(globals.V, EK, parameters.GK1, consts.IK1_const, consts.F_RT);
+    IKp = GW::IKp<FloatType>(globals.V, EK, parameters.GKp);
+    
+    ICaL = GW::ICaL<FloatType>(JLCC, consts.ICaL_const);
+    ICab = common::Ib<FloatType>(globals.V, parameters.GCab, ECa);
+    IpCa = common::IpCa<FloatType>(globals.Cai, parameters.IpCamax, parameters.KmpCa);
 
-    ICaL = GW::ICaL(JLCC, consts.ICaL_const);
-    ICab = common::Ib(globals.V, ECa, parameters.GCab);
-    IpCa = common::IpCa(globals.Cai, parameters.IpCamax, parameters.KmpCa);
+    Jup = GW::Jup<FloatType>(globals.Cai, globals.CaNSR, parameters.Vmaxf, parameters.Vmaxr, parameters.Kmf, parameters.Kmr, parameters.Hf, parameters.Hr);
+    Jtr_tot = GW::flux_average<FloatType>(Jtr, consts.CRU_factor);
+    Jxfer_tot = GW::flux_average<FloatType>(Jxfer, consts.CRU_factor);
+    beta_cyto = GW::beta_cyto<FloatType>(globals.Cai, consts.CMDN_const, parameters.KCMDN);
 
-    Jup = GW:Jup(globals.Cai, globals.CaNSR, parameters.Vmaxf, parameters.Vmaxr, parameters.Kmf, parameters.Kmr, parameters.Hf, parameters.Hr);
-    Jtr_tot = GW::flux_average(Jtr, consts.CRU_factor);
-    Jxfer_tot = GW::flux_average(Jxfer, consts.CRU_factor);
-    beta_cyto = GW::beta_cyto(globals.Cai, consts.CMDN_const, parameters.KCMDN);
-
-    dGlobals.CaLTRPN = GW::dTRPNCa(globals.CaLTRPN, globals.Cai, parameters.LTRPNtot, parameters.kLTRPNp, parameters.kLTRPNm);
-    dGlobals.CaHTRPN = GW::dTRPNCa(globals.CaHTRPN, globals.Cai, parameters.HTRPNtot, parameters.kHTRPNp, parameters.kHTRPNm);
+    dGlobals.CaLTRPN = GW::dTRPNCa<FloatType>(globals.CaLTRPN, globals.Cai, parameters.LTRPNtot, parameters.kLTRPNp, parameters.kLTRPNm);
+    dGlobals.CaHTRPN = GW::dTRPNCa<FloatType>(globals.CaHTRPN, globals.Cai, parameters.HTRPNtot, parameters.kHTRPNp, parameters.kHTRPNm);
 
     dGlobals.Nai = -dt*consts.CSA_FVcyto * (INa + INab + 3*INaCa + 3*INaK);
     dGlobals.Ki = -dt*consts.CSA_FVcyto * (IKr + IKs + Ito1 + IK1 + IKp - 2*INaK);
-    dGlobals.Cai = dt*beta_cyto * (-0.5*consts.CSA_FVcyto*(ICab + IpCa - 2*INaCa) + consts.VSS_Vcyto*Jxfer_tot - Jup - (dconc.CaLTRPN + dconc.CaHTRPN));
+    dGlobals.Cai = dt*beta_cyto * (-0.5*consts.CSA_FVcyto*(ICab + IpCa - 2*INaCa) + consts.VSS_Vcyto*Jxfer_tot - Jup - (dGlobals.CaLTRPN + dGlobals.CaHTRPN));
     dGlobals.CaNSR = dt*(consts.Vcyto_VNSR * Jup - consts.VJSR_VNSR * Jtr_tot);
     dGlobals.CaLTRPN *= dt;
     dGlobals.CaHTRPN *= dt;
 
     dGlobals.V = dt*(Istim - (INa + ICaL + IKr + IKs + Ito1 + IK1 + IKp + Ito2 + INaK + INaCa + IpCa + ICab + INab));
+}
+
+template <typename FloatType>
+void GW_model<FloatType>::SSA(const FloatType dt){
+    consts.alphaLCC = alphaLCC<FloatType>(globals.V);
+    consts.betaLCC = betaLCC<FloatType>(globals.V);
+    consts.yinfLCC = yinfLCC<FloatType>(globals.V);
+    consts.tauLCC = tauLCC<FloatType>(globals.V);
+    consts.JLCC_exp = square(1.0 / consts.expmVF_RT);
+    consts.JLCC_multiplier = consts.JLCC_const * globals.V * consts.F_RT / (consts.JLCC_exp - 1);
+    #pragma omp parallel
+    {
+        CRUStateThread<FloatType> temp;
+        
+        #pragma omp for schedule( static )
+        for (int i = 0; i < nCRU; i++){
+            temp.copy_from_CRUState(CRUs, JLCC, i, parameters);
+            SSA_single_CRU(temp, globals.Cai, globals.CaNSR, dt, parameters, consts);
+            update_CRUstate_from_temp(temp, i);
+        }
+    }
+}
+
+template <typename FloatType>
+void GW_model<FloatType>::euler_step(const FloatType dt){
+    consts.VF_RT = globals.V*consts.F_RT;
+    consts.expmVF_RT = exp(-consts.VF_RT);
+
+    update_QKr();
+    update_QKv(); // Updates Kv14 and Kv43
+    
+    update_V_and_concentration_derivatives(dt);
+    update_gate_derivatives(dt);
+    update_Kr_derivatives(dt);
+    update_Kv_derivatives(dt); // Updates both Kv14 and Kv43        
+
+
+    SSA(dt);
+
+    globals.V += dGlobals.V;
+    globals.Nai += dGlobals.Nai;
+    globals.Ki += dGlobals.Ki;
+    globals.Cai += dGlobals.Cai;
+    globals.CaNSR += dGlobals.CaNSR;
+    globals.CaLTRPN += dGlobals.CaLTRPN;
+    globals.CaHTRPN += dGlobals.CaHTRPN;
+    globals.m += dGlobals.m;
+    globals.h += dGlobals.h;
+    globals.j += dGlobals.j;
+    globals.xKs += dGlobals.xKs;
+    globals.Kr[0] += dGlobals.Kr[0];
+    globals.Kr[1] += dGlobals.Kr[1];
+    globals.Kr[2] += dGlobals.Kr[2];
+    globals.Kr[3] += dGlobals.Kr[3];
+    globals.Kr[4] += dGlobals.Kr[4];
+    for (int j = 0; j < 10; j++){
+        globals.Kv14[j] += dGlobals.Kv14[j];
+        globals.Kv43[j] += dGlobals.Kv43[j];
+    }
+}
+
+template <typename FloatType>
+template <typename LambdaType>
+void GW_model<FloatType>::euler(const FloatType dt, const int nstep, const LambdaType&& Ist){
+    FloatType t = 0.0;
+    for (int i = 0; i < nstep; ++i){
+        Istim = Ist(t);
+        euler_step(dt);
+        t += dt;
+    }
+}
+
+template <typename FloatType>
+template <typename LambdaType>
+void GW_model<FloatType>::euler_write(const FloatType dt, const int nstep, const LambdaType&& Ist, std::ofstream &file, const int record_every){
+    FloatType t = 0.0;
+    write_header(file);
+    for (int i = 0; i < nstep; ++i){
+        Istim = Ist(t);
+        euler_step(dt);
+        t += dt;
+        if (i % record_every == 0)
+            write_state(file, t);
+    }
+}
+
+template <typename FloatType>
+void GW_model<FloatType>::write_header(std::ofstream &file){
+    file << "t,V,m,h,j,Nai,Ki,Cai,CaNSR,CaLTRPN,CaHTRPN,xKs,Kr1,Kr2,Kr3,Kr4,Kr5,Kv14_1,Kv14_2,Kv14_3,Kv14_4,Kv14_5,Kv14_6,Kv14_7,Kv14_8,Kv14_9,Kv14_10,Kv43_1,Kv43_2,Kv43_3,Kv43_4,Kv43_5,Kv43_6,Kv43_7,Kv43_8,Kv43_9,Kv43_10,";
+    file << "CaJSRs,CaSSs,LCC1,LCC2,LCC3,LCC4,LCC5,LCC6,LCC7,LCC8,LCC9,LCC10,LCC11,LCC12,LCCas,RyRs,ClChs,";
+    file << "INa,ICaL,IKr,IKs,Ito1,IK1,IKp,Ito2,INaK,INaCa,IpCa,ICab,INab,JLCC" << std::endl;
+}
+
+template <typename FloatType>
+void GW_model<FloatType>::write_state(std::ofstream &file, const FloatType t){
+    int nlcc1 = 0, nlcc2 = 0, nlcc3 = 0, nlcc4 = 0, nlcc5 = 0, nlcc6 = 0, nlcc7 = 0, nlcc8 = 0, nlcc9 = 0, nlcc10 = 0, nlcc11 = 0, nlcc12 = 0, nryr = 0;
+    for (int i = 0; i < nCRU; i++){
+        for (int j = 0; j < 4; j++){
+            switch (CRUs.LCC(i,j)){
+            case 1:
+                nlcc1++;
+                break;
+            case 2:
+                nlcc2++;
+                break;
+            case 3:
+                nlcc3++;
+                break;
+            case 4:
+                nlcc4++;
+                break;
+            case 5:
+                nlcc5++;
+                break;
+            case 6:
+                nlcc6++;
+                break;
+            case 7:
+                nlcc7++;
+                break;
+            case 8:
+                nlcc8++;
+                break;
+            case 9:
+                nlcc9++;
+                break;
+            case 10:
+                nlcc10++;
+                break;
+            case 11:
+                nlcc11++;
+                break;
+            case 12:
+                nlcc12++;
+                break;
+            default:
+                break;
+            }
+            
+            nryr += (CRUs.RyR(i,j,2) + CRUs.RyR(i,j,3));
+        }
+    }
+    file << t << ',' << globals.V << ',' << globals.m << ',' << globals.h << ',' << globals.j << ',' << globals.Nai << ',' << globals.Ki << ','
+         << globals.Cai << ',' << globals.CaNSR << ',' << globals.CaLTRPN << ',' << globals.CaHTRPN << ',' << globals.xKs << ',' << globals.Kr[0] << ',' 
+         << globals.Kr[1] << ',' << globals.Kr[2] << ',' << globals.Kr[3] << ',' << globals.Kr[4] << ',' << globals.Kv14[0] << ',' << globals.Kv14[1] << ',' 
+         << globals.Kv14[2] << ',' << globals.Kv14[3] << ',' << globals.Kv14[4] << ',' << globals.Kv14[5] << ',' << globals.Kv14[6] << ',' << globals.Kv14[7] << ',' 
+         << globals.Kv14[8] << ',' << globals.Kv14[9] << ',' << globals.Kv43[0] << ',' << globals.Kv43[1] << ',' << globals.Kv43[2] << ',' << globals.Kv43[3] << ',' 
+         << globals.Kv43[4] << ',' << globals.Kv43[5] << ',' << globals.Kv43[6] << ',' << globals.Kv43[7] << ',' << globals.Kv43[8] << ',' << globals.Kv43[9];
+         
+    file << ',' << CRUs.CaJSR.sum() << ',' << CRUs.CaSS.sum() << ',' << nlcc1 << ',' << nlcc2 << ',' << nlcc3 << ',' << nlcc4 << ',' 
+         << nlcc5 << ',' << nlcc6 << ',' << nlcc7 << ',' << nlcc8 << ',' << nlcc9 << ',' << nlcc10 << ',' << nlcc11 << ',' << nlcc12 << ',' 
+         << CRUs.LCC_activation.sum() << ',' << nryr << ',' << CRUs.ClCh.sum();
+
+    file << ',' << INa << ',' << ICaL << ',' << IKr << ',' << IKs << ',' << Ito1 << ',' << IK1 << ',' << IKp << ',' << Ito2 << ',' << INaK
+         <<  ',' << INaCa << ',' << IpCa << ',' << ICab << ',' << INab << std::endl; 
 }
 
 

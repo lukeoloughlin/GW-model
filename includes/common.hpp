@@ -41,7 +41,7 @@ inline int sample_binomial(const FloatType p, const int N){
     int X = 0;
     FloatType u;
     for (int i = 0; i < N; i++){
-        u = urand();
+        u = urand<FloatType>();
         if (u < p)
             X++;
     }
@@ -72,7 +72,7 @@ namespace common {
     template <typename FloatType>
     inline FloatType Nernst(const FloatType Xi, const FloatType Xo, const FloatType RT_F, const FloatType valence){
         if (Xi <= 0.0 || Xo <= 0.0){ 
-            std::cout << "Invalid arguments to Nernst. Got Xi=" << Xi << ", Xo=" << Xo << ". Exiting program." << std::endl
+            std::cout << "Invalid arguments to Nernst. Got Xi=" << Xi << ", Xo=" << Xo << ". Exiting program." << std::endl;
             exit(EXIT_FAILURE);
         }
         return log(Xo / Xi) * RT_F / valence;
@@ -136,11 +136,11 @@ namespace common {
         * expmVF_RT (in the second definition) = exp(-VF/RT) which will be precalculated in most models. 
     *****/
     template <typename FloatType>
-    inline FloatType INaK(const FloatType VF_RT, const FloatType Nai, const FloatType sigma, const FloatType INaK_multiplier, const FloatType Km_Nai){
+    inline FloatType INaK(const FloatType VF_RT, const FloatType Nai, const FloatType sigma, const FloatType Km_Nai, const FloatType INaK_multiplier){
         return INaK_multiplier * fNaK(VF_RT, sigma) / (1.0 + pow(Km_Nai / Nai, 1.5));
     }
     template <typename FloatType>
-    inline FloatType INaK(const FloatType VF_RT, const FloatType expmVF_RT, const FloatType Nai, const FloatType sigma, const FloatType INaK_multiplier, const FloatType Km_Nai){
+    inline FloatType INaK(const FloatType VF_RT, const FloatType expmVF_RT, const FloatType Nai, const FloatType sigma, const FloatType Km_Nai, const FloatType INaK_multiplier){
         return INaK_multiplier * fNaK(VF_RT, expmVF_RT, sigma) / (1.0 + pow(Km_Nai / Nai, 1.5));
     }
 
@@ -206,8 +206,8 @@ namespace common {
     ******/
     template <typename FloatType>
     inline FloatType alpha_j(const FloatType V){
-        if (V >= -40.0) ? 0.0 
-                        : (-127140.0*exp(0.2444*V) - 3.1e-5 * exp(-0.04391 * V)) * (V + 37.78) / (1.0 + exp(0.311 * (V + 79.23)));
+        return (V >= -40.0) ? 0.0 
+                            : (-127140.0*exp(0.2444*V) - 3.1e-5 * exp(-0.04391 * V)) * (V + 37.78) / (1.0 + exp(0.311 * (V + 79.23)));
     }
 
 
@@ -216,8 +216,8 @@ namespace common {
         * V is the action potential.  
     ******/
     template <typename FloatType>
-    inline FloatType beta_j(const FloatType V){ if (V >= -40.0) ? 0.3 * exp(-2.535e-7 * V) / (1.0 + exp(-0.1 * (V + 32.0))) 
-                                                                : 0.1212 * exp(-0.01052 * V) / (1.0 +  exp(-0.1378 * (V + 40.14))); }
+    inline FloatType beta_j(const FloatType V){ return (V >= -40.0) ? 0.3 * exp(-2.535e-7 * V) / (1.0 + exp(-0.1 * (V + 32.0))) 
+                                                                    : 0.1212 * exp(-0.01052 * V) / (1.0 +  exp(-0.1378 * (V + 40.14))); }
 
 }
 

@@ -1,12 +1,13 @@
 #ifndef SSA_H
 #define SSA_H
 
-#include "GW.hpp"
-//#include "common.hpp"
-//#include "rates.hpp"
-#include <omp.h>
+#include "GW_utils.hpp"
+#include "common.hpp"
+#include "ndarray.hpp"
+//#include <omp.h>
 //#include <unistd.h>
 
+/*
 double update_rates(const int* const, const int* const, const int* const, const int* const, double* const, double* const, double* const, double* const, const double* const, double*, const double, const double, const double, const double, const Constants&);
 void update_fluxes(const double* const, const double, double*, double*, const Constants&);
 void update_CaSS(double* const, int*, const double* const, const double* const, const double* const, const double* const, const double, const Constants&);
@@ -15,6 +16,7 @@ void sample_LCC(int* const, const double* const, const double, const int* const,
 void sample_RyR(int* const, double* const, const double* const, const double, double*, const int, const double* const, const double ,  const Constants&);
 void SSA_subunit(int* const, int* const, int* const, double* const, int* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double, const double, const double, const double, const double, const double, const double, const double, const double, const double, double* const, const Constants&);
 void SSA(NDArray<int,2>&, NDArray<int,2>&, NDArray<int,3>&, NDArray<int,2>&, NDArray<double,2>&, NDArray<double,1>&, const double, const double, NDArray<double,2>&, NDArray<double,2>&, NDArray<double,1>&, const double, const double, const double, const int, const Constants&);
+*/
 
 /*
 int sample_weights(const double* const weights, const double total_weight, const int size){
@@ -29,7 +31,86 @@ int sample_weights(const double* const weights, const double total_weight, const
 }
 */
 
+namespace GW {
 
+    template <typename FloatType>
+    struct CRUStateThread {
+        int LCC[4];
+        int LCC_activation[4];
+        int RyR[4*6]; // Have to count states here so we include all 6 possible states
+        FloatType open_RyR[4]; // Keep track of number open RyR
+        int ClCh[4];
+
+        FloatType CaSS[4];
+        FloatType CaJSR;
+        FloatType JLCC[4];
+        FloatType Jrel[4];
+        FloatType Jxfer[4];
+        FloatType Jiss[4];
+        FloatType Jtr;
+
+        FloatType LCC_rates[3*4]; // 3 rates to track at most
+        FloatType LCC_activation_rates[4];
+        FloatType RyR_rates[12*4];
+        FloatType ClCh_rates[4];
+        FloatType subunit_rates[4];
+
+        void copy_from_CRUState(const CRUState<FloatType> &cru_state, const NDArray<FloatType,2> &JLCC, const int idx, const Parameters<FloatType> &params);
+    };
+
+    /* Perform the SSA on a single CRU (with fixed global variables) over an interval of length dt */
+    template <typename FloatType>
+    inline void SSA_single_CRU(CRUStateThread<FloatType> &state, const FloatType Cai, const FloatType CaNSR, const FloatType dt, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
+
+    /* sample a new state based on the rates of the LCCs, RyRs and ClChs */
+    template <typename FloatType>
+    inline void sample_new_state(CRUStateThread<FloatType> &state, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
+
+    /* Sample a new LCC state for the subunit given by subunit_idx. Also updates JLCC when appropriate. */
+    template <typename FloatType>
+    inline void sample_LCC(CRUStateThread<FloatType> &state, const FloatType sum_LCC_rates, const int subunit_idx, const Constants<FloatType> &consts);
+
+    /* Sample a new RyR state for the subunit given by subunit_idx. Also updates Jrel. */
+    template <typename FloatType>
+    inline void sample_RyR(CRUStateThread<FloatType> &state, const FloatType sum_RyR_rates, const int subunit_idx, const Parameters<FloatType> &params);
+
+
+
+    /* Do an Euler step on CaSS for a single CRU */
+    template <typename FloatType>
+    inline void update_CaSS(CRUStateThread<FloatType> &state, const FloatType dt, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
+
+    /* Do an Euler step on CaJSR for a single CRU */
+    template <typename FloatType>
+    inline void update_CaJSR(CRUStateThread<FloatType> &state, const FloatType dt, const Parameters<FloatType> &params, const Constants<FloatType> &consts){
+        const FloatType betaJSR = 1.0 / (1 + consts.CSQN_const / square(params.KCSQN + state.CaJSR));
+        state.CaJSR += (dt * betaJSR * (state.Jtr - consts.VSS_VJSR * (state.Jrel[0] + state.Jrel[1] + state.Jrel[2] + state.Jrel[3])));
+    }
+    /* Sample values of state 5 and state 6 of the RyRs if CaSS crosses appropriate threshold. Above this threshold the two states are 
+    treated as equivalent so we do not track them directly. */
+    template <typename FloatType>
+    inline void sample_RyR56(CRUStateThread<FloatType> &state, const int idx, const Parameters<FloatType> &params);
+    /* Sample values of state 3 and state 4 of the RyRs if CaSS crosses appropriate threshold. Above this threshold the two states are 
+    treated as equivalent so we do not track them directly. */
+    template <typename FloatType>
+    inline void sample_RyR34(CRUStateThread<FloatType> &state, const int idx, const Parameters<FloatType> &params);
+
+
+    /* Update the flux values (except JLCC and Jrel) of the CRUStateThread object */
+    template <typename FloatType>
+    void update_fluxes(CRUStateThread<FloatType> &state, const FloatType Cai, const FloatType CaNSR, const Parameters<FloatType> &params);
+
+    /* Update the transition rates of the CRUStateThread object */
+    template <typename FloatType>
+    inline void update_rates(CRUStateThread<FloatType> &state, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
+
+}
+
+#include "SSA.tpp"
+
+#endif
+
+/*
 inline void initialise_temp_states(int* const LCC_i, int* const RyR_i, double* const open_RyR, int* const LCC_a_i, int* const ClCh_i, double* const LCC_i_rates, double* const RyR_i_rates, double* const LCC_a_i_rates, double* const ClCh_i_rates, 
                                    double* const subunit_i_rates, double* const CaSS_i, double* const JLCC_i, double* const Jrel_i, double* const Jxfer_i, double* const Jiss_i, const NDArray<int,2> &LCC, const NDArray<int,2> &LCC_a, const NDArray<int,3> &RyR,
                                    const NDArray<int,2> &ClCh, const NDArray<double,2> &CaSS, const NDArray<double,2> &JLCC, const double CaJSR_i, const int i, const Constants &consts){
@@ -59,7 +140,9 @@ for (int j = 0; j < 4; j++){
     }    
 
 }
+*/
 
+/*
 inline void record_from_temp(const int* const LCC_i, const int* const RyR_i, const int* const LCC_a_i, const int* const ClCh_i, double* const CaSS_i, double* const JLCC_i, 
                             const double* const Jrel_i, const double* const Jxfer_i, const double* const Jiss_i, const double* const out_vals, NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR,
                             NDArray<int,2> &ClCh, NDArray<double,2> &CaSS, NDArray<double,1> &CaJSR, NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const int i){
@@ -78,52 +161,9 @@ inline void record_from_temp(const int* const LCC_i, const int* const RyR_i, con
     Jtr(i) = out_vals[1];
 
 }
+*/
 
-void SSA(NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR, NDArray<int,2> &ClCh, NDArray<double,2> &CaSS, NDArray<double,1> &CaJSR, const double Cai, const double CaNSR, 
-         NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const double V, const double expmVFRT, const double T, const int nCRU, const Constants &consts){
-    const double alpha = alphaLCC(V);
-    const double beta = betaLCC(V);
-    const double yinf = yinfLCC(V);
-    const double tau = tauLCC(V);
-    const double JLCC_exp = square(1.0 / expmVFRT);
-    const double JLCC_mult = consts.JLCC_const * V * FRT / (JLCC_exp - 1.0);
-
-    #pragma omp parallel
-    {
-        int LCC_i[4];
-        int RyR_i[4*6];
-        double open_RyR[4];
-        int LCC_a_i[4];
-        int ClCh_i[4];
-
-        double LCC_i_rates[3*4]; // At most 3 non-zero rates
-        double RyR_i_rates[12*4];
-        double LCC_a_i_rates[4];
-        double ClCh_i_rates[4];
-        double subunit_rates[4];
-
-        double CaSS_i[4];
-        double JLCC_i[4];
-        double Jrel_i[4];
-        double Jxfer_i[4];
-        double Jiss_i[4];
-        double CaJSR_i;
-        double out_vals[2]; // {CaJSR_i, Jtr_i}
-        
-        #pragma omp for schedule( static )
-        for (int i = 0; i < nCRU; i++){
-            CaJSR_i = CaJSR(i);
-            initialise_temp_states(LCC_i, RyR_i, open_RyR, LCC_a_i, ClCh_i, LCC_i_rates, RyR_i_rates, LCC_a_i_rates, ClCh_i_rates, subunit_rates, CaSS_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, LCC, LCC_a, RyR, ClCh, CaSS, JLCC, CaJSR_i, i, consts);
-
-            SSA_subunit(LCC_i, LCC_a_i, RyR_i, open_RyR, ClCh_i, LCC_i_rates, RyR_i_rates, LCC_a_i_rates, ClCh_i_rates, subunit_rates, CaSS_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, CaJSR_i, Cai, CaNSR, alpha, beta, yinf, tau, JLCC_mult, JLCC_exp, T, out_vals, consts);
-
-            record_from_temp(LCC_i, RyR_i, LCC_a_i, ClCh_i, CaSS_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, out_vals, LCC, LCC_a, RyR, ClCh, CaSS, CaJSR, JLCC, Jxfer, Jtr, i);
-
-        }
-    }
-}
-
-
+/*
 void SSA_subunit(int* const LCC_i, int* const LCC_a_i, int* const RyR_i, double* const open_RyR, int* const ClCh_i, double* const LCC_i_rates, double* const RyR_i_rates, double* const LCC_a_i_rates, double* const ClCh_i_rates, double* const subunit_rates, 
                  double* const CaSS_i, double* const JLCC_i, double* const Jrel_i, double* const Jxfer_i, double* const Jiss_i, double CaJSR_i, const double Cai, const double CaNSR, const double alpha, const double beta, const double yinf, const double tau, 
                  const double JLCC_mult, const double JLCC_exp, const double T, double* const out_vals, const Constants &consts){
@@ -158,7 +198,9 @@ void SSA_subunit(int* const LCC_i, int* const LCC_a_i, int* const RyR_i, double*
     out_vals[0] = CaJSR_i;
     out_vals[1] = Jtr_i;
 }
+*/
 
+/*
 void update_fluxes(const double* const CaSS, const double Cai, double* const Jiss, double* const Jxfer, const Constants &consts){
     Jiss[0] = consts.riss * (CaSS[1] + CaSS[3] - 2.0*CaSS[0]);
     Jiss[1] = consts.riss * (CaSS[2] + CaSS[0] - 2.0*CaSS[1]);
@@ -168,7 +210,10 @@ void update_fluxes(const double* const CaSS, const double Cai, double* const Jis
         Jxfer[j] = consts.rxfer * (CaSS[j] - Cai); 
     }
 }
+*/
 
+
+/*
 double update_rates(const int* const LCC, const int* const LCC_a, const int* const RyR, const int* const ClCh, double* const LCC_rates, double* const LCC_a_rates, double* const RyR_rates, 
                  double* const ClCh_rates, const double* const CaSS, double* const subunit_rates, const double alpha, const double beta, const double yinf, const double tau, const Constants &consts){
     double total_rate = 0.0;
@@ -185,7 +230,10 @@ double update_rates(const int* const LCC, const int* const LCC_a, const int* con
     }
     return total_rate;
 }
+*/
 
+
+/*
 void update_CaSS(double* const CaSS, int* const RyR, const double* const JLCC, const double* const Jrel, const double* const Jxfer, const double* const Jiss, const double dt, const Constants &consts){
     double dCaSS;
     double CaSS_tmp;
@@ -222,7 +270,11 @@ void update_CaSS(double* const CaSS, int* const RyR, const double* const JLCC, c
         CaSS[j] = CaSS_tmp;
     }
 }
+*/
 
+
+
+/*
 void update_state(int* const LCC, int* const LCC_a, int* const RyR, double* const open_RyR, int* const ClCh, const double* const LCC_rates, const double* const LCC_a_rates, const double* const RyR_rates, 
                  const double* const ClCh_rates, const double* const subunit_rates, const int subunit_idx, const double* const CaSS, double* JLCC, 
                  double* Jrel, const double JLCC_mult, const double JLCC_exp, const double CaJSR, const Constants &consts){
@@ -248,7 +300,10 @@ void update_state(int* const LCC, int* const LCC_a, int* const RyR, double* cons
     else 
         sample_RyR(RyR, open_RyR, RyR_rates, RyR_rate_tot, Jrel, subunit_idx, CaSS, CaJSR, consts);
 }
+*/
 
+
+/*
 void sample_LCC(int* const LCC, const double* const LCC_rates, const double total_LCC_rate, const int* const LCC_a, const double* const CaSS, double* const JLCC, 
                 const int subunit_idx, const double JLCC_mult, const double JLCC_exp, const Constants &consts){
 
@@ -346,7 +401,10 @@ void sample_LCC(int* const LCC, const double* const LCC_rates, const double tota
         break;
     }
 }
+*/
 
+
+/*
 void sample_RyR(int* RyR, double* open_RyR, const double* const RyR_rates, const double total_RyR_rate, double* Jrel, const int subunit_idx, const double* const CaSS, const double CaJSR,  const Constants &consts){
     const int transition = sample_weights(RyR_rates + 12*subunit_idx, total_RyR_rate, 12); // using pointer arithmetic here
     switch (transition){
@@ -409,4 +467,49 @@ void sample_RyR(int* RyR, double* open_RyR, const double* const RyR_rates, const
 }
 
 
-#endif
+void SSA(NDArray<int,2> &LCC, NDArray<int,2> &LCC_a, NDArray<int,3> &RyR, NDArray<int,2> &ClCh, NDArray<double,2> &CaSS, NDArray<double,1> &CaJSR, const double Cai, const double CaNSR, 
+         NDArray<double,2> &JLCC, NDArray<double,2> &Jxfer, NDArray<double,1> &Jtr, const double V, const double expmVFRT, const double T, const int nCRU, const Constants &consts){
+    const double alpha = alphaLCC(V);
+    const double beta = betaLCC(V);
+    const double yinf = yinfLCC(V);
+    const double tau = tauLCC(V);
+    const double JLCC_exp = square(1.0 / expmVFRT);
+    const double JLCC_mult = consts.JLCC_const * V * FRT / (JLCC_exp - 1.0);
+
+    #pragma omp parallel
+    {
+        int LCC_i[4];
+        int RyR_i[4*6];
+        double open_RyR[4];
+        int LCC_a_i[4];
+        int ClCh_i[4];
+
+        double LCC_i_rates[3*4]; // At most 3 non-zero rates
+        double RyR_i_rates[12*4];
+        double LCC_a_i_rates[4];
+        double ClCh_i_rates[4];
+        double subunit_rates[4];
+
+        double CaSS_i[4];
+        double JLCC_i[4];
+        double Jrel_i[4];
+        double Jxfer_i[4];
+        double Jiss_i[4];
+        double CaJSR_i;
+        double out_vals[2]; // {CaJSR_i, Jtr_i}
+        
+        #pragma omp for schedule( static )
+        for (int i = 0; i < nCRU; i++){
+            CaJSR_i = CaJSR(i);
+            initialise_temp_states(LCC_i, RyR_i, open_RyR, LCC_a_i, ClCh_i, LCC_i_rates, RyR_i_rates, LCC_a_i_rates, ClCh_i_rates, subunit_rates, CaSS_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, LCC, LCC_a, RyR, ClCh, CaSS, JLCC, CaJSR_i, i, consts);
+
+            SSA_subunit(LCC_i, LCC_a_i, RyR_i, open_RyR, ClCh_i, LCC_i_rates, RyR_i_rates, LCC_a_i_rates, ClCh_i_rates, subunit_rates, CaSS_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, CaJSR_i, Cai, CaNSR, alpha, beta, yinf, tau, JLCC_mult, JLCC_exp, T, out_vals, consts);
+
+            record_from_temp(LCC_i, RyR_i, LCC_a_i, ClCh_i, CaSS_i, JLCC_i, Jrel_i, Jxfer_i, Jiss_i, out_vals, LCC, LCC_a, RyR, ClCh, CaSS, CaJSR, JLCC, Jxfer, Jtr, i);
+
+        }
+    }
+
+}
+*/
+

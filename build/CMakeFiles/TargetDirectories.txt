@@ -1,0 +1,3 @@
+/home/luke/GW-model/build/CMakeFiles/gw.out.dir
+/home/luke/GW-model/build/CMakeFiles/edit_cache.dir
+/home/luke/GW-model/build/CMakeFiles/rebuild_cache.dir

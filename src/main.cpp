@@ -1,11 +1,38 @@
-#include "SSA.hpp"
-#include "currents.hpp"
+#include "GW.hpp"
 #include <iostream>
 #include <iomanip>
 #include <functional>
 #include <fstream>
+#include <string>
 
-using namespace std;
+using namespace GW;
+
+double Ist(double t) { return (t < 2.0) ? 35.0 : 0.0; }
+
+int main(int argc, char** argv)
+{
+    if (argc < 2){
+        std::cout << "An output filename must be provided as an argument." << std::endl;
+        return 0;
+    }
+    else if (argc > 2){
+        std::cout << "Too many arguments!" << std::endl;
+        return 0;
+    }
+
+    std::string fname = argv[1];
+    GW_model<double> model(2000);
+
+    std::ofstream file;
+    file.open(fname, std::ofstream::out | std::ofstream::trunc );
+    file << std::setprecision(12);
+    model.euler_write(1e-3, 100000, [](double t){ return (t < 2) ? 35.0 : 0.0; }, file, 1000);
+    file.close();
+    std::cout << model.globals.V << std::endl;
+
+
+    return 0;
+}
 
 /*
 
@@ -346,7 +373,8 @@ void GW_model::update_dgates(const double dt){
     dgates.xKs =  dt * (XKsinf(V) - gates.xKs) / tauXKs(V);
 }
 */
-    
+
+/*  
 void GW_model::update_dKr_and_dKV(const double dt){
     update_QKr(QKr, V, parameters);
     update_QKv(QKv14, V, parameters.alphaa0Kv14, parameters.aaKv14, parameters.alphai0Kv14, parameters.aiKv14, parameters.betaa0Kv14, 
@@ -360,8 +388,9 @@ void GW_model::update_dKr_and_dKV(const double dt){
     update_Kv_derivative(dKv43, Kv43, QKv43, dt);
     update_Kv_derivative(dKv14, Kv14, QKv14, dt);
 }
+*/
 
-
+/*
 void GW_model::euler_step(const double dt){
     VFRT = V*FRT;
     expmVFRT = exp(-VFRT);
@@ -405,6 +434,9 @@ void GW_model::euler(const double dt, const int nstep, const std::function<doubl
         t += dt;
     }
 }
+*/
+
+/*
 
 void write_header(ofstream &file, const int nCRU){
     file << "t,V,m,h,j,Nai,Ki,Cai,CaNSR,CaLTRPN,CaHTRPN,xKs,Kr1,Kr2,Kr3,Kr4,Kr5,Kv14_1,Kv14_2,Kv14_3,Kv14_4,Kv14_5,Kv14_6,Kv14_7,Kv14_8,Kv14_9,Kv14_10,Kv43_1,Kv43_2,Kv43_3,Kv43_4,Kv43_5,Kv43_6,Kv43_7,Kv43_8,Kv43_9,Kv43_10,";
@@ -490,20 +522,5 @@ void GW_model::euler_write(const double dt, const int nstep, const std::function
 
     }
 }
+*/
 
-double Ist(double t) { return (t < 2.0) ? 35.0 : 0.0; }
-
-int main(int argc, char* argv[])
-{
-    GW_model model(2000);
-
-    ofstream file;
-    file.open("data.csv", std::ofstream::out | std::ofstream::trunc );
-    file << std::setprecision(12);
-    model.euler_write(1e-3, 500000, &Ist, file, 2000);
-    file.close();
-    cout << model.V << endl;
-
-
-    return 0;
-}

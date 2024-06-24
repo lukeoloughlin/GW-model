@@ -1,0 +1,1 @@
+/usr/bin/g++ -O3 -DNDEBUG CMakeFiles/gw.out.dir/src/main.cpp.o -o gw.out  /usr/lib64/gcc/x86_64-suse-linux/13/libgomp.so /usr/lib64/libpthread.a

@@ -1,9 +1,11 @@
-#ifndef _NDARRAYH
-#define _NDARRAYH
+#ifndef NDARRAY_H
+#define NDARRAY_H
 
 #include <vector>
 #include <assert.h>
 #include <cmath>
+#include <algorithm>
+#include <cstring>
 
 
 

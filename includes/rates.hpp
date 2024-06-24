@@ -1,5 +1,6 @@
 #include "GW.hpp"
 
+/*
 inline double alpham(const double V){
     return V == 47.13 ? 3.2 : 0.32 * (V + 47.13) / (1.0 - exp(-0.1*(V + 47.13)));
 }
@@ -36,6 +37,7 @@ inline double tauXKs(const double V){
     return 1.0 / (0.0000719*(V-10.0)/(1.0 - exp(-0.148*(V-10.0))) + 0.000131*(V-10.0)/(exp(0.0687*(V-10.0)) - 1.0));
 }
 
+*/
 // Make sure to set Q(2,3) and Q(3,2) ahead of time
 /*
 void update_QKrHERG(GeneratorKr &Q, const double V){
@@ -85,6 +87,7 @@ void update_QKrHERGhKCNE2(GeneratorKr &Q, const double V){
 }
 */
 
+/*
 inline double alphaLCC(const double V) { return 2.0 * exp(0.012 * (V - 35.0)); }
 inline double betaLCC(const double V) { return 0.0882 * exp(-0.05 * (V - 35.0)); }
 inline double yinfLCC(const double V) { return 0.4 / (1.0 + exp((V + 12.5) / 5.0)) + 0.6; }
@@ -96,14 +99,17 @@ inline void LCC_activation_rate(double* const LCC_a_rates, const int* const LCC_
         LCC_a_rates[j] = (LCC_a[j] == 0) ? yinf / tau : (1.0 - yinf) / tau;
     }
 }
+*/
 
+/*
 inline void ClCh_rate(double* ClCh_rates, const int* const ClCh, const double* const CaSS, const double kfClCh, const double kbClCh){
     #pragma omp simd
     for (int j = 0; j < 4; j++){
         ClCh_rates[j] = (ClCh[j] == 0) ? kfClCh * CaSS[j] : kbClCh;
     }
 }
-
+*/
+/*
 void update_LCC_rates(double* LCC_rates, const int* const LCC, const double* const CaSS, const int j, const double alpha, const double beta, double* const subunit_rates, const Constants &consts){
     switch (LCC[j])
     {
@@ -172,8 +178,9 @@ void update_LCC_rates(double* LCC_rates, const int* const LCC, const double* con
     }    
     subunit_rates[j] += (LCC_rates[3*j] + LCC_rates[3*j+1] + LCC_rates[3*j+2]);
 }
+*/
 
-
+/*
 void update_RyR_rates(double* RyR_rates, const int* const RyR, const double* const CaSS, const int j, double* const subunit_rates, const Constants &consts){
     // Rates correspond to  [(1,2), (2,3), (2,5), (3,4), (4,5), (5,6), (2,1), (3,2), (4,3), (5,2), (5,4), (6,5)]
     const double CaSS2 = CaSS[j]*CaSS[j];
@@ -199,3 +206,4 @@ void update_RyR_rates(double* RyR_rates, const int* const RyR, const double* con
         subunit_rates[j] += RyR_rates[12*j+k];
     }
 }
+*/

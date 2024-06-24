@@ -1,0 +1,996 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineSystem.cmake:205 (message)"
+      - "CMakeLists.txt:4 (project)"
+    message: |
+      The system is: Linux - 6.9.5-1-default - x86_64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:4 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: /usr/bin/cc 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+      
+      The C compiler identification is GNU, found in:
+        /home/luke/GW-model/build/CMakeFiles/3.29.4/CompilerIdC/a.out
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:4 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler: /usr/bin/g++ 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "a.out"
+      
+      The CXX compiler identification is GNU, found in:
+        /home/luke/GW-model/build/CMakeFiles/3.29.4/CompilerIdCXX/a.out
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:67 (try_compile)"
+      - "/usr/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:4 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-JnFQRG"
+      binary: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-JnFQRG"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-JnFQRG'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_f0c97/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_f0c97.dir/build.make CMakeFiles/cmTC_f0c97.dir/build
+        gmake[1]: Entering directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-JnFQRG'
+        Building C object CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o
+        /usr/bin/cc   -v -o CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake/Modules/CMakeCCompilerABI.c
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-suse-linux
+        Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c,c++,objc,fortran,obj-c++,ada,go,d,jit,m2 --enable-offload-targets=nvptx-none,amdgcn-amdhsa, --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (SUSE Linux) 
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_f0c97.dir/'
+         /usr/lib64/gcc/x86_64-suse-linux/13/cc1 -quiet -v /usr/share/cmake/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_f0c97.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -o /tmp/ccpBsJvr.s
+        GNU C17 (SUSE Linux) version 13.3.0 (x86_64-suse-linux)
+        	compiled by GNU C version 13.3.0, GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version isl-0.26-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/lib64/gcc/x86_64-suse-linux/13/include
+         /usr/local/include
+         /usr/lib64/gcc/x86_64-suse-linux/13/include-fixed
+         /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include
+         /usr/include
+        End of search list.
+        Compiler executable checksum: 00000000000000000000000000000000
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_f0c97.dir/'
+         /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/as -v --64 -o CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o /tmp/ccpBsJvr.s
+        GNU assembler version 2.42.0 (x86_64-suse-linux) using BFD version (GNU Binutils; openSUSE Tumbleweed) 2.42.0.20240130-3
+        COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/
+        LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.'
+        Linking C executable cmTC_f0c97
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f0c97.dir/link.txt --verbose=1
+        /usr/bin/cc  -v -Wl,-v CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o -o cmTC_f0c97
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        COLLECT_LTO_WRAPPER=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-suse-linux
+        Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c,c++,objc,fortran,obj-c++,ada,go,d,jit,m2 --enable-offload-targets=nvptx-none,amdgcn-amdhsa, --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (SUSE Linux) 
+        COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/
+        LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_f0c97' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_f0c97.'
+         /usr/lib64/gcc/x86_64-suse-linux/13/collect2 -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/cc4ALofh.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_f0c97 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. -v CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o
+        collect2 version 13.3.0
+        /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/ld -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/cc4ALofh.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_f0c97 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. -v CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o
+        GNU ld (GNU Binutils; openSUSE Tumbleweed) 2.42.0.20240130-3
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_f0c97' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_f0c97.'
+        gmake[1]: Leaving directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-JnFQRG'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:137 (message)"
+      - "/usr/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:4 (project)"
+    message: |
+      Parsed C implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/lib64/gcc/x86_64-suse-linux/13/include]
+          add: [/usr/local/include]
+          add: [/usr/lib64/gcc/x86_64-suse-linux/13/include-fixed]
+          add: [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/lib64/gcc/x86_64-suse-linux/13/include] ==> [/usr/lib64/gcc/x86_64-suse-linux/13/include]
+        collapse include dir [/usr/local/include] ==> [/usr/local/include]
+        collapse include dir [/usr/lib64/gcc/x86_64-suse-linux/13/include-fixed] ==> [/usr/lib64/gcc/x86_64-suse-linux/13/include-fixed]
+        collapse include dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include] ==> [/usr/x86_64-suse-linux/include]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/lib64/gcc/x86_64-suse-linux/13/include;/usr/local/include;/usr/lib64/gcc/x86_64-suse-linux/13/include-fixed;/usr/x86_64-suse-linux/include;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:173 (message)"
+      - "/usr/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:4 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?))("|,| |$)]
+        ignore line: [Change Dir: '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-JnFQRG']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_f0c97/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_f0c97.dir/build.make CMakeFiles/cmTC_f0c97.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-JnFQRG']
+        ignore line: [Building C object CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/usr/bin/cc   -v -o CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake/Modules/CMakeCCompilerABI.c]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-suse-linux]
+        ignore line: [Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c c++ objc fortran obj-c++ ada go d jit m2 --enable-offload-targets=nvptx-none amdgcn-amdhsa  --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (SUSE Linux) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_f0c97.dir/']
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/cc1 -quiet -v /usr/share/cmake/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_f0c97.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -o /tmp/ccpBsJvr.s]
+        ignore line: [GNU C17 (SUSE Linux) version 13.3.0 (x86_64-suse-linux)]
+        ignore line: [	compiled by GNU C version 13.3.0  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version isl-0.26-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/include-fixed]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: 00000000000000000000000000000000]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_f0c97.dir/']
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/as -v --64 -o CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o /tmp/ccpBsJvr.s]
+        ignore line: [GNU assembler version 2.42.0 (x86_64-suse-linux) using BFD version (GNU Binutils]
+        ignore line: [ openSUSE Tumbleweed) 2.42.0.20240130-3]
+        ignore line: [COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/]
+        ignore line: [LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.']
+        ignore line: [Linking C executable cmTC_f0c97]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f0c97.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/cc  -v -Wl -v CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o -o cmTC_f0c97]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-suse-linux]
+        ignore line: [Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c c++ objc fortran obj-c++ ada go d jit m2 --enable-offload-targets=nvptx-none amdgcn-amdhsa  --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (SUSE Linux) ]
+        ignore line: [COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/]
+        ignore line: [LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_f0c97' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_f0c97.']
+        link line: [ /usr/lib64/gcc/x86_64-suse-linux/13/collect2 -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/cc4ALofh.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_f0c97 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. -v CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/cc4ALofh.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_f0c97] ==> ignore
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o] ==> obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o] ==> obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o] ==> obj [/usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64]
+          arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
+          arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../..] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../..]
+          arg [-v] ==> ignore
+          arg [CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [-lc] ==> lib [c]
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/crtend.o] ==> obj [/usr/lib64/gcc/x86_64-suse-linux/13/crtend.o]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o] ==> obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o]
+        ignore line: [collect2 version 13.3.0]
+        ignore line: [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/ld -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/cc4ALofh.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_f0c97 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. -v CMakeFiles/cmTC_f0c97.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o]
+        linker tool for 'C': /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/ld
+        collapse obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o] ==> [/usr/lib64/crt1.o]
+        collapse obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o] ==> [/usr/lib64/crti.o]
+        collapse obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o] ==> [/usr/lib64/crtn.o]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13] ==> [/usr/lib64/gcc/x86_64-suse-linux/13]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64] ==> [/usr/lib64]
+        collapse library dir [/lib/../lib64] ==> [/lib64]
+        collapse library dir [/usr/lib/../lib64] ==> [/usr/lib64]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib] ==> [/usr/x86_64-suse-linux/lib]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../..] ==> [/usr/lib64]
+        implicit libs: [gcc;gcc_s;c;gcc;gcc_s]
+        implicit objs: [/usr/lib64/crt1.o;/usr/lib64/crti.o;/usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o;/usr/lib64/gcc/x86_64-suse-linux/13/crtend.o;/usr/lib64/crtn.o]
+        implicit dirs: [/usr/lib64/gcc/x86_64-suse-linux/13;/usr/lib64;/lib64;/usr/x86_64-suse-linux/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CMakeDetermineLinkerId.cmake:40 (message)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:210 (cmake_determine_linker_id)"
+      - "/usr/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:4 (project)"
+    message: |
+      Running the C compiler's linker: "/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/ld" "-v"
+      GNU ld (GNU Binutils; openSUSE Tumbleweed) 2.42.0.20240130-3
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:67 (try_compile)"
+      - "/usr/share/cmake/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:4 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-OMu7Av"
+      binary: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-OMu7Av"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-OMu7Av'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d5e12/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_d5e12.dir/build.make CMakeFiles/cmTC_d5e12.dir/build
+        gmake[1]: Entering directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-OMu7Av'
+        Building CXX object CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o
+        /usr/bin/g++   -v -o CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/g++
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-suse-linux
+        Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c,c++,objc,fortran,obj-c++,ada,go,d,jit,m2 --enable-offload-targets=nvptx-none,amdgcn-amdhsa, --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (SUSE Linux) 
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d5e12.dir/'
+         /usr/lib64/gcc/x86_64-suse-linux/13/cc1plus -quiet -v -D_GNU_SOURCE /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_d5e12.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -version -o /tmp/ccYrpALM.s
+        GNU C++17 (SUSE Linux) version 13.3.0 (x86_64-suse-linux)
+        	compiled by GNU C version 13.3.0, GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version isl-0.26-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/include/c++/13
+         /usr/include/c++/13/x86_64-suse-linux
+         /usr/include/c++/13/backward
+         /usr/lib64/gcc/x86_64-suse-linux/13/include
+         /usr/local/include
+         /usr/lib64/gcc/x86_64-suse-linux/13/include-fixed
+         /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include
+         /usr/include
+        End of search list.
+        Compiler executable checksum: 00000000000000000000000000000000
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d5e12.dir/'
+         /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/as -v --64 -o CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccYrpALM.s
+        GNU assembler version 2.42.0 (x86_64-suse-linux) using BFD version (GNU Binutils; openSUSE Tumbleweed) 2.42.0.20240130-3
+        COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/
+        LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.'
+        Linking CXX executable cmTC_d5e12
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d5e12.dir/link.txt --verbose=1
+        /usr/bin/g++  -v -Wl,-v CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_d5e12
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/g++
+        COLLECT_LTO_WRAPPER=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-suse-linux
+        Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c,c++,objc,fortran,obj-c++,ada,go,d,jit,m2 --enable-offload-targets=nvptx-none,amdgcn-amdhsa, --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (SUSE Linux) 
+        COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/
+        LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_d5e12' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_d5e12.'
+         /usr/lib64/gcc/x86_64-suse-linux/13/collect2 -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccym7KcN.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_d5e12 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. -v CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o
+        collect2 version 13.3.0
+        /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/ld -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccym7KcN.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_d5e12 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. -v CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o
+        GNU ld (GNU Binutils; openSUSE Tumbleweed) 2.42.0.20240130-3
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_d5e12' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_d5e12.'
+        gmake[1]: Leaving directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-OMu7Av'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:137 (message)"
+      - "/usr/share/cmake/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:4 (project)"
+    message: |
+      Parsed CXX implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/include/c++/13]
+          add: [/usr/include/c++/13/x86_64-suse-linux]
+          add: [/usr/include/c++/13/backward]
+          add: [/usr/lib64/gcc/x86_64-suse-linux/13/include]
+          add: [/usr/local/include]
+          add: [/usr/lib64/gcc/x86_64-suse-linux/13/include-fixed]
+          add: [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/include/c++/13] ==> [/usr/include/c++/13]
+        collapse include dir [/usr/include/c++/13/x86_64-suse-linux] ==> [/usr/include/c++/13/x86_64-suse-linux]
+        collapse include dir [/usr/include/c++/13/backward] ==> [/usr/include/c++/13/backward]
+        collapse include dir [/usr/lib64/gcc/x86_64-suse-linux/13/include] ==> [/usr/lib64/gcc/x86_64-suse-linux/13/include]
+        collapse include dir [/usr/local/include] ==> [/usr/local/include]
+        collapse include dir [/usr/lib64/gcc/x86_64-suse-linux/13/include-fixed] ==> [/usr/lib64/gcc/x86_64-suse-linux/13/include-fixed]
+        collapse include dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include] ==> [/usr/x86_64-suse-linux/include]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/include/c++/13;/usr/include/c++/13/x86_64-suse-linux;/usr/include/c++/13/backward;/usr/lib64/gcc/x86_64-suse-linux/13/include;/usr/local/include;/usr/lib64/gcc/x86_64-suse-linux/13/include-fixed;/usr/x86_64-suse-linux/include;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:173 (message)"
+      - "/usr/share/cmake/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:4 (project)"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?))("|,| |$)]
+        ignore line: [Change Dir: '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-OMu7Av']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d5e12/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_d5e12.dir/build.make CMakeFiles/cmTC_d5e12.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-OMu7Av']
+        ignore line: [Building CXX object CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o]
+        ignore line: [/usr/bin/g++   -v -o CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/g++]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-suse-linux]
+        ignore line: [Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c c++ objc fortran obj-c++ ada go d jit m2 --enable-offload-targets=nvptx-none amdgcn-amdhsa  --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (SUSE Linux) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d5e12.dir/']
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/cc1plus -quiet -v -D_GNU_SOURCE /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_d5e12.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -version -o /tmp/ccYrpALM.s]
+        ignore line: [GNU C++17 (SUSE Linux) version 13.3.0 (x86_64-suse-linux)]
+        ignore line: [	compiled by GNU C version 13.3.0  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version isl-0.26-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/include/c++/13]
+        ignore line: [ /usr/include/c++/13/x86_64-suse-linux]
+        ignore line: [ /usr/include/c++/13/backward]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/include-fixed]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: 00000000000000000000000000000000]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d5e12.dir/']
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/as -v --64 -o CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccYrpALM.s]
+        ignore line: [GNU assembler version 2.42.0 (x86_64-suse-linux) using BFD version (GNU Binutils]
+        ignore line: [ openSUSE Tumbleweed) 2.42.0.20240130-3]
+        ignore line: [COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/]
+        ignore line: [LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.']
+        ignore line: [Linking CXX executable cmTC_d5e12]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d5e12.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/g++  -v -Wl -v CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_d5e12]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/g++]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-suse-linux]
+        ignore line: [Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c c++ objc fortran obj-c++ ada go d jit m2 --enable-offload-targets=nvptx-none amdgcn-amdhsa  --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (SUSE Linux) ]
+        ignore line: [COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/]
+        ignore line: [LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_d5e12' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_d5e12.']
+        link line: [ /usr/lib64/gcc/x86_64-suse-linux/13/collect2 -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccym7KcN.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_d5e12 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. -v CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccym7KcN.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_d5e12] ==> ignore
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o] ==> obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o] ==> obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o] ==> obj [/usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64]
+          arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
+          arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../..] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../..]
+          arg [-v] ==> ignore
+          arg [CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+          arg [-lstdc++] ==> lib [stdc++]
+          arg [-lm] ==> lib [m]
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [-lgcc] ==> lib [gcc]
+          arg [-lc] ==> lib [c]
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [-lgcc] ==> lib [gcc]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/crtend.o] ==> obj [/usr/lib64/gcc/x86_64-suse-linux/13/crtend.o]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o] ==> obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o]
+        ignore line: [collect2 version 13.3.0]
+        ignore line: [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/ld -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccym7KcN.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_d5e12 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. -v CMakeFiles/cmTC_d5e12.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o]
+        linker tool for 'CXX': /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/ld
+        collapse obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o] ==> [/usr/lib64/crt1.o]
+        collapse obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o] ==> [/usr/lib64/crti.o]
+        collapse obj [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o] ==> [/usr/lib64/crtn.o]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13] ==> [/usr/lib64/gcc/x86_64-suse-linux/13]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64] ==> [/usr/lib64]
+        collapse library dir [/lib/../lib64] ==> [/lib64]
+        collapse library dir [/usr/lib/../lib64] ==> [/usr/lib64]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib] ==> [/usr/x86_64-suse-linux/lib]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../..] ==> [/usr/lib64]
+        implicit libs: [stdc++;m;gcc_s;gcc;c;gcc_s;gcc]
+        implicit objs: [/usr/lib64/crt1.o;/usr/lib64/crti.o;/usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o;/usr/lib64/gcc/x86_64-suse-linux/13/crtend.o;/usr/lib64/crtn.o]
+        implicit dirs: [/usr/lib64/gcc/x86_64-suse-linux/13;/usr/lib64;/lib64;/usr/x86_64-suse-linux/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CMakeDetermineLinkerId.cmake:40 (message)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:210 (cmake_determine_linker_id)"
+      - "/usr/share/cmake/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:4 (project)"
+    message: |
+      Running the CXX compiler's linker: "/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/ld" "-v"
+      GNU ld (GNU Binutils; openSUSE Tumbleweed) 2.42.0.20240130-3
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:219 (try_compile)"
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:487 (_OPENMP_GET_FLAGS)"
+      - "CMakeLists.txt:24 (find_package)"
+    description: "Detecting C OpenMP compiler info"
+    directories:
+      source: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn"
+      binary: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "OpenMP_COMPILE_RESULT_C_fopenmp"
+      cached: true
+      stdout: |
+        Change Dir: '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_c61b6/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_c61b6.dir/build.make CMakeFiles/cmTC_c61b6.dir/build
+        gmake[1]: Entering directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn'
+        Building C object CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o
+        /usr/bin/cc   -fopenmp -v -o CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o -c /home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn/OpenMPTryFlag.c
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-suse-linux
+        Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c,c++,objc,fortran,obj-c++,ada,go,d,jit,m2 --enable-offload-targets=nvptx-none,amdgcn-amdhsa, --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (SUSE Linux) 
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o' '-c' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_c61b6.dir/'
+         /usr/lib64/gcc/x86_64-suse-linux/13/cc1 -quiet -v -D_REENTRANT /home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn/OpenMPTryFlag.c -quiet -dumpdir CMakeFiles/cmTC_c61b6.dir/ -dumpbase OpenMPTryFlag.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fopenmp -o /tmp/ccQjLbxV.s
+        GNU C17 (SUSE Linux) version 13.3.0 (x86_64-suse-linux)
+        	compiled by GNU C version 13.3.0, GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version isl-0.26-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/lib64/gcc/x86_64-suse-linux/13/include
+         /usr/local/include
+         /usr/lib64/gcc/x86_64-suse-linux/13/include-fixed
+         /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include
+         /usr/include
+        End of search list.
+        Compiler executable checksum: 00000000000000000000000000000000
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o' '-c' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_c61b6.dir/'
+         /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/as -v --64 -o CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o /tmp/ccQjLbxV.s
+        GNU assembler version 2.42.0 (x86_64-suse-linux) using BFD version (GNU Binutils; openSUSE Tumbleweed) 2.42.0.20240130-3
+        COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/
+        LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o' '-c' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.'
+        Linking C executable cmTC_c61b6
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c61b6.dir/link.txt --verbose=1
+        /usr/bin/cc  -fopenmp -v CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o -o cmTC_c61b6  -v
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        COLLECT_LTO_WRAPPER=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-suse-linux
+        Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c,c++,objc,fortran,obj-c++,ada,go,d,jit,m2 --enable-offload-targets=nvptx-none,amdgcn-amdhsa, --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (SUSE Linux) 
+        COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/
+        LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/
+        Reading specs from /usr/lib64/gcc/x86_64-suse-linux/13/libgomp.spec
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_c61b6' '-v' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_c61b6.'
+         /usr/lib64/gcc/x86_64-suse-linux/13/collect2 -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccsQi6Oc.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_c61b6 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o /usr/lib64/gcc/x86_64-suse-linux/13/crtoffloadbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o -lgomp -lgcc --push-state --as-needed -lgcc_s --pop-state -lpthread -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o /usr/lib64/gcc/x86_64-suse-linux/13/crtoffloadend.o
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_c61b6' '-v' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_c61b6.'
+        gmake[1]: Leaving directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:263 (message)"
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:487 (_OPENMP_GET_FLAGS)"
+      - "CMakeLists.txt:24 (find_package)"
+    message: |
+      Parsed C OpenMP implicit link information from above output:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        ignore line: [Change Dir: '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_c61b6/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_c61b6.dir/build.make CMakeFiles/cmTC_c61b6.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn']
+        ignore line: [Building C object CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o]
+        ignore line: [/usr/bin/cc   -fopenmp -v -o CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o -c /home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn/OpenMPTryFlag.c]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-suse-linux]
+        ignore line: [Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c c++ objc fortran obj-c++ ada go d jit m2 --enable-offload-targets=nvptx-none amdgcn-amdhsa  --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (SUSE Linux) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o' '-c' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_c61b6.dir/']
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/cc1 -quiet -v -D_REENTRANT /home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-x7Ducn/OpenMPTryFlag.c -quiet -dumpdir CMakeFiles/cmTC_c61b6.dir/ -dumpbase OpenMPTryFlag.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fopenmp -o /tmp/ccQjLbxV.s]
+        ignore line: [GNU C17 (SUSE Linux) version 13.3.0 (x86_64-suse-linux)]
+        ignore line: [	compiled by GNU C version 13.3.0  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version isl-0.26-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/include-fixed]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: 00000000000000000000000000000000]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o' '-c' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_c61b6.dir/']
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/as -v --64 -o CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o /tmp/ccQjLbxV.s]
+        ignore line: [GNU assembler version 2.42.0 (x86_64-suse-linux) using BFD version (GNU Binutils]
+        ignore line: [ openSUSE Tumbleweed) 2.42.0.20240130-3]
+        ignore line: [COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/]
+        ignore line: [LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o' '-c' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.']
+        ignore line: [Linking C executable cmTC_c61b6]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c61b6.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/cc  -fopenmp -v CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o -o cmTC_c61b6  -v]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-suse-linux]
+        ignore line: [Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c c++ objc fortran obj-c++ ada go d jit m2 --enable-offload-targets=nvptx-none amdgcn-amdhsa  --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (SUSE Linux) ]
+        ignore line: [COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/]
+        ignore line: [LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/]
+        ignore line: [Reading specs from /usr/lib64/gcc/x86_64-suse-linux/13/libgomp.spec]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_c61b6' '-v' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_c61b6.']
+        link line: [ /usr/lib64/gcc/x86_64-suse-linux/13/collect2 -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccsQi6Oc.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_c61b6 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o /usr/lib64/gcc/x86_64-suse-linux/13/crtoffloadbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o -lgomp -lgcc --push-state --as-needed -lgcc_s --pop-state -lpthread -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o /usr/lib64/gcc/x86_64-suse-linux/13/crtoffloadend.o]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccsQi6Oc.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lpthread] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_c61b6] ==> ignore
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64]
+          arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
+          arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../..] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../..]
+          arg [CMakeFiles/cmTC_c61b6.dir/OpenMPTryFlag.c.o] ==> ignore
+          arg [-lgomp] ==> lib [gomp]
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [-lpthread] ==> lib [pthread]
+          arg [-lc] ==> lib [c]
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13] ==> [/usr/lib64/gcc/x86_64-suse-linux/13]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64] ==> [/usr/lib64]
+        collapse library dir [/lib/../lib64] ==> [/lib64]
+        collapse library dir [/usr/lib/../lib64] ==> [/usr/lib64]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib] ==> [/usr/x86_64-suse-linux/lib]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../..] ==> [/usr/lib64]
+        implicit libs: [gomp;gcc;gcc_s;pthread;c;gcc;gcc_s]
+        implicit objs: []
+        implicit dirs: [/usr/lib64/gcc/x86_64-suse-linux/13;/usr/lib64;/lib64;/usr/x86_64-suse-linux/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:219 (try_compile)"
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:487 (_OPENMP_GET_FLAGS)"
+      - "CMakeLists.txt:24 (find_package)"
+    description: "Detecting CXX OpenMP compiler info"
+    directories:
+      source: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7"
+      binary: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "OpenMP_COMPILE_RESULT_CXX_fopenmp"
+      cached: true
+      stdout: |
+        Change Dir: '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_6c993/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_6c993.dir/build.make CMakeFiles/cmTC_6c993.dir/build
+        gmake[1]: Entering directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7'
+        Building CXX object CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o
+        /usr/bin/g++   -fopenmp -v -std=c++17 -o CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o -c /home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7/OpenMPTryFlag.cpp
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/g++
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-suse-linux
+        Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c,c++,objc,fortran,obj-c++,ada,go,d,jit,m2 --enable-offload-targets=nvptx-none,amdgcn-amdhsa, --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (SUSE Linux) 
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_6c993.dir/'
+         /usr/lib64/gcc/x86_64-suse-linux/13/cc1plus -quiet -v -D_GNU_SOURCE -D_REENTRANT /home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7/OpenMPTryFlag.cpp -quiet -dumpdir CMakeFiles/cmTC_6c993.dir/ -dumpbase OpenMPTryFlag.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -std=c++17 -version -fopenmp -o /tmp/ccNDwt48.s
+        GNU C++17 (SUSE Linux) version 13.3.0 (x86_64-suse-linux)
+        	compiled by GNU C version 13.3.0, GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version isl-0.26-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/include/c++/13
+         /usr/include/c++/13/x86_64-suse-linux
+         /usr/include/c++/13/backward
+         /usr/lib64/gcc/x86_64-suse-linux/13/include
+         /usr/local/include
+         /usr/lib64/gcc/x86_64-suse-linux/13/include-fixed
+         /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include
+         /usr/include
+        End of search list.
+        Compiler executable checksum: 00000000000000000000000000000000
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_6c993.dir/'
+         /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/as -v --64 -o CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o /tmp/ccNDwt48.s
+        GNU assembler version 2.42.0 (x86_64-suse-linux) using BFD version (GNU Binutils; openSUSE Tumbleweed) 2.42.0.20240130-3
+        COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/
+        LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.'
+        Linking CXX executable cmTC_6c993
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_6c993.dir/link.txt --verbose=1
+        /usr/bin/g++  -fopenmp -v CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o -o cmTC_6c993  -v
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/g++
+        COLLECT_LTO_WRAPPER=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-suse-linux
+        Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c,c++,objc,fortran,obj-c++,ada,go,d,jit,m2 --enable-offload-targets=nvptx-none,amdgcn-amdhsa, --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (SUSE Linux) 
+        COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/
+        LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/
+        Reading specs from /usr/lib64/gcc/x86_64-suse-linux/13/libgomp.spec
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_6c993' '-v' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_6c993.'
+         /usr/lib64/gcc/x86_64-suse-linux/13/collect2 -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccbpLKXE.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_6c993 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o /usr/lib64/gcc/x86_64-suse-linux/13/crtoffloadbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o -lstdc++ -lm -lgomp -lgcc_s -lgcc -lpthread -lc -lgcc_s -lgcc /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o /usr/lib64/gcc/x86_64-suse-linux/13/crtoffloadend.o
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_6c993' '-v' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_6c993.'
+        gmake[1]: Leaving directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:263 (message)"
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:487 (_OPENMP_GET_FLAGS)"
+      - "CMakeLists.txt:24 (find_package)"
+    message: |
+      Parsed CXX OpenMP implicit link information from above output:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        ignore line: [Change Dir: '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_6c993/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_6c993.dir/build.make CMakeFiles/cmTC_6c993.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7']
+        ignore line: [Building CXX object CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o]
+        ignore line: [/usr/bin/g++   -fopenmp -v -std=c++17 -o CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o -c /home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7/OpenMPTryFlag.cpp]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/g++]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-suse-linux]
+        ignore line: [Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c c++ objc fortran obj-c++ ada go d jit m2 --enable-offload-targets=nvptx-none amdgcn-amdhsa  --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (SUSE Linux) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_6c993.dir/']
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/cc1plus -quiet -v -D_GNU_SOURCE -D_REENTRANT /home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-me0Xb7/OpenMPTryFlag.cpp -quiet -dumpdir CMakeFiles/cmTC_6c993.dir/ -dumpbase OpenMPTryFlag.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -std=c++17 -version -fopenmp -o /tmp/ccNDwt48.s]
+        ignore line: [GNU C++17 (SUSE Linux) version 13.3.0 (x86_64-suse-linux)]
+        ignore line: [	compiled by GNU C version 13.3.0  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version isl-0.26-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/include/c++/13]
+        ignore line: [ /usr/include/c++/13/x86_64-suse-linux]
+        ignore line: [ /usr/include/c++/13/backward]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/include-fixed]
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/include]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: 00000000000000000000000000000000]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_6c993.dir/']
+        ignore line: [ /usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/as -v --64 -o CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o /tmp/ccNDwt48.s]
+        ignore line: [GNU assembler version 2.42.0 (x86_64-suse-linux) using BFD version (GNU Binutils]
+        ignore line: [ openSUSE Tumbleweed) 2.42.0.20240130-3]
+        ignore line: [COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/]
+        ignore line: [LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.']
+        ignore line: [Linking CXX executable cmTC_6c993]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_6c993.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/g++  -fopenmp -v CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o -o cmTC_6c993  -v]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/g++]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-suse-linux]
+        ignore line: [Configured with: ../configure CFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' CXXFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' XCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' TCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -Werror=return-type -g' GDCFLAGS=' -O2 -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g' --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man --libdir=/usr/lib64 --libexecdir=/usr/lib64 --enable-languages=c c++ objc fortran obj-c++ ada go d jit m2 --enable-offload-targets=nvptx-none amdgcn-amdhsa  --enable-offload-defaulted --without-cuda-driver --enable-host-shared --enable-checking=release --disable-werror --with-gxx-include-dir=/usr/include/c++/13 --with-libstdcxx-zoneinfo=/usr/share/zoneinfo --enable-ssp --disable-libssp --disable-libvtv --enable-cet=auto --disable-libcc1 --enable-plugin --with-bugurl=https://bugs.opensuse.org/ --with-pkgversion='SUSE Linux' --with-slibdir=/lib64 --with-system-zlib --enable-libstdcxx-allocator=new --disable-libstdcxx-pch --enable-libphobos --enable-version-specific-runtime-libs --with-gcc-major-version-only --enable-linker-build-id --enable-linux-futex --enable-gnu-indirect-function --program-suffix=-13 --without-system-libunwind --enable-multilib --with-arch-32=x86-64 --with-tune=generic --with-build-config=bootstrap-lto-lean --enable-link-serialization --build=x86_64-suse-linux --host=x86_64-suse-linux]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (SUSE Linux) ]
+        ignore line: [COMPILER_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/bin/]
+        ignore line: [LIBRARY_PATH=/usr/lib64/gcc/x86_64-suse-linux/13/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib/:/usr/lib64/gcc/x86_64-suse-linux/13/../../../:/lib/:/usr/lib/]
+        ignore line: [Reading specs from /usr/lib64/gcc/x86_64-suse-linux/13/libgomp.spec]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_6c993' '-v' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_6c993.']
+        link line: [ /usr/lib64/gcc/x86_64-suse-linux/13/collect2 -plugin /usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so -plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccbpLKXE.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_6c993 /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crt1.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crti.o /usr/lib64/gcc/x86_64-suse-linux/13/crtbegin.o /usr/lib64/gcc/x86_64-suse-linux/13/crtoffloadbegin.o -L/usr/lib64/gcc/x86_64-suse-linux/13 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib -L/usr/lib64/gcc/x86_64-suse-linux/13/../../.. CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o -lstdc++ -lm -lgomp -lgcc_s -lgcc -lpthread -lc -lgcc_s -lgcc /usr/lib64/gcc/x86_64-suse-linux/13/crtend.o /usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64/crtn.o /usr/lib64/gcc/x86_64-suse-linux/13/crtoffloadend.o]
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/lib64/gcc/x86_64-suse-linux/13/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/lib64/gcc/x86_64-suse-linux/13/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccbpLKXE.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lpthread] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_6c993] ==> ignore
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64]
+          arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
+          arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib]
+          arg [-L/usr/lib64/gcc/x86_64-suse-linux/13/../../..] ==> dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../..]
+          arg [CMakeFiles/cmTC_6c993.dir/OpenMPTryFlag.cpp.o] ==> ignore
+          arg [-lstdc++] ==> lib [stdc++]
+          arg [-lm] ==> lib [m]
+          arg [-lgomp] ==> lib [gomp]
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [-lgcc] ==> lib [gcc]
+          arg [-lpthread] ==> lib [pthread]
+          arg [-lc] ==> lib [c]
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [-lgcc] ==> lib [gcc]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13] ==> [/usr/lib64/gcc/x86_64-suse-linux/13]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../lib64] ==> [/usr/lib64]
+        collapse library dir [/lib/../lib64] ==> [/lib64]
+        collapse library dir [/usr/lib/../lib64] ==> [/usr/lib64]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../../../x86_64-suse-linux/lib] ==> [/usr/x86_64-suse-linux/lib]
+        collapse library dir [/usr/lib64/gcc/x86_64-suse-linux/13/../../..] ==> [/usr/lib64]
+        implicit libs: [stdc++;m;gomp;gcc_s;gcc;pthread;c;gcc_s;gcc]
+        implicit objs: []
+        implicit dirs: [/usr/lib64/gcc/x86_64-suse-linux/13;/usr/lib64;/lib64;/usr/x86_64-suse-linux/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:421 (try_compile)"
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:561 (_OPENMP_GET_SPEC_DATE)"
+      - "CMakeLists.txt:24 (find_package)"
+    description: "Detecting C OpenMP version"
+    directories:
+      source: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-scbdkc"
+      binary: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-scbdkc"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "OpenMP_SPECTEST_C_"
+      cached: true
+      stdout: |
+        Change Dir: '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-scbdkc'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_8ab78/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_8ab78.dir/build.make CMakeFiles/cmTC_8ab78.dir/build
+        gmake[1]: Entering directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-scbdkc'
+        Building C object CMakeFiles/cmTC_8ab78.dir/OpenMPCheckVersion.c.o
+        /usr/bin/cc   -fopenmp -o CMakeFiles/cmTC_8ab78.dir/OpenMPCheckVersion.c.o -c /home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-scbdkc/OpenMPCheckVersion.c
+        Linking C executable cmTC_8ab78
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8ab78.dir/link.txt --verbose=1
+        /usr/bin/cc  -fopenmp CMakeFiles/cmTC_8ab78.dir/OpenMPCheckVersion.c.o -o cmTC_8ab78
+        gmake[1]: Leaving directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-scbdkc'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:421 (try_compile)"
+      - "/usr/share/cmake/Modules/FindOpenMP.cmake:561 (_OPENMP_GET_SPEC_DATE)"
+      - "CMakeLists.txt:24 (find_package)"
+    description: "Detecting CXX OpenMP version"
+    directories:
+      source: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-PlRKyL"
+      binary: "/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-PlRKyL"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "OpenMP_SPECTEST_CXX_"
+      cached: true
+      stdout: |
+        Change Dir: '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-PlRKyL'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_3edcc/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_3edcc.dir/build.make CMakeFiles/cmTC_3edcc.dir/build
+        gmake[1]: Entering directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-PlRKyL'
+        Building CXX object CMakeFiles/cmTC_3edcc.dir/OpenMPCheckVersion.cpp.o
+        /usr/bin/g++   -fopenmp -std=c++17 -o CMakeFiles/cmTC_3edcc.dir/OpenMPCheckVersion.cpp.o -c /home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-PlRKyL/OpenMPCheckVersion.cpp
+        Linking CXX executable cmTC_3edcc
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3edcc.dir/link.txt --verbose=1
+        /usr/bin/g++  -fopenmp CMakeFiles/cmTC_3edcc.dir/OpenMPCheckVersion.cpp.o -o cmTC_3edcc
+        gmake[1]: Leaving directory '/home/luke/GW-model/build/CMakeFiles/CMakeScratch/TryCompile-PlRKyL'
+        
+      exitCode: 0
+...

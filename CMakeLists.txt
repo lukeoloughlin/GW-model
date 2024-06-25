@@ -7,7 +7,7 @@ project(gw-model)
 set(EXEC gw.out)
 
 # set the C++ 20 standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

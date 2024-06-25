@@ -1,5 +1,20 @@
 #include "ndarray.hpp"
 
+template <typename T, size_t N>
+bool NDArrayBase<T,N>::assert_equal_shape(const NDArrayBase<T,N>& other) const {
+    for (int i = 0; i < N; ++i){
+        if (dims[i] != other.dims[i])
+            return false;
+    }
+    return true;
+}
+
+template <typename T, size_t N>
+void NDArrayBase<T,N>::copy_from_array(const T* const arr){
+    #pragma omp simd
+    for (size_t i = 0; i < size; ++i)
+        storage[i] = arr[i];
+}
 
 template <typename T, size_t N>
 T NDArrayBase<T,N>::sum() const {
@@ -8,6 +23,14 @@ T NDArrayBase<T,N>::sum() const {
     for (size_t i = 0; i < size; ++i)
         acc += storage[i];
     return acc;
+}
+
+
+template <typename T, size_t N>
+void NDArrayBase<T,N>::inv() {
+    #pragma omp simd
+    for (size_t i = 0; i < size; ++i)
+        storage[i] = 1 / storage[i];
 }
 
 
@@ -78,8 +101,10 @@ NDArrayBase<T,N>& NDArrayBase<T,N>::operator-=(const NDArrayBase<T,N> &val){
     return *this;
 }
 
+
 template <typename T, size_t N>
 NDArrayBase<T,N>& NDArrayBase<T,N>::operator*=(const T val){
+    std::cout << "Called *= v1" << std::endl;
     #pragma omp simd
     for (size_t i = 0; i < size; ++i)
         storage[i] *= val;
@@ -88,11 +113,13 @@ NDArrayBase<T,N>& NDArrayBase<T,N>::operator*=(const T val){
 
 template <typename T, size_t N>
 NDArrayBase<T,N>& NDArrayBase<T,N>::operator*=(const NDArrayBase<T,N> &val){
+    std::cout << "Called *= v2" << std::endl;
     #pragma omp simd
     for (size_t i = 0; i < size; ++i)
         storage[i] *= val[i];
     return *this;
 }
+
 
 template <typename T, size_t N>
 NDArrayBase<T,N>& NDArrayBase<T,N>::operator/=(const T val){
@@ -110,6 +137,7 @@ NDArrayBase<T,N>& NDArrayBase<T,N>::operator/=(const NDArrayBase<T,N> &val){
         storage[i] /= val[i];
     return *this;
 }
+
 
 template <typename T, size_t N>
 void NDArrayBase<T,N>::exp(){
@@ -179,4 +207,180 @@ void NDArrayBase<T,N>::abs(){
     #pragma omp simd
     for (size_t i = 0; i < size; ++i)
         storage[i] = std::abs(storage[i]);
+}
+
+
+template <typename T, typename S, size_t N>
+NDArrayBase<T,N> operator+(const NDArrayBase<T,N>& arr, const S& arr_or_T){
+    std::cout << "Called + v1" << std::endl;
+    NDArray<T,N> out = arr;
+    out += arr_or_T;
+    return out;
+} 
+
+template <typename T, typename S, size_t N>
+NDArrayBase<T,N> operator+(const S& arr_or_T, NDArrayBase<T,N>& arr){
+    std::cout << "Called + v2" << std::endl;
+    NDArray<T,N> out = arr;
+    out += arr_or_T;
+    return out;
+} 
+
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator+(NDArray<T,N>&& arr, const S& arr_or_T){
+    std::cout << "Called + v3" << std::endl;
+    arr += arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator+(const S& arr_or_T, NDArray<T,N>&& arr){
+    std::cout << "Called + v4" << std::endl;
+    arr += arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator+(NDArray<T,N>&& arr, S&& arr_or_T){
+    std::cout << "Called + v5" << std::endl;
+    arr += arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator+(S&& arr_or_T, NDArray<T,N>&& arr){
+    std::cout << "Called + v6" << std::endl;
+    arr += arr_or_T;
+    return std::move(arr);
+}
+
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator-(const NDArray<T,N>& arr, const S& arr_or_T){
+    std::cout << "Called - v1" << std::endl;
+    NDArray<T,N> out = arr;
+    out -= arr_or_T;
+    return out;
+} 
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator-(const S& arr_or_T, NDArray<T,N>& arr){
+    std::cout << "Called - v2" << std::endl;
+    NDArray<T,N> out = arr;
+    out *= -1;
+    out += arr_or_T;
+    return out;
+} 
+
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator-(NDArray<T,N>&& arr, const S& arr_or_T){
+    std::cout << "Called - v3" << std::endl;
+    arr -= arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator-(const S& arr_or_T, NDArray<T,N>&& arr){
+    std::cout << "Called - v4" << std::endl;
+    arr *= -1;
+    arr += arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator-(NDArray<T,N>&& arr, S&& arr_or_T){
+    std::cout << "Called - v5" << std::endl;
+    arr -= arr_or_T;
+    return std::move(arr);
+}
+
+
+
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator*(const NDArray<T,N>& arr, const S& arr_or_T){
+    std::cout << "Called * v1" << std::endl;
+    NDArray<T,N> out = arr;
+    out *= arr_or_T;
+    return out;
+} 
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator*(const S& arr_or_T, NDArray<T,N>& arr){
+    std::cout << "Called * v2" << std::endl;
+    NDArray<T,N> out = arr;
+    out *= arr_or_T;
+    return out;
+} 
+
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator*(NDArray<T,N>&& arr, const S& arr_or_T){
+    std::cout << "Called * v3" << std::endl;
+    arr *= arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator*(const S& arr_or_T, NDArray<T,N>&& arr){
+    std::cout << "Called * v4" << std::endl;
+    arr *= arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator*(NDArray<T,N>&& arr, S&& arr_or_T){
+    std::cout << "Called * v5" << std::endl;
+    arr *= arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator*(S&& arr_or_T, NDArray<T,N>&& arr){
+    std::cout << "Called * v6" << std::endl;
+    return std::move(arr *= arr_or_T);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator/(const NDArray<T,N>& arr, const S& arr_or_T){
+    NDArray<T,N> out = arr;
+    out /= arr_or_T;
+    return out;
+} 
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator/(const S& arr_or_T, NDArray<T,N>& arr){
+    NDArray<T,N> out = arr;
+    out.inv();
+    out *= arr_or_T;
+    return out;
+} 
+
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator/(NDArray<T,N>&& arr, const S& arr_or_T){
+    arr /= arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator/(const S& arr_or_T, NDArray<T,N>&& arr){
+    arr.inv();
+    arr *= arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator/(NDArray<T,N>&& arr, S&& arr_or_T){
+    arr /= arr_or_T;
+    return std::move(arr);
+}
+
+template <typename T, typename S, size_t N>
+NDArray<T,N> operator/(S&& arr_or_T, NDArray<T,N>&& arr){
+    arr.inv();
+    arr *= arr_or_T;
+    return std::move(arr);
 }

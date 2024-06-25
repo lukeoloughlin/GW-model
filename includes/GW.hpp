@@ -92,7 +92,7 @@ namespace GW {
         GW_model(int nCRU_simulated) : parameters(), globals(), CRUs(nCRU_simulated), nCRU(nCRU_simulated), consts(parameters, nCRU), 
                                        JLCC(NDArray<FloatType,2>(nCRU_simulated,4)), Jxfer(NDArray<FloatType,2>(nCRU_simulated,4)), 
                                        Jtr(NDArray<FloatType,1>(nCRU_simulated)), QKr(NDArrayMap<FloatType,2>(QKr_storage,5,5)), 
-                                       QKv14(NDArrayMap<FloatType,2>(QKv14_storage,10,10)), QKv43(NDArrayMap<FloatType,2>(10,10)),  
+                                       QKv14(NDArrayMap<FloatType,2>(QKv14_storage,10,10)), QKv43(NDArrayMap<FloatType,2>(QKv43_storage,10,10)),  
                                        currents(), dGlobals(0.0)
         { 
             consts.VF_RT = globals.V * consts.F_RT;

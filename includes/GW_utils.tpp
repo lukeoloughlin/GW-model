@@ -34,9 +34,9 @@ namespace GW {
     void initialise_RyR(NDArray<int,3> &RyR){
         const double weights[3] = { 0.609, 0.5*0.391, 0.5*0.391 };
         int idx;
-        for (int i = 0; i < RyR.shape(0); i++){
-            for (int j = 0; j < 4; j++){
-                for (int k = 0; k < 5; k++){
+        for (unsigned int i = 0; i < RyR.shape(0); i++){
+            for (unsigned int j = 0; j < 4; j++){
+                for (unsigned int k = 0; k < 5; k++){
                     idx = sample_weights(weights, 1.0, 3);
                     if (idx == 0)
                         RyR(i,j,0)++;
@@ -53,8 +53,8 @@ namespace GW {
     void initialise_ClCh(NDArray<int,2> &ClCh){
         const double weights[2] = { 0.998, 0.002 };
         int idx;
-        for (int i = 0; i < ClCh.shape(0); i++){
-            for (int j = 0; j < 4; j++){
+        for (unsigned int i = 0; i < ClCh.shape(0); i++){
+            for (unsigned int j = 0; j < 4; j++){
                 idx = sample_weights(weights, 1.0, 2);
                 ClCh(i,j) = idx;
             }

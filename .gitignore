@@ -35,4 +35,4 @@
 *.csv
 
 # cmake cache
-build/*
+build/

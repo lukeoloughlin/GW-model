@@ -33,3 +33,6 @@
 
 # Data
 *.csv
+
+# cmake cache
+build/*

@@ -8,27 +8,28 @@
 #include <cstring>
 
 
-
 template <typename T, std::size_t N>
-class NDArrayBase
-{
+class NDArrayBase {
 protected:
     T* storage;
     int dims[N];
     size_t size;
 
+    bool is_dynamically_allocated;
+
     void set_storage(T* storage_){ storage = storage_; }
 
     void set_dims(const int dims_[N]){
-        for (unsigned int i = 0; i < N; ++i){
+        for (size_t i = 0; i < N; ++i)
             dims[i] = dims_[i];
-        }
     }
 
     void set_size(size_t size_){ size = size_; }
 
-    // Segfaults if storage was not heap allocated.
-    void delete_storage() { delete[] storage; }
+    void delete_storage() {
+        if (is_dynamically_allocated) // Will segfault if you try to call delete[] if not dynamically allocated
+            delete[] storage; 
+    }
 
     template <typename... Indices>
     inline int to_linear_index(const Indices... indices) const {
@@ -58,217 +59,76 @@ public:
     }
     
     template <typename... Indices>
-    T operator() (Indices... indices) const { 
+    inline T operator() (Indices... indices) const { 
         int idx = to_linear_index(indices...);
         return storage[idx];
     }
     
     // Writeable access
     template <typename... Indices>
-    T& operator() (Indices... indices) {
+    inline T& operator() (Indices... indices) {
         int idx = to_linear_index(indices...);
         return storage[idx];
     }
 
-    T operator[] (int i) const { return storage[i]; }
+    inline T operator[] (int i) const { return storage[i]; }
+    
+    inline NDArrayBase& operator+=(const T val);
+    inline NDArrayBase& operator+=(const NDArrayBase<T,N> &val);
+    inline NDArrayBase& operator-=(const T val);
+    inline NDArrayBase& operator-=(const NDArrayBase<T,N> &val);
+    inline NDArrayBase& operator*=(const T val);
+    inline NDArrayBase& operator*=(const NDArrayBase<T,N> &val);
+    inline NDArrayBase& operator/=(const T val);
+    inline NDArrayBase& operator/=(const NDArrayBase<T,N> &val);
+
+    // move assignment
+    NDArray& operator=(NDArray&& other) noexcept {
+        // Guard self assignment
+        if (this == &other)
+            return *this;
+        
+        if (this->is_dynamically_allocated != other.is_dynamically_allocated)
+            exit(EXIT_FAILURE);
+ 
+        delete_storage();   // release resource in *this if appropriate
+        storage = std::exchange(other.storage, nullptr); // leave other in valid state
+        dims = std::exchange(other.dims, nullptr);
+        size = std::exchange(other.size, 0);
+        return *this;
+    }
 
     
     template <typename... Indices>
-    void set(const T val, Indices... indices){
+    inline void set(const T val, Indices... indices){
         int idx = to_linear_index(indices...);
         storage[idx] = val;
     }
 
-    T sum() const {
-        T acc = 0;
-        #pragma omp simd reduction(+:acc)
-        for (unsigned int i = 0; i < size; ++i){
-            acc += storage[i];
-        }
-        return acc;
-    }
+    inline T sum() const; 
+    inline void add(const T val);
+    inline void sub(const T val);    
+    inline void mul(const T val);
+    inline void div(const T val);
+    inline void set_to(const T val);
+    inline void set_to_zeros(){ set_to_val(0); }
+    inline void set_to_ones(){ set_to_val(1); }
 
-    void add(const T val){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] += val;
-        }
-    }
-    
-    void sub(const T val){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] -= val;
-        }
-    }
-
-    
-    void mul(const T val){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] *= val;
-        }
-    }
-    
-    void div(const T val){
-        const T vali = 1 / val;
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] *= vali;
-        }
-    }
-    
-    void set_to_val(const T val){
-        memset(storage, val, size * sizeof(T));
-        //#pragma omp simd
-        //for (unsigned int i = 0; i < size; ++i){
-        //    storage[i] = val;
-        //}
-    }
-
-    void set_to_zeros(){ set_to_val(0.0); }
-    void set_to_ones(){ set_to_val(1.0); }
     T* data() const { return storage; }
 
-    
-    NDArrayBase& operator+=(const T val){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] += val;
-        }
-        return *this;
-    }
+    inline void exp();
+    inline void log();
+    inline void sin();
+    inline void cos();
+    inline void tan();
+    inline void sinh();
+    inline void cosh();
+    inline void tanh();
+    inline void pow(const T exponent);
+    inline void abs();
 
-    NDArrayBase& operator+=(const NDArrayBase<T,N> &val){
-        //const T* const val_data = val.data();
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] += val[i];
-        }
-        return *this;
-    }
-
-    NDArrayBase& operator-=(const T val){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] -= val;
-        }
-        return *this;
-    }
-
-    NDArrayBase& operator-=(const NDArrayBase<T,N> &val){
-        //const T* const val_data = val.data();
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] -= val[i];
-        }
-        return *this;
-    }
-
-    NDArrayBase& operator*=(const T val){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] *= val;
-        }
-        return *this;
-    }
-
-    NDArrayBase& operator*=(const NDArrayBase<T,N> &val){
-        //const T* const val_data = val.data();
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] *= val[i];
-        }
-        return *this;
-    }
-
-    NDArrayBase& operator/=(const T val){
-        const T vali = 1 / val;
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] *= vali;
-        }
-        return *this;
-    }
-
-    NDArrayBase& operator/=(const NDArrayBase<T,N> &val){
-        //const T* const val_data = val.data();
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] /= val[i];
-        }
-        return *this;
-    }
-
-    void exp(){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] = std::exp(storage[i]);
-        }
-    }
-
-    void log(){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] = std::log(storage[i]);
-        }
-    }
-
-    void sin(){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] = std::sin(storage[i]);
-        }
-    }
-
-    void cos(){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] = std::cos(storage[i]);
-        }
-    }
-
-    void tan(){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] = std::tan(storage[i]);
-        }
-    }
-
-    void sinh(){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] = std::sinh(storage[i]);
-        }
-    }
-
-    void cosh(){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] = std::cosh(storage[i]);
-        }
-    }
-
-    void tanh(){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] = std::tanh(storage[i]);
-        }
-    }
-
-    void pow(const T exponent){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] = std::pow(storage[i], exponent);
-        }
-    }
-
-    void abs(){
-        #pragma omp simd
-        for (unsigned int i = 0; i < size; ++i){
-            storage[i] = std::abs(storage[i]);
-        }
-    }
+    template <typename LambdaType>
+    inline void map(LambdaType&& fn);
 
     T maximum() const { return *std::max_element(storage, storage+size); }
     T minimum() const { return *std::min_element(storage, storage+size); }
@@ -286,6 +146,124 @@ public:
 
 
 };
+    
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(const NDArrayBase<T,N>&, const NDArrayBase<T,N>&); // Add two lvalue references
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(const NDArrayBase<T,N>&, const T&);
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(const T&, const NDArrayBase<T,N>&);
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(NDArrayBase<T,N>&&, const NDArrayBase<T,N>&); // Add an rvalue reference to an lvalue reference on the left
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(NDArrayBase<T,N>&&, const T&); 
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(T&&, const NDArrayBase<T,N>&); 
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(const NDArrayBase<T,N>&, NDArrayBase<T,N>&&); // Add an lvalue reference to an rvalue reference on the right
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(const NDArrayBase<T,N>&, T&&);
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(const T&, NDArrayBase<T,N>&&);
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(NDArrayBase<T,N>&&, NDArrayBase<T,N>&&); // Add two rvalue references
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(NDArrayBase<T,N>&&, T&&); 
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator+(T&&, NDArrayBase<T,N>&&);
+
+
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(const NDArrayBase<T,N>&, const NDArrayBase<T,N>&); // Add two lvalue references
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(const NDArrayBase<T,N>&, const T&);
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(const T&, const NDArrayBase<T,N>&);
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(NDArrayBase<T,N>&&, const NDArrayBase<T,N>&); // Add an rvalue reference to an lvalue reference on the left
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(NDArrayBase<T,N>&&, const T&); 
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(T&&, const NDArrayBase<T,N>&); 
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(const NDArrayBase<T,N>&, NDArrayBase<T,N>&&); // Add an lvalue reference to an rvalue reference on the right
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(const NDArrayBase<T,N>&, T&&);
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(const T&, NDArrayBase<T,N>&&);
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(NDArrayBase<T,N>&&, NDArrayBase<T,N>&&); // Add two rvalue references
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(NDArrayBase<T,N>&&, T&&); 
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator-(T&&, NDArrayBase<T,N>&&);
+
+
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(const NDArrayBase<T,N>&, const NDArrayBase<T,N>&); // Add two lvalue references
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(const NDArrayBase<T,N>&, const T&);
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(const T&, const NDArrayBase<T,N>&);
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(NDArrayBase<T,N>&&, const NDArrayBase<T,N>&); // Add an rvalue reference to an lvalue reference on the left
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(NDArrayBase<T,N>&&, const T&); 
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(T&&, const NDArrayBase<T,N>&); 
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(const NDArrayBase<T,N>&, NDArrayBase<T,N>&&); // Add an lvalue reference to an rvalue reference on the right
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(const NDArrayBase<T,N>&, T&&);
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(const T&, NDArrayBase<T,N>&&);
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(NDArrayBase<T,N>&&, NDArrayBase<T,N>&&); // Add two rvalue references
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(NDArrayBase<T,N>&&, T&&); 
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator*(T&&, NDArrayBase<T,N>&&);
+
+
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(const NDArrayBase<T,N>&, const NDArrayBase<T,N>&); // Add two lvalue references
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(const NDArrayBase<T,N>&, const T&);
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(const T&, const NDArrayBase<T,N>&);
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(NDArrayBase<T,N>&&, const NDArrayBase<T,N>&); // Add an rvalue reference to an lvalue reference on the left
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(NDArrayBase<T,N>&&, const T&); 
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(T&&, const NDArrayBase<T,N>&); 
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(const NDArrayBase<T,N>&, NDArrayBase<T,N>&&); // Add an lvalue reference to an rvalue reference on the right
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(const NDArrayBase<T,N>&, T&&);
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(const T&, NDArrayBase<T,N>&&);
+
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(NDArrayBase<T,N>&&, NDArrayBase<T,N>&&); // Add two rvalue references
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(NDArrayBase<T,N>&&, T&&); 
+template <typename T, size_t N>
+inline NDArrayBase<T,N> operator/(T&&, NDArrayBase<T,N>&&);
 
 /*
 A multidimensional array class. Essentially just holds an array and provides multidimensional indexing semantics.
@@ -318,6 +296,7 @@ public:
         this->set_storage(arr);
         this->set_dims(dims_);
         this->set_size(size_);
+        this->is_dynamically_allocated = false;
         
     }
 
@@ -325,12 +304,14 @@ public:
         this->set_storage(arr);
         this->set_dims(dims_);
         this->set_size(size_);
+        this->is_dynamically_allocated = false;
     }
 
     NDArrayMap<T,N>(std::vector<T> &arr, const int dims_[N]){
         this->set_storage(arr.data());
         this->set_dims(dims_);
         this->set_size(arr.size());
+        this->is_dynamically_allocated = false;
     }
 };
 
@@ -373,6 +354,7 @@ public:
         this->set_size(sz);
         this->set_dims(dims_);
         this->set_storage(arr);
+        this->is_dynamically_allocated = true;
 
         this->set_to_zeros();
     }

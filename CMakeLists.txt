@@ -13,13 +13,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_compile_options(
     -Wall
-    $<$<CONFIG:RELEASE>:-O3>
+    $<$<CONFIG:RELEASE>:-Ofast>
     $<$<CONFIG:RELEASE>:-march=native>
     $<$<CONFIG:RELEASE>:-fopenmp>
     $<$<CONFIG:RELEASE>:-flto>
     $<$<CONFIG:DEBUG>:-g>
     $<$<CONFIG:DEBUG>:-Werror>
 )
+
 
 # set the includes path
 include_directories(includes)

@@ -85,7 +85,7 @@ namespace GW {
         FloatType betaSS, dCaSS, CaSS_tmp;
         for (int j = 0; j < 4; j++){
             betaSS = 1.0 / (1 + (consts.BSR_const / square(params.KBSR + state.CaSS[j])) + (consts.BSL_const / square(params.KBSL + state.CaSS[j])));
-            dCaSS = dt * (state.JLCC[j] + state.Jrel[j] - state.Jxfer[j] + state.Jiss[j]) / betaSS;
+            dCaSS = dt * (state.JLCC[j] + state.Jrel[j] - state.Jxfer[j] + state.Jiss[j]) * betaSS;
             CaSS_tmp = state.CaSS[j] + dCaSS;
             if (state.CaSS[j] > 1.15e-4 && CaSS_tmp <= 1.15e-4)
                 sample_RyR56(state, j, params);
@@ -264,7 +264,6 @@ namespace GW {
         FloatType sum_RyR_rates = subunit_rate - (sum_LCC_rates + LCC_activation_rate + ClCh_rate);
 
         FloatType u = urand<FloatType>() * subunit_rate;
-
         if (u < sum_LCC_rates)
             sample_LCC(state, sum_LCC_rates, subunit_idx, consts);
         else if (u < (sum_LCC_rates + LCC_activation_rate)) {

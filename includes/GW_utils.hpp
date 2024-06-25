@@ -7,17 +7,7 @@
 #include <cstring>
 
 
-// The global currents
-
 namespace GW {
-
-//inline double Nernst(const double Xi, const double Xo){
-//    return log(Xo/Xi) / FRT;
-//}
-
-//double INa(double V, double m, double h, double j, double ENa, double GNa){
-//    return GNa*(m*m*m)*h*j*(V - ENa);
-//}
     
     template <typename FloatType>
     struct Parameters {
@@ -194,16 +184,19 @@ namespace GW {
         // All are constant within the SSA
         FloatType VF_RT; // (V*F) / (R*T) 
         FloatType expmVF_RT; // exp(-VF_RT)
+        FloatType ENa;
+        FloatType EK;
+        FloatType ECa;
+        FloatType beta_cyto;
         FloatType JLCC_multiplier; // 
         FloatType JLCC_exp; // exp(2 * VF_RT)
         FloatType alphaLCC; // LCC upwards transition rate
         FloatType betaLCC; // LCC downwards transition rate
         FloatType yinfLCC; // LCC voltage inactivation steady state
         FloatType tauLCC; // LCC voltage inactivation time constant
-    };
 
-    template <typename FloatType>
-    void set_from_params(Constants<FloatType> &consts, const Parameters<FloatType> &params, const int nCRU_simulated);
+        Constants(const Parameters<FloatType> &params, const int nCRU_simulated);
+    };
     
     template <typename FloatType>
     struct GlobalState {
@@ -273,15 +266,11 @@ namespace GW {
         return GKv43 * XKv43 * (V - EK);
     }
 
-
     template <typename FloatType>
     inline FloatType IKv14(const FloatType VFRT, const FloatType exp_term, const FloatType XKv14, const FloatType Ki, const FloatType Nai, const FloatType PKv14_Csc, const FloatType Nao, const FloatType Ko){
-        FloatType m = (PKv14_Csc) * (FARADAY*VFRT) * XKv14 / (1 - exp_term); // PKv14_Csc = PKv14 / Csc
+        FloatType m = (PKv14_Csc) * (FARADAY*VFRT) * XKv14 / (1 - exp_term);
         return m * ((Ki - Ko*exp_term) + 0.02*(Nai - Nao*exp_term)) * 1.0e9; // 1e9 required to convert to mV / ms
     }
-    //double Ito1(double V, double VFRT, double expmVFRT, double XKv14, double XKv43, double Ki, double Nai, double EK, double PKv14_Csc, double Nao, double Ko, double GKv43){
-    //    return IKv14(VFRT, expmVFRT, XKv14, Ki, Nai, PKv14_Csc, Nao, Ko) + IKv43(V, XKv43, EK, GKv43);
-    //}
 
 
     template <typename FloatType>
@@ -292,46 +281,12 @@ namespace GW {
         return GK1 * K1inf(V, EK, FR_T) * IK1_const * (V - EK); 
     }
 
+
     template <typename FloatType>
     inline FloatType Kp(const FloatType V){ return 1. / (1. + exp((7.488 - V) / 5.98)); }
 
     template <typename FloatType>
     inline FloatType IKp(const FloatType V, const FloatType EK, const FloatType GKp){ return GKp * Kp(V) * (V-EK); }
-
-
-    //template <typename FloatType>
-    //inline FloatType INaCa(FloatType VFRT, FloatType expmVFRT, FloatType Nai, FloatType Cai, FloatType Nao3, FloatType Cao, FloatType eta, FloatType INaCa_const, FloatType ksat){
-    //    FloatType exp_term1 = exp(eta*VFRT);
-    //    FloatType exp_term2 = exp_term1 * expmVFRT;
-    //    return INaCa_const * (exp_term1*(Nai*Nai*Nai)*Cao - exp_term2*Nao3*Cai) / (1.0 + ksat*exp_term2);
-    //}
-
-
-
-    //template <typename FloatType>
-    //inline FloatType fNaK(FloatType VFRT, FloatType expmVFRT, FloatType sigma){ return 1.0 / (1.0 + 0.1245*exp(-0.1*VFRT) + 0.0365*sigma*expmVFRT); }
-    //double INaK(double VFRT, double expmVFRT, double Nai, double sigma, double KmNai, double INaK_const){
-        // INaK_const = INaKmax * Ko / (Ko + KmKo)
-    //    return INaK_const * fNaK(VFRT, expmVFRT, sigma) / (1.0 + pow(KmNai/Nai, 1.5));
-    //}
-
-
-
-    //double IpCa(double Cai, double IpCamax, double KmpCa){
-    //    return IpCamax * Cai / (KmpCa + Cai);
-    //}
-
-
-
-    //double ICab(double V, double Cai, double Cao, double GCab){
-    //    return GCab * (V - 0.5*Nernst(Cai, Cao));
-    //}
-
-
-
-    //double INab(double V, double ENa, double GNab){
-    //    return GNab * (V - ENa);
-    //}
 
 
     template <typename FloatType>
@@ -345,10 +300,12 @@ namespace GW {
         return FloatType(ClCh.sum()) * Ito2_const * VFRT * (Cl_cyto * expmVFRT - Clo) / (expmVFRT - 1.0);
     }
 
+
     template <typename FloatType>
     inline FloatType dTRPNCa(const FloatType TRPNCa, const FloatType Cai, const FloatType TRPNtot, const FloatType kTRPNp, const FloatType kTRPNm){
         return kTRPNp*Cai*(TRPNtot - TRPNCa) - kTRPNm*TRPNCa;
     }
+
 
     template <typename FloatType>
     inline FloatType Jup(const FloatType Cai, const FloatType CaNSR, const FloatType Vmaxf, const FloatType Vmaxr, const FloatType Kmf, const FloatType Kmr, const FloatType Hf, const FloatType Hr){
@@ -357,20 +314,24 @@ namespace GW {
         return (Vmaxf*f - Vmaxr*r) / (1.0 + f + r);
     }
 
+
     template <typename FloatType>
     inline FloatType beta_cyto(const FloatType Cai, const FloatType CMDNconst, const FloatType KCMDN){
         const FloatType x = KCMDN + Cai;
         return 1.0 / (1.0 + CMDNconst / square(x));
     }
 
+
     template <typename FloatType, std::size_t N>
     inline FloatType flux_average(const NDArray<FloatType,N> &flux_container, const FloatType CRU_factor){ return flux_container.sum() * CRU_factor; }
+
 
     template <typename FloatType>
     inline FloatType XKsinf(const FloatType V){ return 1.0 / (1.0 + exp(-(V - 24.7) / 13.6)); }
 
     template <typename FloatType>
     inline FloatType tauXKs_inv(const FloatType V){ return 0.0000719*(V-10.0)/(1.0 - exp(-0.148*(V-10.0))) + 0.000131*(V-10.0)/(exp(0.0687*(V-10.0)) - 1.0); }
+
 
     template <typename FloatType>
     inline FloatType alphaLCC(const FloatType V) { return 2.0 * exp(0.012 * (V - 35.0)); }
@@ -384,12 +345,14 @@ namespace GW {
     template <typename FloatType>
     inline FloatType tauLCC(const FloatType V)  { return 340.0 / (1.0 + exp((V + 30.0) / 12.0)) + 60.0; }
 
+
     template <typename FloatType>
     inline void update_LCC_activation_rates(FloatType* const LCC_activation_rates, FloatType* const subunit_rates, const int* const LCC_activation, const FloatType yinf, 
                                             const FloatType tau, const int idx){
         LCC_activation_rates[idx] = (LCC_activation[idx] == 0) ? yinf / tau : (1.0 - yinf) / tau;
         subunit_rates[idx] += LCC_activation_rates[idx];
     }
+
 
     template <typename FloatType>
     inline void update_ClCh_rates(FloatType* const ClCh_rates, FloatType* const subunit_rates, const int* const ClCh, const FloatType* const CaSS, const FloatType kfClCh, 
@@ -400,8 +363,7 @@ namespace GW {
 
 
     template <typename FloatType>
-    inline void update_LCC_rates(FloatType* const LCC_rates, FloatType* const subunit_rates, const int* const LCC, const FloatType* const CaSS, const FloatType alpha, 
-                                const FloatType beta, const int idx, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
+    inline void update_LCC_rates(FloatType* const LCC_rates, FloatType* const subunit_rates, const int* const LCC, const FloatType* const CaSS, const int idx, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
 
     
     template <typename FloatType>

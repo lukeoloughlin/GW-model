@@ -207,7 +207,7 @@ namespace common {
     template <typename FloatType>
     inline FloatType alpha_j(const FloatType V){
         return (V >= -40.0) ? 0.0 
-                            : (-127140.0*exp(0.2444*V) - 3.1e-5 * exp(-0.04391 * V)) * (V + 37.78) / (1.0 + exp(0.311 * (V + 79.23)));
+                            : (-127140.0*exp(0.2444*V) - 3.474e-5 * exp(-0.04391 * V)) * (V + 37.78) / (1.0 + exp(0.311 * (V + 79.23)));
     }
 
 

@@ -45,10 +45,8 @@ void GW_model<FloatType>::update_QKr(){
     QKr(0,0) = -QKr(0,1);
 
     QKr(1,0) = 0.0227*exp(-0.0431*globals.V);
-    //QKr(1,2) = params.Kf;
     QKr(1,1) = -(QKr(1,0) + QKr(1,2));
 
-    //QKr(2,1) = params.Kb;
     QKr(2,3) = 0.0218*exp(0.0262*globals.V);
     QKr(2,4) = 1.29e-5*exp(2.71e-6*globals.V);
     QKr(2,2) = -(QKr(2,1) + QKr(2,3) + QKr(2,4));    
@@ -80,9 +78,6 @@ void GW_model<FloatType>::update_QKr(){
         Jtr(idx) = temp.Jtr;
     }
 
-//void update_QKv(NDArrayMap<double,2> &Q, const double V, const double alphaa0, const double aa, const double alphai0, const double ai, 
-//                const double betaa0, const double ba, const double betai0, const double bi, const double f1, const double f2,
-//                const double f3, const double f4, const double b1, const double b2, const double b3, const double b4)
 template <typename FloatType>
 void GW_model<FloatType>::update_QKv(){
     const FloatType alphaa14 = parameters.alphaa0Kv14 * exp(parameters.aaKv14 * globals.V);
@@ -190,52 +185,47 @@ void GW_model<FloatType>::update_gate_derivatives(const FloatType dt){
 }
 
 template <typename FloatType>
-void GW_model<FloatType>::update_V_and_concentration_derivatives(const FloatType dt)
-{
-    FloatType beta_cyto;
-
-    //double Nai = concentrations.Nai, Ki = concentrations.Ki, Cai = concentrations.Cai, CaNSR = concentrations.CaNSR;
-    //double CaLTRPN = concentrations.CaLTRPN, CaHTRPN = concentrations.CaHTRPN;
+void GW_model<FloatType>::update_V_and_concentration_derivatives(const FloatType dt){
     FloatType IKv14, IKv43;
 
-    const FloatType ENa = common::Nernst<FloatType>(globals.Nai, parameters.Nao, consts.RT_F, 1.0);
-    const FloatType EK = common::Nernst<FloatType>(globals.Ki, parameters.Ko, consts.RT_F, 1.0);
-    const FloatType ECa = common::Nernst<FloatType>(globals.Ki, parameters.Ko, consts.RT_F, 2.0);
+    consts.ENa = common::Nernst<FloatType>(globals.Nai, parameters.Nao, consts.RT_F, 1.0);
+    consts.EK = common::Nernst<FloatType>(globals.Ki, parameters.Ko, consts.RT_F, 1.0);
+    consts.ECa = common::Nernst<FloatType>(globals.Ki, parameters.Ko, consts.RT_F, 2.0);
 
-    INa = common::INa<FloatType>(globals.V, globals.m, globals.h, globals.j, parameters.GNa, ENa);
-    INab = common::Ib<FloatType>(globals.V, parameters.GNab, ENa);
-    INaCa = common::INaCa<FloatType>(consts.VF_RT, consts.expmVF_RT, globals.Nai, globals.Cai, consts.Nao3, parameters.Cao, parameters.eta, parameters.ksat, consts.INaCa_const);
-    INaK = common::INaK<FloatType>(consts.VF_RT, consts.expmVF_RT, globals.Nai, consts.sigma, parameters.KmNai, consts.INaK_const);
+    currents.INa = common::INa<FloatType>(globals.V, globals.m, globals.h, globals.j, parameters.GNa, currents.ENa);
+    currents.INab = common::Ib<FloatType>(globals.V, parameters.GNab, currents.ENa);
+    currents.INaCa = common::INaCa<FloatType>(consts.VF_RT, consts.expmVF_RT, globals.Nai, globals.Cai, consts.Nao3, parameters.Cao, parameters.eta, parameters.ksat, consts.INaCa_const);
+    currents.INaK = common::INaK<FloatType>(consts.VF_RT, consts.expmVF_RT, globals.Nai, consts.sigma, parameters.KmNai, consts.INaK_const);
     
-    IKr = GW::IKr<FloatType>(globals.V, globals.Kr[3], EK, parameters.GKr, consts.sqrtKo);
-    IKs = GW::IKs<FloatType>(globals.V, globals.xKs, globals.Ki, globals.Nai, parameters.Nao, parameters.Ko, parameters.GKs, consts.RT_F);
+    currents.IKr = GW::IKr<FloatType>(globals.V, globals.Kr[3], currents.EK, parameters.GKr, consts.sqrtKo);
+    currents.IKs = GW::IKs<FloatType>(globals.V, globals.xKs, globals.Ki, globals.Nai, parameters.Nao, parameters.Ko, parameters.GKs, consts.RT_F);
     IKv14 = GW::IKv14<FloatType>(consts.VF_RT, consts.expmVF_RT, globals.Kv14[4], globals.Ki, globals.Nai, consts.PKv14_Csc, parameters.Nao, parameters.Ko);
-    IKv43 = GW::IKv43<FloatType>(globals.V, globals.Kv43[4], EK, parameters.GKv43);
-    Ito1 = IKv14 + IKv43;
-    Ito2 = GW::Ito2<FloatType>(CRUs.ClCh, consts.VF_RT, consts.expmVF_RT, parameters.Clcyto, parameters.Clo, consts.Ito2_const);
-    IK1 = GW::IK1<FloatType>(globals.V, EK, parameters.GK1, consts.IK1_const, consts.F_RT);
-    IKp = GW::IKp<FloatType>(globals.V, EK, parameters.GKp);
+    IKv43 = GW::IKv43<FloatType>(globals.V, globals.Kv43[4], currents.EK, parameters.GKv43);
+    currents.Ito1 = IKv14 + IKv43;
+    currents.Ito2 = GW::Ito2<FloatType>(CRUs.ClCh, consts.VF_RT, consts.expmVF_RT, parameters.Clcyto, parameters.Clo, consts.Ito2_const);
+    currents.IK1 = GW::IK1<FloatType>(globals.V, currents.EK, parameters.GK1, consts.IK1_const, consts.F_RT);
+    currents.IKp = GW::IKp<FloatType>(globals.V, currents.EK, parameters.GKp);
     
-    ICaL = GW::ICaL<FloatType>(JLCC, consts.ICaL_const);
-    ICab = common::Ib<FloatType>(globals.V, parameters.GCab, ECa);
-    IpCa = common::IpCa<FloatType>(globals.Cai, parameters.IpCamax, parameters.KmpCa);
+    currents.ICaL = GW::ICaL<FloatType>(JLCC, consts.ICaL_const);
+    currents.ICab = common::Ib<FloatType>(globals.V, parameters.GCab, currents.ECa);
+    currents.IpCa = common::IpCa<FloatType>(globals.Cai, parameters.IpCamax, parameters.KmpCa);
 
-    Jup = GW::Jup<FloatType>(globals.Cai, globals.CaNSR, parameters.Vmaxf, parameters.Vmaxr, parameters.Kmf, parameters.Kmr, parameters.Hf, parameters.Hr);
-    Jtr_tot = GW::flux_average<FloatType>(Jtr, consts.CRU_factor);
-    Jxfer_tot = GW::flux_average<FloatType>(Jxfer, consts.CRU_factor);
-    beta_cyto = GW::beta_cyto<FloatType>(globals.Cai, consts.CMDN_const, parameters.KCMDN);
+    currents.Jup = GW::Jup<FloatType>(globals.Cai, globals.CaNSR, parameters.Vmaxf, parameters.Vmaxr, parameters.Kmf, parameters.Kmr, parameters.Hf, parameters.Hr);
+    currents.Jtr_tot = GW::flux_average<FloatType>(Jtr, consts.CRU_factor);
+    currents.Jxfer_tot = GW::flux_average<FloatType>(Jxfer, consts.CRU_factor);
+    consts.beta_cyto = GW::beta_cyto<FloatType>(globals.Cai, consts.CMDN_const, parameters.KCMDN);
 
     dGlobals.CaLTRPN = GW::dTRPNCa<FloatType>(globals.CaLTRPN, globals.Cai, parameters.LTRPNtot, parameters.kLTRPNp, parameters.kLTRPNm);
     dGlobals.CaHTRPN = GW::dTRPNCa<FloatType>(globals.CaHTRPN, globals.Cai, parameters.HTRPNtot, parameters.kHTRPNp, parameters.kHTRPNm);
 
-    dGlobals.Nai = -dt*consts.CSA_FVcyto * (INa + INab + 3*INaCa + 3*INaK);
-    dGlobals.Ki = -dt*consts.CSA_FVcyto * (IKr + IKs + Ito1 + IK1 + IKp - 2*INaK);
-    dGlobals.Cai = dt*beta_cyto * (-0.5*consts.CSA_FVcyto*(ICab + IpCa - 2*INaCa) + consts.VSS_Vcyto*Jxfer_tot - Jup - (dGlobals.CaLTRPN + dGlobals.CaHTRPN));
-    dGlobals.CaNSR = dt*(consts.Vcyto_VNSR * Jup - consts.VJSR_VNSR * Jtr_tot);
+    dGlobals.Nai = -dt*consts.CSA_FVcyto * (currents.INa + currents.INab + 3*currents.INaCa + 3*currents.INaK);
+    dGlobals.Ki = -dt*consts.CSA_FVcyto * (currents.IKr + currents.IKs + currents.Ito1 + IK1 + IKp - 2*currents.INaK);
+    dGlobals.Cai = dt*consts.beta_cyto * (-0.5*consts.CSA_FVcyto*(currents.ICab + current.IpCa - 2*current.INaCa) + consts.VSS_Vcyto*currents.Jxfer_tot - currents.Jup - (dGlobals.CaLTRPN + dGlobals.CaHTRPN));
+    dGlobals.CaNSR = dt*(consts.Vcyto_VNSR * Jup - consts.VJSR_VNSR * currents.Jtr_tot);
     dGlobals.CaLTRPN *= dt;
     dGlobals.CaHTRPN *= dt;
 
-    dGlobals.V = dt*(Istim - (INa + ICaL + IKr + IKs + Ito1 + IK1 + IKp + Ito2 + INaK + INaCa + IpCa + ICab + INab));
+    dGlobals.V = dt*(Istim - (currents.INa + currents.ICaL + currents.IKr + currents.IKs + currents.Ito1 + currents.IK1 + currents.IKp + currents.Ito2 + currents.INaK + currents.INaCa + currents.IpCa + currents.ICab + currents.INab));
 }
 
 template <typename FloatType>
@@ -389,8 +379,8 @@ void GW_model<FloatType>::write_state(std::ofstream &file, const FloatType t){
          << nlcc5 << ',' << nlcc6 << ',' << nlcc7 << ',' << nlcc8 << ',' << nlcc9 << ',' << nlcc10 << ',' << nlcc11 << ',' << nlcc12 << ',' 
          << CRUs.LCC_activation.sum() << ',' << nryr << ',' << CRUs.ClCh.sum();
 
-    file << ',' << INa << ',' << ICaL << ',' << IKr << ',' << IKs << ',' << Ito1 << ',' << IK1 << ',' << IKp << ',' << Ito2 << ',' << INaK
-         <<  ',' << INaCa << ',' << IpCa << ',' << ICab << ',' << INab << std::endl; 
+    file << ',' << currents.INa << ',' << current.ICaL << ',' << currents.IKr << ',' << currents.IKs << ',' << currents.Ito1 << ',' << currents.IK1 << ',' << currents.IKp << ',' << currents.Ito2 << ',' << currents.INaK
+         <<  ',' << currents.INaCa << ',' << currents.IpCa << ',' << currents.ICab << ',' << currents.INab << std::endl; 
 }
 
 

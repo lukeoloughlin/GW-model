@@ -9,15 +9,12 @@ namespace GW {
         for (unsigned int i = 0; i < LCC.shape(0); i++){
             for (unsigned int j = 0; j < 4; j++){
                 idx = sample_weights(weights, 1.0, 3);
-                if (idx == 0){
+                if (idx == 0)
                     LCC(i,j) = 1;
-                } 
-                else if (idx == 1){
+                else if (idx == 1)
                     LCC(i,j) = 2;
-                }
-                else {
+                else 
                     LCC(i,j) = 7;
-                }
             }
         }
     }
@@ -28,12 +25,7 @@ namespace GW {
         for (unsigned int i = 0; i < LCC_a.shape(0); i++){
             for (unsigned int j = 0; j < 4; j++){
                 idx = sample_weights(weights, 1.0, 2);
-                if (idx == 0){
-                    LCC_a(i,j) = 1;
-                } 
-                else {
-                    LCC_a(i,j) = 0;
-                }
+                LCC_a(i,j) = (idx == 0) ? 1 : 0;
             }
         }
     }
@@ -46,15 +38,12 @@ namespace GW {
             for (int j = 0; j < 4; j++){
                 for (int k = 0; k < 5; k++){
                     idx = sample_weights(weights, 1.0, 3);
-                    if (idx == 0){
+                    if (idx == 0)
                         RyR(i,j,0)++;
-                    } 
-                    else if (idx == 1){
+                    else if (idx == 1)
                         RyR(i,j,4)++;
-                    }
-                    else {
+                    else 
                         RyR(i,j,5)++;
-                    }
                 }    
             }
         }
@@ -67,68 +56,62 @@ namespace GW {
         for (int i = 0; i < ClCh.shape(0); i++){
             for (int j = 0; j < 4; j++){
                 idx = sample_weights(weights, 1.0, 2);
-                if (idx == 0){
-                    ClCh(i,j) = 0;
-                } 
-                else {
-                    ClCh(i,j) = 1;
-                }
+                ClCh(i,j) = idx;
             }
         }
     }
 
 
     template <typename FloatType>
-    void set_from_params(Constants<FloatType> &consts, const Parameters<FloatType> &params, const int nCRU_simulated){
-        consts.RT_F = GAS_CONST * params.T / FARADAY;
-        consts.F_RT = 1.0 / consts.RT_F;
-        consts.CRU_factor = (FloatType)params.NCaRU / (FloatType)nCRU_simulated;
-        consts.CSA_FVcyto = params.CSA / (1000 * params.Vcyto * FARADAY);
-        consts.VSS_Vcyto = params.VSS / params.Vcyto;
-        consts.Vcyto_VNSR = params.Vcyto / params.VNSR;
-        consts.VJSR_VNSR = params.VJSR / params.VNSR;
+    Constants<FloatType>::Constants(const Parameters<FloatType> &params, const int nCRU_simulated){
+        RT_F = GAS_CONST * params.T / FARADAY;
+        F_RT = 1.0 / RT_F;
+        CRU_factor = (FloatType)params.NCaRU / (FloatType)nCRU_simulated;
+        CSA_FVcyto = params.CSA / (1000 * params.Vcyto * FARADAY);
+        VSS_Vcyto = params.VSS / params.Vcyto;
+        Vcyto_VNSR = params.Vcyto / params.VNSR;
+        VJSR_VNSR = params.VJSR / params.VNSR;
         // LCC rates
-        consts.a = params.a;
-        consts.gamma0 = params.gamma0;
-        consts.gamma0a = consts.gamma0 * params.a;
-        consts.gamma0a2 = consts.gamma0a * params.a;
-        consts.gamma0a3 = consts.gamma0a2 * params.a;
-        consts.gamma0a4 = consts.gamma0a3 * params.a;
-        consts.binv = 1.0 / params.b; 
-        consts.omega = params.omega;
-        consts.omega_b = consts.omega * consts.binv;
-        consts.omega_b2 = consts.omega_b * consts.binv;
-        consts.omega_b3 = consts.omega_b2 * consts.binv;
-        consts.omega_b4 = consts.omega_b3 * consts.binv;
+        a = params.a;
+        gamma0 = params.gamma0;
+        gamma0a = gamma0 * params.a;
+        gamma0a2 = gamma0a * params.a;
+        gamma0a3 = gamma0a2 * params.a;
+        gamma0a4 = gamma0a3 * params.a;
+        binv = 1.0 / params.b; 
+        omega = params.omega;
+        omega_b = omega * binv;
+        omega_b2 = omega_b * binv;
+        omega_b3 = omega_b2 * binv;
+        omega_b4 = omega_b3 * binv;
         // CaSS constants
-        consts.BSR_const = params.KBSR * params.BSRT;
-        consts.BSL_const = params.KBSL * params.BSLT;
+        BSR_const = params.KBSR * params.BSRT;
+        BSL_const = params.KBSL * params.BSLT;
         // CaJSR constants
-        consts.VSS_VJSR = params.VSS / params.VJSR;
-        consts.CSQN_const = params.KCSQN * params.CSQNT;
+        VSS_VJSR = params.VSS / params.VJSR;
+        CSQN_const = params.KCSQN * params.CSQNT;
         // JLCC constants
-        consts.JLCC_const = 2.0e6 * params.PCaL / params.VSS;
-        consts.Cao_scaled = 0.341 * params.Cao;
+        JLCC_const = 2.0e6 * params.PCaL / params.VSS;
+        Cao_scaled = 0.341 * params.Cao;
         // INaCa consts
-        consts.Nao3 = params.Nao*params.Nao*params.Nao;
-        consts.INaCa_const = 5000.0 * params.kNaCa / ((params.KmNa*params.KmNa*params.KmNa + params.Nao*params.Nao*params.Nao) * (params.KmCa + params.Cao));
+        Nao3 = params.Nao*params.Nao*params.Nao;
+        INaCa_const = 5000.0 * params.kNaCa / ((params.KmNa*params.KmNa*params.KmNa + params.Nao*params.Nao*params.Nao) * (params.KmCa + params.Cao));
         // INaK coonsts
-        consts.sigma = (exp(params.Nao / 67.3) - 1.0) / 7.0;
-        consts.INaK_const = params.INaKmax * params.Ko / (params.Ko + params.KmKo);
+        sigma = (exp(params.Nao / 67.3) - 1.0) / 7.0;
+        INaK_const = params.INaKmax * params.Ko / (params.Ko + params.KmKo);
         // IKr consts
-        consts.sqrtKo = sqrt(params.Ko);
+        sqrtKo = sqrt(params.Ko);
         // Ito1 consts
-        consts.PKv14_Csc = params.PKv14 / params.Csc;
+        PKv14_Csc = params.PKv14 / params.Csc;
         // Ito2 consts
-        consts.Ito2_const = 1.0e9 * params.Pto2 * FARADAY * consts.CRU_factor / params.CSA;
+        Ito2_const = 1.0e9 * params.Pto2 * FARADAY * CRU_factor / params.CSA;
         // IK1 consts
-        consts.IK1_const = params.Ko / (params.Ko + params.KmK1);
+        IK1_const = params.Ko / (params.Ko + params.KmK1);
         // ICaL consts
-        consts.ICaL_const = -1000.0 * (2.0*FARADAY * params.VSS) * consts.CRU_factor / params.CSA;
+        ICaL_const = -1000.0 * (2.0*FARADAY * params.VSS) * CRU_factor / params.CSA;
         // CMDN_consts
-        consts.CMDN_const = params.KCMDN * params.CMDNT;
+        CMDN_const = params.KCMDN * params.CMDNT;
     }
-
     
     template <typename FloatType>
     void update_LCC_rates(FloatType* const LCC_rates, FloatType* const subunit_rates, const int* const LCC, const FloatType* const CaSS, 
@@ -213,10 +196,12 @@ namespace GW {
         h = val;
         j = val;
         xKs = val;
-
-        memset(Kr, val, 5*sizeof(FloatType));
-        memset(Kv43, val, 10*sizeof(FloatType));
-        memset(Kv14, val, 10*sizeof(FloatType));
+        for (int i = 0; i < 5; ++i)
+            Kr[i] = val;
+        for (int i = 0; i < 10; ++i){
+            Kv14[i] = val;
+            Kv43[i] = val;            
+        }
     }
 
 
@@ -225,8 +210,8 @@ namespace GW {
                                                     LCC(NDArray<int,2>(nCRU,4)), LCC_activation(NDArray<int,2>(nCRU,4)),
                                                     RyR(NDArray<int,3>(nCRU,4,6)), ClCh(NDArray<int,2>(nCRU,4))
     {
-        CaSS.set_to_val(1.45370e-4);
-        CaJSR.set_to_val(0.908408);
+        CaSS.set_to(1.45370e-4);
+        CaJSR.set_to(0.908408);
         initialise_LCC(LCC);
         initialise_LCC_a(LCC_activation);
         initialise_RyR(RyR);
@@ -269,5 +254,4 @@ namespace GW {
         for (int k = 0; k < 12; k++)
             subunit_rates[idx] += RyR_rates[12*idx+k];
     }
-
 }

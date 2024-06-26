@@ -4,32 +4,6 @@
 #include "GW_utils.hpp"
 #include "common.hpp"
 #include "ndarray.hpp"
-//#include <omp.h>
-//#include <unistd.h>
-
-/*
-double update_rates(const int* const, const int* const, const int* const, const int* const, double* const, double* const, double* const, double* const, const double* const, double*, const double, const double, const double, const double, const Constants&);
-void update_fluxes(const double* const, const double, double*, double*, const Constants&);
-void update_CaSS(double* const, int*, const double* const, const double* const, const double* const, const double* const, const double, const Constants&);
-void update_state(int* const, int* const, int* const, double* const, int* const, const double* const, const double* const, const double* const, const double* const, const double* const, const int, const double* const, double*, double*, const double, const double, const double, const Constants&);
-void sample_LCC(int* const, const double* const, const double, const int* const, const double* const, double*, const int, const double, const double, const Constants&);
-void sample_RyR(int* const, double* const, const double* const, const double, double*, const int, const double* const, const double ,  const Constants&);
-void SSA_subunit(int* const, int* const, int* const, double* const, int* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double* const, double, const double, const double, const double, const double, const double, const double, const double, const double, const double, double* const, const Constants&);
-void SSA(NDArray<int,2>&, NDArray<int,2>&, NDArray<int,3>&, NDArray<int,2>&, NDArray<double,2>&, NDArray<double,1>&, const double, const double, NDArray<double,2>&, NDArray<double,2>&, NDArray<double,1>&, const double, const double, const double, const int, const Constants&);
-*/
-
-/*
-int sample_weights(const double* const weights, const double total_weight, const int size){
-    const double u = urand() * total_weight;
-    double cum_weight = weights[0];
-    int i = 0;
-    while (cum_weight < u && i < (size-1)){
-        i++;
-        cum_weight += weights[i];
-    }
-    return i;
-}
-*/
 
 namespace GW {
 

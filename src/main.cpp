@@ -20,13 +20,14 @@ int main(int argc, char** argv)
         return 0;
     }
 
+
     std::string fname = argv[1];
     GW_model<double> model(1000);
 
     std::ofstream file;
     file.open(fname, std::ofstream::out | std::ofstream::trunc );
     file << std::setprecision(12);
-    model.euler_write(1e-3, 1, [](double t){ return (t < 2) ? 35.0 : 0.0; }, file, 1000);
+    model.euler_write(1e-3, 500000, [](double t){ return (t < 2) ? 35.0 : 0.0; }, file, 1000);
     file.close();
     std::cout << model.globals.V << std::endl;
 

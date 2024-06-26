@@ -46,35 +46,7 @@ protected:
         return last + carry*dims[i];
     }
 
-
-    /*
-    template <typename... Indices>
-    inline int to_linear_index(const Indices... indices) const {
-        static_assert(sizeof...(indices) == N, "Attempted to index array with invalid number of dimensions.");
-        int idx = 0;
-        int i = 0;
-        for (const auto p : {indices...}){
-            assert((p > 0, "Invalid indexing argument. A non-positive index was passed."));
-            if (i == 0)
-                idx += p;
-            else {
-                idx *= dims[i];
-                idx += p;
-            }
-            ++i;
-        }
-        return idx;
-    }
-    */
-
-
 public:
-    // Read only access
-    //template <typename... Indices>
-    //inline T get(Indices... indices) const {
-    //    int idx = to_linear_index(indices...);
-    //    return storage[idx];
-    //}
     
     template <typename... Indices>
     inline T operator() (Indices... indices) const { 
@@ -104,24 +76,7 @@ public:
     inline NDArrayBase& operator/=(const T val);
     inline NDArrayBase& operator/=(const NDArrayBase<T,N> &val);
 
-
-    // move assignment
-    /*
-    NDArray& operator=(NDArray&& other) noexcept {
-        // Guard self assignment
-        if (this == &other)
-            return *this;
-        
-        if (this->is_dynamically_allocated != other.is_dynamically_allocated)
-            exit(EXIT_FAILURE);
- 
-        delete_storage();   // release resource in *this if appropriate
-        storage = std::exchange(other.storage, nullptr); // leave other in valid state
-        dims = std::exchange(other.dims, nullptr);
-        size = std::exchange(other.size, 0);
-        return *this;
-    }
-    */
+    inline NDArrayBase& copy(NDArrayBase& other);
     
     template <typename... Indices>
     inline void set(const T val, Indices... indices){
@@ -140,20 +95,6 @@ public:
     inline void set_to_ones(){ set_to(1); }
 
     T* data() const { return storage; }
-
-    inline void exp();
-    inline void log();
-    inline void sin();
-    inline void cos();
-    inline void tan();
-    inline void sinh();
-    inline void cosh();
-    inline void tanh();
-    inline void pow(const T exponent);
-    inline void abs();
-
-    template <typename LambdaType>
-    inline void map(LambdaType&& fn);
 
     T maximum() const { return *std::max_element(storage, storage+size); }
     T minimum() const { return *std::min_element(storage, storage+size); }
@@ -196,7 +137,7 @@ public:
     
     template <typename... Dimensions>
     NDArrayMap(T* arr, Dimensions... indices){
-        int size_ = 1;
+        size_t size_ = 1;
         int i = 0;
         int dims_[N];
         for (const auto p : {indices...}){
@@ -214,7 +155,7 @@ public:
     NDArrayMap(T* arr, const int dims_[N], const int size_) { 
         this->set_storage(arr);
         this->set_dims(dims_);
-        this->set_size(size_);
+        this->set_size((size_t)size_);
         this->is_map = true;
     }
 
@@ -284,31 +225,30 @@ class NDArray : public NDArrayBase<T,N> {
 public:
     NDArray() = default;
 
-    NDArray(const NDArrayBase<T,N>& other) {
-        std::cout << "Calling copy constructor!" << std::endl;
+    NDArray(const NDArray<T,N>& other) {
         this->storage = new T[other.size];
-        this->copy_from_array(other.storage);
-        std::memcpy(this->dims, other.dims, N*sizeof(T));
         this->size = other.size;
+        this->copy_from_array(other.storage);
+        std::memcpy(this->dims, other.dims, N*sizeof(int));
     }
 
     
-    NDArray(NDArrayBase<T,N>&& other) {
-        std::cout << "Calling move constructor!" << std::endl;
-        this->storage = other.storage;
-        other.storage = nullptr;
-        std::cout << "Created storage!" << std::endl;
-        std::memcpy(this->dims, other.dims, N*sizeof(size_t));
-        std::memset(other.dims, 0, N*sizeof(size_t));
+    NDArray(NDArray<T,N>&& other) {
         this->size = other.size;
         other.size = 0;
+
+        this->storage = other.storage;
+        other.storage = nullptr;
+
+        std::memcpy(this->dims, other.dims, N*sizeof(int));
+        std::memset(other.dims, 0, N*sizeof(int));
     }
 
     template <typename... Dimensions>
     NDArray(Dimensions... indices) {
         static_assert(sizeof...(indices) == N, "Attempted to initialise NDArray array with invalid number of dimensions. "
                                                 "Make sure that the number of dimensions passed to the construct and the template parameter N match.");
-        int sz = 1;
+        size_t sz = 1;
         int dims_[N];
         int i = 0;
         for (const auto p : {indices...}){
@@ -323,14 +263,13 @@ public:
         this->set_dims(dims_);
         this->set_storage(arr);
 
-        this->set_to_zeros();
+        this->set_to_zeros();    
     }
     
     ~NDArray() { delete[] this->storage; }
 
     
-    NDArray& operator=(NDArrayBase<T,N>&& other) noexcept { // The move operator
-        std::cout << "Called move" << std::endl;
+    NDArray& operator=(NDArray<T,N>&& other) noexcept { // The move operator
         if (this == &other)
             return *this;
 
@@ -349,8 +288,7 @@ public:
         exit(EXIT_FAILURE);
     }
 
-    NDArray& operator=(const NDArrayBase<T,N>& other) { // The copy operator
-        std::cout << "Called copy" << std::endl;
+    NDArray& operator=(const NDArray<T,N>& other) { // The copy operator
         if (this == &other)
             return *this;
         
@@ -366,18 +304,31 @@ public:
 };
 
 
-template <typename T, typename S, size_t N>
-NDArray<T,N> operator+(const NDArray<T,N>& arr, const S& arr_or_T);
-template <typename T, typename S, size_t N>
-NDArray<T,N> operator+(const S& arr_or_T, NDArray<T,N>& arr);
-template <typename T, typename S, size_t N>
-NDArray<T,N> operator+(NDArray<T,N>&& arr, const S& arr_or_T);
-template <typename T, typename S, size_t N>
-NDArray<T,N> operator+(const S& arr_or_T, NDArray<T,N>&& arr);
-template <typename T, typename S, size_t N>
-NDArray<T,N> operator+(NDArray<T,N>&& arr, S&& arr_or_T);
-template <typename T, typename S, size_t N>
-NDArray<T,N> operator+(S&& arr_or_T, NDArray<T,N>&& arr);
+template <typename T, size_t N>
+NDArray<T,N> operator+(const NDArray<T,N>& arr1, const NDArray<T,N>& arr2);
+template <typename T, size_t N>
+NDArray<T,N> operator+(NDArray<T,N>&& arr1, const NDArray<T,N>& arr2);
+template <typename T, size_t N>
+NDArray<T,N> operator+(NDArray<T,N>& arr1, const NDArray<T,N>&& arr2);
+template <typename T, size_t N>
+NDArray<T,N> operator+(NDArray<T,N>&& arr1, NDArray<T,N>&& arr2);
+
+template <typename T, size_t N>
+NDArray<T,N> operator+(const NDArray<T,N>& arr, const T& val);
+template <typename T, size_t N>
+NDArray<T,N> operator+(const T& val, NDArray<T,N>& arr);
+template <typename T, size_t N>
+NDArray<T,N> operator+(T&& val, const NDArray<T,N>& arr);
+template <typename T, size_t N>
+NDArray<T,N> operator+(const NDArray<T,N>& arr, T&& val);
+template <typename T, size_t N>
+NDArray<T,N> operator+(const T& val, NDArray<T,N>&& arr);
+template <typename T, size_t N>
+NDArray<T,N> operator+(NDArray<T,N>&& arr, const T& val);
+template <typename T, size_t N>
+NDArray<T,N> operator+(T&& val, NDArray<T,N>&& arr);
+template <typename T, size_t N>
+NDArray<T,N> operator+(NDArray<T,N>&& arr, T&& val);
 
 template <typename T, typename S, size_t N>
 NDArray<T,N> operator-(const NDArray<T,N>& arr, const S& arr_or_T);

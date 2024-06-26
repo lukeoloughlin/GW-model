@@ -15,24 +15,24 @@ void GW_model<FloatType>::initialise_JLCC(){
     }
 }
 
+/* 
+The below three expressions are written in this ugly way to avoid copying, not that it matters much here since this is only initialisation.
+To avoid copying with an expression like Jxfer = rxfer * (CaSS - Cai) requires expression templating which sounds too compilcated here.
+
+Consider creating a wrapper around Eigen::Matrix class and use their expression templating via noalias().
+*/
 template <typename FloatType>
 void GW_model<FloatType>::initialise_Jxfer(){
-    //Jxfer = parameters.rxfer * (CRUs.CaSS - globals.Cai);
-    //std::cout << Jxfer(0,0) << std::endl;
-    Jxfer.set_to_zeros();
-    Jxfer += CRUs.CaSS;
+    Jxfer.copy(CRUs.CaSS);
     Jxfer -= globals.Cai;
     Jxfer *= parameters.rxfer;
 }
-
 template <typename FloatType>
 void GW_model<FloatType>::initialise_Jtr(){
-    Jtr.set_to_zeros();
+    Jtr.copy(CRUs.CaJSR).mul(-1);
     Jtr += globals.CaNSR;
-    Jtr -= CRUs.CaJSR;
     Jtr *= parameters.rtr;
 }
-
 template <typename FloatType>
 void GW_model<FloatType>::initialise_QKr(){
     QKr.set_to_zeros();

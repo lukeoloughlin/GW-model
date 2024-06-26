@@ -4,7 +4,9 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/local/include"
+                "/usr/local/include",
+                "${workspaceFolder}/extern/pybind11/include",
+
             ],
             "defines": [],
             "macFrameworkPath": [

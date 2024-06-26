@@ -106,6 +106,8 @@ namespace GW {
             QKv43.set_to_zeros();
         }
 
+        int get_nCRU() const { return nCRU; }
+
         void euler_step(const FloatType dt);
 
         template <typename LambdaType>

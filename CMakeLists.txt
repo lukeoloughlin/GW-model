@@ -16,6 +16,7 @@ add_compile_options(
     $<$<CONFIG:RELEASE>:-Ofast>
     $<$<CONFIG:RELEASE>:-march=native>
     $<$<CONFIG:RELEASE>:-fopenmp>
+    $<$<CONFIG:RELEASE>:-funroll-loops>
     $<$<CONFIG:RELEASE>:-flto>
     $<$<CONFIG:DEBUG>:-g>
     $<$<CONFIG:DEBUG>:-Werror>

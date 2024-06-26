@@ -16,9 +16,9 @@ template <typename NumType>
 inline NumType cube(NumType x) { return x*x*x; }
 
 
-inline std::mt19937& seed(){
+inline std::mt19937_64& seed(){
     static thread_local std::random_device rd;
-    static thread_local std::mt19937 gen(rd());
+    static thread_local std::mt19937_64 gen(rd());
     return gen;
 }
 

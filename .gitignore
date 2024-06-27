@@ -38,4 +38,4 @@
 build/
 
 # vscode options
-.vscode/
+**/.vscode/

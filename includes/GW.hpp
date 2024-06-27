@@ -44,7 +44,8 @@ namespace GW {
         Parameters<FloatType> parameters;
         GlobalState<FloatType> globals;
         CRUState<FloatType> CRUs;
-
+        
+        FloatType Istim = 0;
     private:
 
         int nCRU;
@@ -64,7 +65,6 @@ namespace GW {
 
         Currents<FloatType> currents;
         GlobalState<FloatType> dGlobals;
-        FloatType Istim = 0;
 
         void initialise_QKr();
         void initialise_JLCC();

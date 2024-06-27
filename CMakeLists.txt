@@ -33,8 +33,14 @@ endif()
 
 set(PYBIND11_FINDPYTHON ON)
 
-find_package(Python 3.12 COMPONENTS Interpreter Development REQUIRED)
+if(APPLE)
+    find_package(Python 3.12 COMPONENTS Interpreter Development REQUIRED)
+else()
+    find_package(Python 3.11 COMPONENTS Interpreter Development REQUIRED)
+endif()
 find_package(pybind11 CONFIG REQUIRED)
+
+find_package(Eigen3 3.3)
 
 #set(PROJECT_INCLUDE_DIR "includes")
 # Source files
@@ -48,6 +54,7 @@ find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(${EXEC} OpenMP::OpenMP_CXX)
 endif()
+include_directories(/home/luke/anaconda3/include/eigen3)
 
 
 install(TARGETS GreensteinWinslow DESTINATION .)

@@ -36,3 +36,6 @@
 
 # cmake cache
 build/
+
+# vscode options
+.vscode/

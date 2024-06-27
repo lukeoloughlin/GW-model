@@ -5,7 +5,10 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/extern/pybind11/include",
-                "/home/luke/anaconda3/include/python3.11"
+                "/opt/anaconda3/include/python3.11",
+                "/opt/homebrew/include",
+                "/opt/homebrew/opt/libomp",
+                "/opt/homebrew/Cellar/libomp/18.1.7/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

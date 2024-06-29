@@ -2,9 +2,34 @@
 #define GW_UTILS_H
 
 //#include "GW.hpp"
-#include "ndarray.hpp"
+//#include "ndarray.hpp"
 #include "common.hpp"
 #include <cstring>
+#include <vector>
+#include <unsupported/Eigen/CXX11/Tensor>
+#include <Eigen/Core>
+
+template<typename T>
+using Array1 = Eigen::Array<T,1,Eigen::Dynamic,Eigen::RowMajor>;
+template<typename T>
+using Array2 = Eigen::Array<T,Eigen::Dynamic,4,Eigen::RowMajor>;
+template<typename T>
+using Array3 = Eigen::TensorMap<Eigen::Tensor<T,3,Eigen::RowMajor>>;
+
+/*
+Bug in pybind11 interface of Eigen tensors that causes hangs in python after calling a function more than once. Using a TensorMap works, so
+we use this container class as a work around
+*/
+
+template<typename T>
+class Array3Container {
+private:
+    std::vector<T> storage;
+public:
+    Eigen::TensorMap<Eigen::Tensor<T,3,Eigen::RowMajor>> array;
+    Array3Container(int n1, int n2, int n3) : storage(n1*n2*n3), array(storage.data(),n1,n2,n3) { }
+
+};
 
 
 namespace GW {
@@ -32,7 +57,6 @@ namespace GW {
         FloatType gamma0 = 0.44;
         FloatType omega = 0.02158;
         FloatType PCaL = 9.13e-13;
-        FloatType KdClCh = 0.1502;
         FloatType kfClCh = 13.3156;
         FloatType kbClCh = 2.0;
         FloatType Pto2 = 2.65e-15;
@@ -129,6 +153,9 @@ namespace GW {
         FloatType Kmr = 1.8;
         FloatType Hf = 0.75;
         FloatType Hr = 0.75;
+
+        Parameters() = default;
+        Parameters(const Parameters<FloatType>& other);
     };
 
     template <typename FloatType>
@@ -221,24 +248,24 @@ namespace GW {
         GlobalState() = default;
         GlobalState(FloatType value);
     };
+
     
     template <typename FloatType>
     struct CRUState {
-        NDArray<FloatType,2> CaSS;
-        NDArray<FloatType,1> CaJSR;
-        NDArray<int,2> LCC;
-        NDArray<int,2> LCC_activation;
-        NDArray<int,3> RyR;
-        NDArray<int,2> ClCh;
+        Array2<FloatType> CaSS;
+        Array1<FloatType> CaJSR;
+        Array2<int> LCC;
+        Array2<int> LCC_activation;
+        Array3Container<int> RyR;
+        Array2<int> ClCh;
 
         CRUState(const int nCRU);
     };
 
-    inline void initialise_LCC(NDArray<int,2> &LCC);
-    inline void initialise_LCC_a(NDArray<int,2> &LCC_a);
-    inline void initialise_RyR(NDArray<int,3> &RyR);
-    inline void initialise_ClCh(NDArray<int,2> &ClCh);
-
+    inline void initialise_LCC(Array2<int> &LCC);
+    inline void initialise_LCC_a(Array2<int> &LCC_a);
+    inline void initialise_RyR(Array3<int> &RyR);
+    inline void initialise_ClCh(Array2<int> &ClCh);
 
     template <typename FloatType>
     inline FloatType RKr(const FloatType V){ return 1.0 / (1.0 + 1.4945*exp(0.0446*V)); }
@@ -257,7 +284,7 @@ namespace GW {
 
     template <typename FloatType>
     inline FloatType IKs(const FloatType V, const FloatType XKs, const FloatType Ki, const FloatType Nai, const FloatType Nao, const FloatType Ko, const FloatType GKs, const FloatType RT_F){
-        return GKs * (XKs*XKs) * (V - EKs(Ki, Ko, Nai, Nao, RT_F));
+        return GKs * square(XKs) * (V - EKs(Ki, Ko, Nai, Nao, RT_F));
     }
 
 
@@ -290,16 +317,15 @@ namespace GW {
 
 
     template <typename FloatType>
-    inline FloatType ICaL(const NDArray<FloatType,2> &JLCC, const FloatType ICaL_const){
+    inline FloatType ICaL(const Array2<FloatType> &JLCC, const FloatType ICaL_const){
         return JLCC.sum() * ICaL_const;
     }
 
 
-    template <typename FloatType, typename IntType>
-    inline FloatType Ito2(const NDArray<IntType,2> &ClCh, const FloatType VFRT, const FloatType expmVFRT, const FloatType Cl_cyto, const FloatType Clo, const FloatType Ito2_const){
+    template <typename FloatType>
+    inline FloatType Ito2(const Array2<int> &ClCh, const FloatType VFRT, const FloatType expmVFRT, const FloatType Cl_cyto, const FloatType Clo, const FloatType Ito2_const){
         return FloatType(ClCh.sum()) * Ito2_const * VFRT * (Cl_cyto * expmVFRT - Clo) / (expmVFRT - 1.0);
     }
-
 
     template <typename FloatType>
     inline FloatType dTRPNCa(const FloatType TRPNCa, const FloatType Cai, const FloatType TRPNtot, const FloatType kTRPNp, const FloatType kTRPNm){
@@ -322,8 +348,8 @@ namespace GW {
     }
 
 
-    template <typename FloatType, std::size_t N>
-    inline FloatType flux_average(const NDArray<FloatType,N> &flux_container, const FloatType CRU_factor){ return flux_container.sum() * CRU_factor; }
+    template <typename FloatType, typename Array>
+    inline FloatType flux_average(const Array &flux_container, const FloatType CRU_factor){ return flux_container.sum() * CRU_factor; }
 
 
     template <typename FloatType>

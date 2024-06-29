@@ -31,6 +31,8 @@ else()
     )
 endif()
 
+add_link_options(-fopenmp)
+
 set(PYBIND11_FINDPYTHON ON)
 
 if(APPLE)
@@ -57,7 +59,7 @@ endif()
 include_directories(/home/luke/anaconda3/include/eigen3)
 
 
-install(TARGETS GreensteinWinslow DESTINATION .)
+install(TARGETS GreensteinWinslow DESTINATION ..)
 
 
 

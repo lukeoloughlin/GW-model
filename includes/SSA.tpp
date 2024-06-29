@@ -4,15 +4,16 @@
 namespace GW {
 
     template <typename FloatType>
-    void CRUStateThread<FloatType>::copy_from_CRUState(const CRUState<FloatType> &state, const NDArray<FloatType,2> &JLCC, const int idx, const Parameters<FloatType> &params){
+    //void CRUStateThread<FloatType>::copy_from_CRUState(const CRUState<FloatType> &state, const NDArray<FloatType,2> &JLCC, const int idx, const Parameters<FloatType> &params){
+    void CRUStateThread<FloatType>::copy_from_CRUState(const CRUState<FloatType> &state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params){
         for (int j = 0; j < 4; j++){
             for (int k = 0; k < 6; k++)
-                RyR[6*j+k] = state.RyR(idx,j,k);
+                RyR[6*j+k] = state.RyR.array(idx,j,k);
 
             LCC[j] = state.LCC(idx,j);
             LCC_activation[j] = state.LCC_activation(idx,j);
             ClCh[j] = state.ClCh(idx,j);
-            open_RyR[j] = (FloatType)(state.RyR(idx,j,2) + state.RyR(idx,j,3));
+            open_RyR[j] = (FloatType)(state.RyR.array(idx,j,2) + state.RyR.array(idx,j,3));
 
             CaSS[j] = state.CaSS(idx,j);
             this->JLCC[j] = JLCC(idx,j); // This doesn't update at every iteration of loop so have to set it here

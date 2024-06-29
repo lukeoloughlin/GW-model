@@ -3,7 +3,12 @@
 
 #include "GW_utils.hpp"
 #include "common.hpp"
-#include "ndarray.hpp"
+//#include "ndarray.hpp"
+
+#include <Eigen/Core>
+
+template<typename T>
+using Array2 = Eigen::Array<T,Eigen::Dynamic,4,Eigen::RowMajor>;
 
 namespace GW {
 
@@ -29,7 +34,8 @@ namespace GW {
         FloatType ClCh_rates[4];
         FloatType subunit_rates[4];
 
-        void copy_from_CRUState(const CRUState<FloatType> &cru_state, const NDArray<FloatType,2> &JLCC, const int idx, const Parameters<FloatType> &params);
+        void copy_from_CRUState(const CRUState<FloatType> &cru_state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params);
+        //void copy_from_CRUState(const CRUState<FloatType> &cru_state, const NDArray<FloatType,2> &JLCC, const int idx, const Parameters<FloatType> &params);
     };
 
     /* Perform the SSA on a single CRU (with fixed global variables) over an interval of length dt */

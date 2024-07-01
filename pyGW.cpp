@@ -1,3 +1,5 @@
+#include <random>
+
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
@@ -7,6 +9,7 @@
 #include "includes/common.hpp"
 #include "includes/GW_utils.hpp"
 #include "includes/GW.hpp"
+#include "includes/xoshiro.hpp"
 
 #include "pyGW.hpp"
 
@@ -16,6 +19,29 @@ using namespace pybind11::literals;
 template <typename T>
 using PyParameters = GW::Parameters<T>;
 
+using namespace XoshiroCpp;
+
+PyGWSimulation run_PRNG_arg(const GW::Parameters<double>& params, const int nCRU, double step_size, int num_steps, 
+                            const std::function<double(double)>& Is, int record_every, std::string& rng){
+    if (rng == "mt19937")
+        return run<std::mt19937>(params, nCRU, step_size, num_steps, Is, record_every);
+    else if (rng == "mt19937_64")
+        return run<std::mt19937_64>(params, nCRU, step_size, num_steps, Is, record_every);
+    else if (rng == "xoshiro256+")
+        return run<Xoshiro256Plus>(params, nCRU, step_size, num_steps, Is, record_every);
+    else if (rng == "xoshiro256++")
+        return run<Xoshiro256PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every);
+    else if (rng == "xoshiro256**")
+        return run<Xoshiro256StarStar>(params, nCRU, step_size, num_steps, Is, record_every);
+    else if (rng == "xoroshiro128+")
+        return run<Xoroshiro128Plus>(params, nCRU, step_size, num_steps, Is, record_every);
+    else if (rng == "xoroshiro128++")
+        return run<Xoroshiro128PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every);
+    else if (rng == "xoroshiro128**")
+        return run<Xoroshiro128StarStar>(params, nCRU, step_size, num_steps, Is, record_every);
+    else
+        throw std::invalid_argument(rng);
+}
 
 
 PYBIND11_MODULE(GreensteinWinslow, m) {
@@ -166,11 +192,13 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("CaJSR", &PyGWSimulation::CaJSR)
         .def_readwrite("CaSS", &PyGWSimulation::CaSS)
         .def_readwrite("LCC", &PyGWSimulation::LCC)
-        .def_readwrite("LCC_activation", &PyGWSimulation::LCC_activation)
+        .def_readwrite("LCC_inactivation", &PyGWSimulation::LCC_inactivation)
         .def_readwrite("RyR", &PyGWSimulation::RyR)
         .def_readwrite("ClCh", &PyGWSimulation::ClCh)
         .def("__repr__", [](const PyGWSimulation &x) {return "Greenstein and Winslow model solution over the interval [0, " + std::to_string(x.tspan) + "] with " + std::to_string(x.nCRU) + " CRUs"; });
    
 
-    m.def("run", &run, "Simulate the model", "parameters"_a, "nCRU"_a, "step_size"_a, "num_steps"_a, "Istim"_a, "record_every"_a, py::call_guard<py::gil_scoped_release>());
+    m.def("run", &run_PRNG_arg, "Simulate the model", "parameters"_a, "nCRU"_a, "step_size"_a, "num_steps"_a, 
+                                                      "Istim"_a, "record_every"_a, "PRNG"_a = "mt19937_64", 
+                                                       py::call_guard<py::gil_scoped_release>());
 }

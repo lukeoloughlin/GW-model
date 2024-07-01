@@ -3,12 +3,12 @@
 namespace GW {
 
 
-    template <typename FloatType>
-    void GW_model<FloatType>::initialise_JLCC(){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::initialise_JLCC(){
         for (int i = 0; i < JLCC.rows(); ++i){
         //for (int i = 0; i < JLCC.shape(0); ++i){
             for (int j = 0; j < 4; j++){
-                if ((CRUs.LCC_activation(i,j) == 1) && (CRUs.LCC(i,j) == 6 || CRUs.LCC(i,j) == 12))
+                if ((CRUs.LCC_inactivation(i,j) == 1) && (CRUs.LCC(i,j) == 6 || CRUs.LCC(i,j) == 12))
                     JLCC(i,j) = consts.JLCC_const * consts.VF_RT * (consts.Cao_scaled - consts.JLCC_exp * CRUs.CaSS(i,j));
                 else
                     JLCC(i,j) = 0.0;
@@ -16,8 +16,8 @@ namespace GW {
         }
     }
 
-    template <typename FloatType>
-    void GW_model<FloatType>::update_QKr(){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::update_QKr(){
         QKr(0,1) = 0.0069*exp(0.0272*globals.V);
         QKr(0,0) = -QKr(0,1);
 
@@ -38,11 +38,11 @@ namespace GW {
     }
 
 
-    template <typename FloatType>
-    void GW_model<FloatType>::update_CRUstate_from_temp(const CRUStateThread<FloatType> &temp, const int idx){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::update_CRUstate_from_temp(const CRUStateThread<FloatType> &temp, const int idx){
         for (int j = 0; j < 4; j++){
             CRUs.LCC(idx,j) = temp.LCC[j];
-            CRUs.LCC_activation(idx,j) = temp.LCC_activation[j];
+            CRUs.LCC_inactivation(idx,j) = temp.LCC_inactivation[j];
             for (int k = 0; k < 6; k++)
                 CRUs.RyR.array(idx,j,k) = temp.RyR[6*j+k];
             CRUs.ClCh(idx,j) = temp.ClCh[j];
@@ -55,8 +55,8 @@ namespace GW {
         Jtr(idx) = temp.Jtr;
     }
 
-    template <typename FloatType>
-    void GW_model<FloatType>::update_QKv(){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::update_QKv(){
         const FloatType alphaa14 = parameters.alphaa0Kv14 * exp(parameters.aaKv14 * globals.V);
         const FloatType alphaa43 = parameters.alphaa0Kv43 * exp(parameters.aaKv43 * globals.V);
 
@@ -117,8 +117,8 @@ namespace GW {
     }
 
 
-    template <typename FloatType>
-    void GW_model<FloatType>::update_Kr_derivatives(const FloatType dt){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::update_Kr_derivatives(const FloatType dt){
         dGlobals.Kr[0] = dt*(QKr(1,0)*globals.Kr[1] + QKr(0,0)*globals.Kr[0]);
         dGlobals.Kr[1] = dt*(QKr(0,1)*globals.Kr[0] + QKr(2,1)*globals.Kr[2] + QKr(1,1)*globals.Kr[1]);
         dGlobals.Kr[2] = dt*(QKr(1,2)*globals.Kr[1] + QKr(3,2)*globals.Kr[3] + QKr(4,2)*globals.Kr[4] + QKr(2,2)*globals.Kr[2]);
@@ -126,8 +126,8 @@ namespace GW {
         dGlobals.Kr[4] = dt*(QKr(2,4)*globals.Kr[2] + QKr(3,4)*globals.Kr[3] + QKr(4,4)*globals.Kr[4]);
     }
 
-    template <typename FloatType>
-    void GW_model<FloatType>::update_Kv_derivatives(const FloatType dt){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::update_Kv_derivatives(const FloatType dt){
         dGlobals.Kv14[0] = dt*(QKv14(1,0)*globals.Kv14[1] + QKv14(5,0)*globals.Kv14[5] + QKv14(0,0)*globals.Kv14[0]);
         dGlobals.Kv14[1] = dt*(QKv14(0,1)*globals.Kv14[0] + QKv14(2,1)*globals.Kv14[2] + QKv14(6,1)*globals.Kv14[6] + QKv14(1,1)*globals.Kv14[1]);
         dGlobals.Kv14[2] = dt*(QKv14(1,2)*globals.Kv14[1] + QKv14(3,2)*globals.Kv14[3] + QKv14(7,2)*globals.Kv14[7] + QKv14(2,2)*globals.Kv14[2]);
@@ -153,16 +153,16 @@ namespace GW {
         dGlobals.Kv43[9] = dt*(QKv43(8,9)*globals.Kv43[8] + QKv43(4,9)*globals.Kv43[4] + QKv43(9,9)*globals.Kv43[9]);
     }
 
-    template <typename FloatType>
-    void GW_model<FloatType>::update_gate_derivatives(const FloatType dt){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::update_gate_derivatives(const FloatType dt){
         dGlobals.m = dt * (common::alpha_m(globals.V) * (1.0 - globals.m) - common::beta_m(globals.V) * globals.m);
         dGlobals.h = dt * (common::alpha_h(globals.V) * (1.0 - globals.h) - common::beta_h(globals.V) * globals.h);
         dGlobals.j = dt * (common::alpha_j(globals.V) * (1.0 - globals.j) - common::beta_j(globals.V) * globals.j);
         dGlobals.xKs =  dt * (XKsinf(globals.V) - globals.xKs) * tauXKs_inv(globals.V);
     }
 
-    template <typename FloatType>
-    void GW_model<FloatType>::update_V_and_concentration_derivatives(const FloatType dt){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::update_V_and_concentration_derivatives(const FloatType dt){
         FloatType IKv14, IKv43;
 
         consts.ENa = common::Nernst<FloatType>(globals.Nai, parameters.Nao, consts.RT_F, 1.0);
@@ -205,8 +205,8 @@ namespace GW {
         dGlobals.V = dt*(Istim - (currents.INa + currents.ICaL + currents.IKr + currents.IKs + currents.Ito1 + currents.IK1 + currents.IKp + currents.Ito2 + currents.INaK + currents.INaCa + currents.IpCa + currents.ICab + currents.INab));
     }
 
-    template <typename FloatType>
-    void GW_model<FloatType>::SSA(const FloatType dt){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::SSA(const FloatType dt){
         consts.alphaLCC = alphaLCC<FloatType>(globals.V);
         consts.betaLCC = betaLCC<FloatType>(globals.V);
         consts.yinfLCC = yinfLCC<FloatType>(globals.V);
@@ -221,14 +221,14 @@ namespace GW {
             #pragma omp for schedule( static )
             for (int i = 0; i < nCRU; i++){
                 temp.copy_from_CRUState(CRUs, JLCC, i, parameters);
-                SSA_single_CRU(temp, globals.Cai, globals.CaNSR, dt, parameters, consts);
+                SSA_single_CRU<FloatType, PRNG>(temp, globals.Cai, globals.CaNSR, dt, parameters, consts);
                 update_CRUstate_from_temp(temp, i);
             }
         }
     }
 
-    template <typename FloatType>
-    void GW_model<FloatType>::euler_step(const FloatType dt){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::euler_step(const FloatType dt){
         consts.VF_RT = globals.V*consts.F_RT;
         consts.expmVF_RT = exp(-consts.VF_RT);
 
@@ -265,9 +265,8 @@ namespace GW {
         }
     }
 
-    //template <typename LambdaType>
-    template <typename FloatType>
-    void GW_model<FloatType>::euler(const FloatType dt, const int nstep, const std::function<FloatType(FloatType)>& Ist){
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::euler(const FloatType dt, const int nstep, const std::function<FloatType(FloatType)>& Ist){
         FloatType t = 0.0;
         for (int i = 0; i < nstep; ++i){
             Istim = Ist(t);
@@ -356,7 +355,7 @@ namespace GW {
             
         file << ',' << CRUs.CaJSR.sum() << ',' << CRUs.CaSS.sum() << ',' << nlcc1 << ',' << nlcc2 << ',' << nlcc3 << ',' << nlcc4 << ',' 
             << nlcc5 << ',' << nlcc6 << ',' << nlcc7 << ',' << nlcc8 << ',' << nlcc9 << ',' << nlcc10 << ',' << nlcc11 << ',' << nlcc12 << ',' 
-            << CRUs.LCC_activation.sum() << ',' << nryr << ',' << CRUs.ClCh.sum();
+            << CRUs.LCC_inactivation.sum() << ',' << nryr << ',' << CRUs.ClCh.sum();
 
         file << ',' << currents.INa << ',' << currents.ICaL << ',' << currents.IKr << ',' << currents.IKs << ',' << currents.Ito1 << ',' << currents.IK1 << ',' << currents.IKp << ',' << currents.Ito2 << ',' << currents.INaK
             <<  ',' << currents.INaCa << ',' << currents.IpCa << ',' << currents.ICab << ',' << currents.INab << std::endl; 

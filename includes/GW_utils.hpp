@@ -250,12 +250,12 @@ namespace GW {
     };
 
     
-    template <typename FloatType>
+    template <typename FloatType, typename PRNG>
     struct CRUState {
         Array2<FloatType> CaSS;
         Array1<FloatType> CaJSR;
         Array2<int> LCC;
-        Array2<int> LCC_activation;
+        Array2<int> LCC_inactivation;
         Array3Container<int> RyR;
         Array2<int> ClCh;
 
@@ -263,7 +263,7 @@ namespace GW {
     };
 
     inline void initialise_LCC(Array2<int> &LCC);
-    inline void initialise_LCC_a(Array2<int> &LCC_a);
+    inline void initialise_LCC_i(Array2<int> &LCC_i);
     inline void initialise_RyR(Array3<int> &RyR);
     inline void initialise_ClCh(Array2<int> &ClCh);
 
@@ -373,10 +373,10 @@ namespace GW {
 
 
     template <typename FloatType>
-    inline void update_LCC_activation_rates(FloatType* const LCC_activation_rates, FloatType* const subunit_rates, const int* const LCC_activation, const FloatType yinf, 
+    inline void update_LCC_inactivation_rates(FloatType* const LCC_inactivation_rates, FloatType* const subunit_rates, const int* const LCC_inactivation, const FloatType yinf, 
                                             const FloatType tau, const int idx){
-        LCC_activation_rates[idx] = (LCC_activation[idx] == 0) ? yinf / tau : (1.0 - yinf) / tau;
-        subunit_rates[idx] += LCC_activation_rates[idx];
+        LCC_inactivation_rates[idx] = (LCC_inactivation[idx] == 0) ? yinf / tau : (1.0 - yinf) / tau;
+        subunit_rates[idx] += LCC_inactivation_rates[idx];
     }
 
 

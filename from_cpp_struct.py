@@ -1,4 +1,4 @@
-from typing import Any, List, Tuple, TypeVar, Sequence
+from typing import Any, List, Callable, Tuple, TypeVar, Sequence
 from functools import partial
 
 CXXStruct = TypeVar("CXXStruct")
@@ -18,8 +18,8 @@ def __update_from_parameter_dict(self, parameter_dict: dict, valid_fields: List[
 def from_cpp_struct(
     struct: CXXStruct,
     additional_attributes: None | Sequence[str | Tuple[str, Any]] = None,
-):
-    def transform_cls(cls):
+) -> Callable[[Any], Any]:
+    def transform_cls(cls: Any) -> Any:
         def getter(self, field):
             return getattr(self.__cpp_struct, field)
 
@@ -63,7 +63,8 @@ def from_cpp_struct(
         setattr(cls, "cpp_struct", property(lambda self: self.__cpp_struct))
 
         try:
-            struct()  # check that there is a valid default constructor
+            # check that the default constructor is defined
+            struct()  # type: ignore
         except Exception as e:
             raise AttributeError(f"No default constructor for type {struct}") from e
 

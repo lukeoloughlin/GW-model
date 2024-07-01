@@ -1,9 +1,7 @@
 #ifndef GW_H
 #define GW_H
 
-//#include <cmath>
-//#include <fstream>
-//#include "ndarray.hpp"
+
 #include <omp.h>
 #include "common.hpp"
 #include "GW_utils.hpp"
@@ -43,12 +41,12 @@ namespace GW {
         FloatType Jxfer_tot = 0;
     };
 
-    template <typename FloatType>    
+    template <typename FloatType, typename PRNG>    
     class GW_model {
     public:
         Parameters<FloatType> parameters;
         GlobalState<FloatType> globals;
-        CRUState<FloatType> CRUs;
+        CRUState<FloatType, PRNG> CRUs;
         
         FloatType Istim = 0;
     private:
@@ -65,11 +63,6 @@ namespace GW {
         QKrMap<FloatType> QKr;
         QKvMap<FloatType> QKv14;
         QKvMap<FloatType> QKv43;
-        //NDArrayMap<FloatType,2> QKr;
-        //NDArrayMap<FloatType,2> QKv14;
-        //NDArrayMap<FloatType,2> QKv43;
-        //static constexpr int Kr_dims[2] = { 5, 5 };
-        //static constexpr int Kv_dims[2] = { 10, 10 };
 
         Currents<FloatType> currents;
         GlobalState<FloatType> dGlobals;
@@ -93,11 +86,8 @@ namespace GW {
         /* Record the values of the CRUStateThread temp back to the CRUState state for CRU i */
         inline void update_CRUstate_from_temp(const CRUStateThread<FloatType> &temp, const int i);
         
-        //void write_header(std::ofstream &file);
-        //void write_state(std::ofstream &file, const FloatType t);
         
     public:
-        
         GW_model(int nCRU_simulated) : parameters(), globals(), CRUs(nCRU_simulated), nCRU(nCRU_simulated), consts(parameters, nCRU), JLCC(nCRU_simulated,4), 
                                        Jxfer(nCRU_simulated,4), Jtr(nCRU_simulated), QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage), currents(), 
                                        dGlobals(0.0) { 
@@ -122,11 +112,11 @@ namespace GW {
 
 
         int get_nCRU() const { return nCRU; }
+
         void euler_step(const FloatType dt);
+
         void euler(const FloatType dt, const int nstep, const std::function<FloatType(FloatType)>& Is);
 
-        //template <typename LambdaType>
-        //void euler_write(const FloatType dt, const int nstep, const LambdaType&& Is, std::ofstream &file, const int record_every);
 
 };
 

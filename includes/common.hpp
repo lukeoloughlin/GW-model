@@ -16,41 +16,39 @@ template <typename NumType>
 inline NumType cube(NumType x) { return x*x*x; }
 
 
-inline std::mt19937_64& seed(){
-    static thread_local std::random_device rd;
-    static thread_local std::mt19937_64 gen(rd());
+template <typename Generator>
+inline Generator& seed(){
+    static thread_local Generator gen(std::random_device{}());
     return gen;
 }
 
-template <typename FloatType>
+template <typename FloatType, typename Generator>
 inline FloatType urand(){
-    //static thread_local std::random_device rd;
-    //static thread_local std::mt19937 gen(rd());
     static std::uniform_real_distribution<FloatType> dist(0.0, 1.0);
-    return dist(seed());
+    return dist(seed<Generator>());
 }
 
-template <typename FloatType>
+template <typename FloatType, typename Generator>
 inline FloatType nrand(){
     static std::normal_distribution<FloatType> dist(0.0, 1.0);
-    return dist(seed());
+    return dist(seed<Generator>());
 }
 
-template<typename FloatType>
+template<typename FloatType, typename Generator>
 inline int sample_binomial(const FloatType p, const int N){
     int X = 0;
     FloatType u;
     for (int i = 0; i < N; i++){
-        u = urand<FloatType>();
+        u = urand<FloatType, Generator>();
         if (u < p)
             X++;
     }
     return X;
 }
 
-template <typename FloatType, typename IntType>
+template <typename FloatType, typename IntType, typename Generator>
 inline int sample_weights(const FloatType* const weights, const FloatType total_weight, const IntType size){
-    const FloatType u = urand<FloatType>() * total_weight;
+    const FloatType u = urand<FloatType, Generator>() * total_weight;
     FloatType cum_weight = weights[0];
     IntType i = 0;
     while (cum_weight < u && i < (size-1)){

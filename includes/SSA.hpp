@@ -15,7 +15,7 @@ namespace GW {
     template <typename FloatType>
     struct CRUStateThread {
         int LCC[4];
-        int LCC_activation[4];
+        int LCC_inactivation[4];
         int RyR[4*6]; // Have to count states here so we include all 6 possible states
         FloatType open_RyR[4]; // Keep track of number open RyR
         int ClCh[4];
@@ -29,35 +29,36 @@ namespace GW {
         FloatType Jtr;
 
         FloatType LCC_rates[3*4]; // 3 rates to track at most
-        FloatType LCC_activation_rates[4];
+        FloatType LCC_inactivation_rates[4];
         FloatType RyR_rates[12*4];
         FloatType ClCh_rates[4];
         FloatType subunit_rates[4];
 
-        void copy_from_CRUState(const CRUState<FloatType> &cru_state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params);
+        template <typename PRNG>
+        void copy_from_CRUState(const CRUState<FloatType, PRNG> &cru_state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params);
         //void copy_from_CRUState(const CRUState<FloatType> &cru_state, const NDArray<FloatType,2> &JLCC, const int idx, const Parameters<FloatType> &params);
     };
 
     /* Perform the SSA on a single CRU (with fixed global variables) over an interval of length dt */
-    template <typename FloatType>
+    template <typename FloatType, typename Generator>
     inline void SSA_single_CRU(CRUStateThread<FloatType> &state, const FloatType Cai, const FloatType CaNSR, const FloatType dt, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
 
     /* sample a new state based on the rates of the LCCs, RyRs and ClChs */
-    template <typename FloatType>
+    template <typename FloatType, typename Generator>
     inline void sample_new_state(CRUStateThread<FloatType> &state, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
 
     /* Sample a new LCC state for the subunit given by subunit_idx. Also updates JLCC when appropriate. */
-    template <typename FloatType>
+    template <typename FloatType, typename Generator>
     inline void sample_LCC(CRUStateThread<FloatType> &state, const FloatType sum_LCC_rates, const int subunit_idx, const Constants<FloatType> &consts);
 
     /* Sample a new RyR state for the subunit given by subunit_idx. Also updates Jrel. */
-    template <typename FloatType>
+    template <typename FloatType, typename Generator>
     inline void sample_RyR(CRUStateThread<FloatType> &state, const FloatType sum_RyR_rates, const int subunit_idx, const Parameters<FloatType> &params);
 
 
 
     /* Do an Euler step on CaSS for a single CRU */
-    template <typename FloatType>
+    template <typename FloatType, typename Generator>
     inline void update_CaSS(CRUStateThread<FloatType> &state, const FloatType dt, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
 
     /* Do an Euler step on CaJSR for a single CRU */
@@ -68,11 +69,11 @@ namespace GW {
     }
     /* Sample values of state 5 and state 6 of the RyRs if CaSS crosses appropriate threshold. Above this threshold the two states are 
     treated as equivalent so we do not track them directly. */
-    template <typename FloatType>
+    template <typename FloatType, typename Generator>
     inline void sample_RyR56(CRUStateThread<FloatType> &state, const int idx, const Parameters<FloatType> &params);
     /* Sample values of state 3 and state 4 of the RyRs if CaSS crosses appropriate threshold. Above this threshold the two states are 
     treated as equivalent so we do not track them directly. */
-    template <typename FloatType>
+    template <typename FloatType, typename Generator>
     inline void sample_RyR34(CRUStateThread<FloatType> &state, const int idx, const Parameters<FloatType> &params);
 
 

@@ -41,7 +41,7 @@ struct PyGWSimulation {
     Array2d CaJSR;
     Array3d CaSS;
     Array3i LCC;
-    Array3i LCC_activation;
+    Array3i LCC_inactivation;
     Array4i RyR;
     Array3i ClCh;
 
@@ -49,11 +49,12 @@ struct PyGWSimulation {
                                                      Nai(num_step), Ki(num_step), Cai(num_step), CaNSR(num_step), CaLTRPN(num_step), 
                                                      CaHTRPN(num_step), xKs(num_step), XKr(num_step,5), XKv14(num_step,10), XKv43(num_step,10), 
                                                      CaJSR(num_step,nCRU_), CaSS(num_step,nCRU_,4), LCC(num_step,nCRU_,4), 
-                                                     LCC_activation(num_step,nCRU_,4), RyR(num_step,nCRU_,4,6), ClCh(num_step,nCRU_,4) { }
+                                                     LCC_inactivation(num_step,nCRU_,4), RyR(num_step,nCRU_,4,6), ClCh(num_step,nCRU_,4) { }
 };
 
 
-void record_state(PyGWSimulation& out, const GW::GW_model<double>& model, const int idx, const int nCRU, const double t){
+template <typename PRNG>
+void record_state(PyGWSimulation& out, const GW::GW_model<double, PRNG>& model, const int idx, const int nCRU, const double t){
         
 
     out.t(idx) = t;
@@ -85,7 +86,7 @@ void record_state(PyGWSimulation& out, const GW::GW_model<double>& model, const 
         for (int k = 0; k < 4; ++k){
             out.CaSS(idx,j,k) = model.CRUs.CaSS(j,k);
             out.LCC(idx,j,k) = model.CRUs.LCC(j,k);
-            out.LCC_activation(idx,j,k) = model.CRUs.LCC_activation(j,k);
+            out.LCC_inactivation(idx,j,k) = model.CRUs.LCC_inactivation(j,k);
             out.RyR(idx,j,k,0) = model.CRUs.RyR.array(j,k,0);
             out.RyR(idx,j,k,1) = model.CRUs.RyR.array(j,k,1);
             out.RyR(idx,j,k,2) = model.CRUs.RyR.array(j,k,2);
@@ -99,9 +100,9 @@ void record_state(PyGWSimulation& out, const GW::GW_model<double>& model, const 
 
 
 
-
+template <typename PRNG>
 PyGWSimulation run(const GW::Parameters<double>& params, const int nCRU, double step_size, int num_steps, const std::function<double(double)>& Is, int record_every){
-    GW::GW_model<double> model(params, nCRU);
+    GW::GW_model<double, PRNG> model(params, nCRU);
     PyGWSimulation out(nCRU, num_steps / record_every, num_steps*step_size);
     double t = 0.0;
     int counter = 0;

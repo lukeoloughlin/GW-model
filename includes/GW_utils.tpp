@@ -2,14 +2,14 @@
 
 namespace GW {
 
-
+    template <typename PRNG>
     void initialise_LCC(Array2<int> &LCC){
         const double weights[3] = { 0.958, 0.038, 0.004 };
         int idx;
 
         for (int i = 0; i < LCC.rows(); i++){
             for (int j = 0; j < 4; j++){
-                idx = sample_weights(weights, 1.0, 3);
+                idx = sample_weights<double, int, PRNG>(weights, 1.0, 3);
                 if (idx == 0)
                     LCC(i,j) = 1;
                 else if (idx == 1)
@@ -20,24 +20,26 @@ namespace GW {
         }
     }
 
-    void initialise_LCC_a(Array2<int> &LCC_a){
+    template <typename PRNG>
+    void initialise_LCC_i(Array2<int> &LCC_i){
         const double weights[2] = { 0.9425, 0.0575 };
         int idx;
-        for (unsigned int i = 0; i < LCC_a.rows(); i++){
+        for (unsigned int i = 0; i < LCC_i.rows(); i++){
             for (unsigned int j = 0; j < 4; j++){
-                idx = sample_weights(weights, 1.0, 2);
-                LCC_a(i,j) = (idx == 0) ? 1 : 0;
+                idx = sample_weights<double, int, PRNG>(weights, 1.0, 2);
+                LCC_i(i,j) = (idx == 0) ? 1 : 0;
             }
         }
     }
 
+    template <typename PRNG>
     void initialise_RyR(Array3Container<int> &RyR){
         const double weights[3] = { 0.609, 0.5*0.391, 0.5*0.391 };
         int idx;
         for (int i = 0; i < RyR.array.dimensions()[0]; i++){
             for (int j = 0; j < 4; j++){
                 for (int k = 0; k < 5; k++){
-                    idx = sample_weights(weights, 1.0, 3);
+                    idx = sample_weights<double, int, PRNG>(weights, 1.0, 3);
                     if (idx == 0)
                         ++RyR.array(i,j,0);
                     else if (idx == 1)
@@ -49,12 +51,13 @@ namespace GW {
         }
     }
 
+    template <typename PRNG>
     void initialise_ClCh(Array2<int> &ClCh){
         const double weights[2] = { 0.998, 0.002 };
         int idx;
         for (unsigned int i = 0; i < ClCh.rows(); i++){
             for (unsigned int j = 0; j < 4; j++){
-                idx = sample_weights(weights, 1.0, 2);
+                idx = sample_weights<double, int, PRNG>(weights, 1.0, 2);
                 ClCh(i,j) = idx;
             }
         }
@@ -204,14 +207,14 @@ namespace GW {
     }
 
 
-    template <typename FloatType>
-    CRUState<FloatType>::CRUState(const int nCRU) : CaSS(nCRU,4), CaJSR(nCRU), LCC(nCRU,4), LCC_activation(nCRU,4), RyR(nCRU,4,6), ClCh(nCRU,4) {
+    template <typename FloatType, typename PRNG>
+    CRUState<FloatType, PRNG>::CRUState(const int nCRU) : CaSS(nCRU,4), CaJSR(nCRU), LCC(nCRU,4), LCC_inactivation(nCRU,4), RyR(nCRU,4,6), ClCh(nCRU,4) {
         CaSS.setConstant(1.45370e-4);
         CaJSR.setConstant(0.908408);
-        initialise_LCC(LCC);
-        initialise_LCC_a(LCC_activation);
-        initialise_RyR(RyR);
-        initialise_ClCh(ClCh);
+        initialise_LCC<PRNG>(LCC);
+        initialise_LCC_i<PRNG>(LCC_inactivation);
+        initialise_RyR<PRNG>(RyR);
+        initialise_ClCh<PRNG>(ClCh);
     }
 
     // There are 12 separate rates we need to keep track of since there are multiple RyRs per subunit. Using (i,j) to denote the transition from state i to state j,

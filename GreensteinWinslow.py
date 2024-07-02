@@ -1,11 +1,12 @@
-from typing import Any, Callable, TYPE_CHECKING, List
+from typing import Any, Callable, List
 from functools import reduce
 
 import numpy as np
 import numpy.typing as npt
 
 import build.GreensteinWinslow as gw  # type: ignore
-from from_cpp_struct import from_cpp_struct
+from GWParameters import GWParameters, assert_positive
+#from from_cpp_struct import from_cpp_struct
 
 F = 96.5
 R = 8.314
@@ -25,15 +26,13 @@ IMPLEMENTED_PRNGS = [
     "xoroshiro128**",
 ]
 
-if TYPE_CHECKING:
-    GWParametersBaseClass = Any
-else:
-    GWParametersBaseClass = object
 
 
-@from_cpp_struct(gw.Parameters, additional_attributes=(("NCaRU_sim", 1250),))
-class GWParameters(GWParametersBaseClass):
-    """Holds the model parameters for the Greenstein and Winslow model."""
+#@from_cpp_struct(gw.Parameters, additional_attributes=(("NCaRU_sim", 1250),))
+#class GWParameters(GWParametersBaseClass):
+#    """Holds the model parameters for the Greenstein and Winslow model."""
+
+
 
 
 def ENa(
@@ -528,6 +527,9 @@ class GWSolution:
         self.__ICab: npt.NDArray | None = None
         self.__IpCa: npt.NDArray | None = None
         self.__Jup: npt.NDArray | None = None
+        self.__Jtr: npt.NDArray | None = None
+        self.__Jxfer: npt.NDArray | None = None
+
 
     @property
     def parameters(self) -> GWParameters:
@@ -908,20 +910,31 @@ class GWSolution:
         if self.__Jup is None:
             self.__Jup = Jup(self.Cai, self.CaNSR, self.parameters)
         return self.__Jup
+    
+    @property
+    def Jtr(self) -> npt.NDArray[np.floating]:
+        """SERCA2a pump flux (mM/ms).
 
+        Returns:
+            npt.NDArray[np.floating]: 1D array of size num_steps
+        """
+        if self.__Jtr is None:
+            pass # TODO: implement
+            #self.__Jup = Jup(self.Cai, self.CaNSR, self.parameters)
+        return self.__Jtr
+    
+    @property
+    def Jxfer(self) -> npt.NDArray[np.floating]:
+        """SERCA2a pump flux (mM/ms).
 
-def assert_positive(x: Any, name: str) -> None:
-    """Assert that x > 0
+        Returns:
+            npt.NDArray[np.floating]: 1D array of size num_steps
+        """
+        if self.__Jxfer is None:
+            pass # TODO: implement
+            #self.__Jup = Jup(self.Cai, self.CaNSR, self.parameters)
+        return self.__Jxfer
 
-    Args:
-        x (Any): Value to check
-        name (str): Name of value for throwing error
-
-    Raises:
-        ValueError: If x <= 0
-    """
-    if x <= 0:
-        raise ValueError(f"{name} must be positive")
 
 
 class GWModel:
@@ -936,7 +949,7 @@ class GWModel:
         Returns:
             List[str]: Implemented PRNGs for simulating the model
         """
-        return IMPLEMENTED_PRNGS
+        return __IMPLEMENTED_PRNGS
 
     def __init__(
         self,

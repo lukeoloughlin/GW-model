@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include <Eigen/Core>
+#include <eigen3/Eigen/Core>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <pybind11/pybind11.h>
 

@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name,c-extension-no-member,broad-exception-caught,line-too-long
 from typing import Callable, List
 from functools import reduce
 
@@ -5,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 import build.GreensteinWinslow as gw_cxx  # type: ignore
-from .utils import assert_positive  # type: ignore
+from .utils import assert_positive, assert_gt_numpy, assert_lt_numpy  # type: ignore
 from .parameters import GWParameters  # type: ignore
 
 
@@ -28,18 +29,32 @@ __IMPLEMENTED_PRNGS = [
 ]
 
 
+def __catch_invalid_state(
+    x: npt.NDArray[np.integer], lb: int, ub: int, name: str
+) -> None:
+    assert ub > lb
+    try:
+        assert_gt_numpy(x, lb, name, strict=False)
+        assert_lt_numpy(x, ub, name, strict=False)
+    except ValueError as e:
+        raise ValueError(
+            f"{name} must consist of an integers in the range (lb, ..., ub)."
+        ) from e
+
+
 def ENa(
     Nai: npt.NDArray[np.floating], parameters: GWParameters
 ) -> npt.NDArray[np.floating]:
     """Calculates the Nernst potential for sodium ions.
 
     Args:
-        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration (mM). Value(s) must be > 0.
+        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
         npt.NDArray[np.floating]: Nernst potential of sodium.
     """
+    assert_gt_numpy(Nai, 0, "Nai", strict=True)
     F_RT = F_R / parameters.T
     return np.log(parameters.Nao / Nai) / F_RT
 
@@ -50,12 +65,13 @@ def EK(
     """Calculate the Nernst potential for potassium ions.
 
     Args:
-        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration (mM). Value(s) must be > 0.
+        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
         npt.NDArray[np.floating]: Nernst potential of potassium.
     """
+    assert_gt_numpy(Ki, 0, "Ki", strict=True)
     F_RT = F_R / parameters.T
     return np.log(parameters.Ko / Ki) / F_RT
 
@@ -68,13 +84,15 @@ def EKs(
     """Calculate Nernst potential for slow rectifier current IKs, which is permeable to potassium and sodium.
 
     Args:
-        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration (mM). Value(s) must be > 0.
-        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration (mM). Value(s) must be > 0.
+        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration [mM]. Value(s) must be > 0.
+        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
         npt.NDArray[np.floating]: Nernst potential of slow rectifier current IKs.
     """
+    assert_gt_numpy(Nai, 0, "Nai", strict=True)
+    assert_gt_numpy(Ki, 0, "Ki", strict=True)
     F_RT = F_R / parameters.T
     return (
         np.log((parameters.Ko + 0.01833 * parameters.Nao) / (Ki + 0.01833 * Nai)) / F_RT
@@ -87,12 +105,13 @@ def ECa(
     """Calculate the Nernst potential for calcium ions.
 
     Args:
-        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration (mM). Value(s) must be > 0.
+        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
         npt.NDArray[np.floating]: Nernst potential of calcium.
     """
+    assert_gt_numpy(Cai, 0, "Cai", strict=True)
     F_RT = F_R / parameters.T
     return 0.5 * np.log(parameters.Cao / Cai) / F_RT
 
@@ -112,12 +131,18 @@ def INa(
         m (npt.NDArray[np.floating]): Activation gating variable. Value(s) must be >= 0 and <= 1.
         h (npt.NDArray[np.floating]): Fast inactivation gating variable. Value(s) must be >= 0 and <= 1.
         j (npt.NDArray[np.floating]): Slow inactivation gating variable. Value(s) must be >= 0 and <= 1.
-        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration (mM). Value(s) must be > 0.
+        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Beeler Reuter fast inward sodium current (pA/pF).
+        npt.NDArray[np.floating]: Beeler Reuter fast inward sodium current [pA][pF]^{-1}.
     """
+    assert_gt_numpy(m, 0, "m", strict=False)
+    assert_lt_numpy(m, 1, "m", strict=False)
+    assert_gt_numpy(h, 0, "h", strict=False)
+    assert_lt_numpy(h, 1, "h", strict=False)
+    assert_gt_numpy(j, 0, "j", strict=False)
+    assert_lt_numpy(j, 1, "j", strict=False)
     return parameters.GNa * (m**3) * h * j * (V - ENa(Nai, parameters))
 
 
@@ -128,11 +153,11 @@ def INab(
 
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
-        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration (mM). Value(s) must be > 0.
+        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Backround sodium current (pA/pF).
+        npt.NDArray[np.floating]: Backround sodium current [pA][pF]^{-1}.
     """
     return parameters.GNab * (V - ENa(Nai, parameters))
 
@@ -150,12 +175,14 @@ def IKr(
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
         XKr (npt.NDArray[np.floating]): Proportion of ion channels in the open state. Value(s) must be >= 0 and <= 1.
-        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration (mM). Value(s) must be > 0.
+        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Rapidly-activating delayed rectifier potassium current IKr (pA/pF).
+        npt.NDArray[np.floating]: Rapidly-activating delayed rectifier potassium current IKr [pA][pF]^{-1}.
     """
+    assert_gt_numpy(XKr, 0, "XKr", strict=False)
+    assert_lt_numpy(XKr, 1, "XKr", strict=False)
     RKr = 1 / (1 + 1.4945 * np.exp(0.0446 * V))
     return (
         0.5
@@ -169,7 +196,7 @@ def IKr(
 
 def IKs(
     V: npt.NDArray[np.floating],
-    XKs: npt.NDArray[np.floating],
+    xKs: npt.NDArray[np.floating],
     Ki: npt.NDArray[np.floating],
     Nai: npt.NDArray[np.floating],
     parameters: GWParameters,
@@ -178,15 +205,17 @@ def IKs(
 
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
-        XKs (npt.NDArray[np.floating]): Activation gating variable for IKs. Value(s) must be >= 0 and <= 1.
-        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration (mM). Value(s) must be > 0.
-        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration (mM). Value(s) must be > 0.
+        xKs (npt.NDArray[np.floating]): Activation gating variable for IKs. Value(s) must be >= 0 and <= 1.
+        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration [mM]. Value(s) must be > 0.
+        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Slow-activating delayed rectifier potassium current IKs (pA/pF).
+        npt.NDArray[np.floating]: Slow-activating delayed rectifier potassium current IKs [pA][pF]^{-1}.
     """
-    return parameters.GKs * (XKs**2) * (V - EKs(Nai, Ki, parameters))
+    assert_gt_numpy(xKs, 0, "xKs", strict=False)
+    assert_lt_numpy(xKs, 1, "xKs", strict=False)
+    return parameters.GKs * (xKs**2) * (V - EKs(Nai, Ki, parameters))
 
 
 def IKv43(
@@ -202,12 +231,14 @@ def IKv43(
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
         XKv43 (npt.NDArray[np.floating]): Proportion of ion channels in the open state. Value(s) must be >= 0 and <= 1.
-        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration (mM). Value(s) must be > 0.
+        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Transient outward current through Kv4.3 channels IKv43 (pA/pF).
+        npt.NDArray[np.floating]: Transient outward current through Kv4.3 channels IKv43 [pA][pF]^{-1}.
     """
+    assert_gt_numpy(XKv43, 0, "XKv43", strict=False)
+    assert_lt_numpy(XKv43, 1, "XKv43", strict=False)
     return parameters.GKv43 * XKv43 * (V - EK(Ki, parameters))
 
 
@@ -225,13 +256,15 @@ def IKv14(
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
         XKv14 (npt.NDArray[np.floating]): Proportion of ion channels in the open state. Value(s) must be >= 0 and <= 1.
-        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration (mM). Value(s) must be > 0.
-        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration (mM). Value(s) must be > 0.
+        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration [mM]. Value(s) must be > 0.
+        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Transient outward current through Kv1.4 channels IKv14 (pA/pF).
+        npt.NDArray[np.floating]: Transient outward current through Kv1.4 channels IKv14 [pA][pF]^{-1}.
     """
+    assert_gt_numpy(XKv14, 0, "XKv14", strict=False)
+    assert_lt_numpy(XKv14, 1, "XKv14", strict=False)
     VF_RT = V * F_R / parameters.T
     expVF_RT = np.exp(VF_RT)
     multiplier = (
@@ -251,10 +284,10 @@ def IK1(
 
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
-        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration (mM). Value(s) must be > 0.
+        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
     Returns:
-        npt.NDArray[np.floating]: Time independent potassium current IK1 (pA/pF).
+        npt.NDArray[np.floating]: Time independent potassium current IK1 [pA][pF]^{-1}.
     """
     EK_ = EK(Ki, parameters)
     K1inf = 1 / (2 + np.exp(1.5 * (V - EK_) * F_R / parameters.T))
@@ -273,10 +306,10 @@ def IKp(
 
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
-        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration (mM). Value(s) must be > 0.
+        Ki (npt.NDArray[np.floating]): Intracellular potassium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
     Returns:
-        npt.NDArray[np.floating]: Plateau potassium current IK1 (pA/pF).
+        npt.NDArray[np.floating]: Plateau potassium current IK1 [pA][pF]^{-1}.
     """
     Kp = 1 / (1 + np.exp((7.488 - V) / 5.98))
     return parameters.GKp * Kp * (V - EK(Ki, parameters))
@@ -289,12 +322,13 @@ def INaK(
 
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
-        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration (mM). Value(s) must be > 0.
+        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Sodium-potassium pump current INaK (pA/pF).
+        npt.NDArray[np.floating]: Sodium-potassium pump current INaK [pA][pF]^{-1}.
     """
+    assert_gt_numpy(Nai, 0, "Nai", strict=True)
     sigma = (np.exp(parameters.Nao / 67.3) - 1) / 7
     fNaK = 1 / (
         1
@@ -315,13 +349,15 @@ def INaCa(
 
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
-        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration (mM). Value(s) must be > 0.
-        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration (mM). Value(s) must be > 0.
+        Nai (npt.NDArray[np.floating]): Intracellular sodium concentration [mM]. Value(s) must be > 0.
+        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: NCX current INaCa (pA/pF).
+        npt.NDArray[np.floating]: NCX current INaCa [pA][pF]^{-1}.
     """
+    assert_gt_numpy(Nai, 0, "Nai", strict=True)
+    assert_gt_numpy(Cai, 0, "Cai", strict=True)
     exp_term1 = np.exp(parameters.eta * V * F_R / parameters.T)
     exp_term2 = np.exp((parameters.eta - 1) * V * F_R / parameters.T)
     multiplier = (
@@ -348,12 +384,13 @@ def IpCa(
     """Calculate the current generated by background calcium pumps.
 
     Args:
-        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration (mM). Value(s) must be > 0.
+        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
         npt.NDArray[np.floating]: Calcium pump current IpCa
     """
+    assert_gt_numpy(Cai, 0, "Cai", strict=True)
     return parameters.IpCamax * (Cai / (parameters.KmpCa + Cai))
 
 
@@ -364,11 +401,11 @@ def ICab(
 
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
-        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration (mM). Value(s) must be > 0.
+        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Backround calcium current (pA/pF).
+        npt.NDArray[np.floating]: Backround calcium current [pA][pF]^{-1}.
     """
     return parameters.GCab * (V - ECa(Cai, parameters))
 
@@ -380,18 +417,24 @@ def ICaL(
     CaSS: npt.NDArray[np.floating],
     parameters: GWParameters,
 ) -> npt.NDArray[np.floating]:
-    """Calculate the L-type calcium channel current for the Greenstein and Winslow model with nCRU calcium release units for any nCRU > 0.
+    """Calculate the L-type calcium channel (LCC) current for the Greenstein and Winslow model with nCRU calcium release units for any nCaRU > 0.
+
+    The LCC states in are represented by integers 1-12, where 6 and 12 are open states, and all others are closed.
+    The LCCs may also become voltage inactivated, represented by the values of LCC_inactivation (0 = inactive, 1 = active).
 
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
         LCC (npt.NDArray[np.integer]): NxNCaRUx4 array of LCC states.
         LCC_inactivation (npt.NDArray[np.integer]): NxNCaRUx4 array of LCC inactivation states.
-        CaSS (npt.NDArray): NxNCaRUx4 array of subspace calcium concentrations (mM). Values must be > 0.
+        CaSS (npt.NDArray): NxNCaRUx4 array of subspace calcium concentrations [mM]. Values must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Total current through the L-type calcium channels ICaL (pA/pF).
+        npt.NDArray[np.floating]: Total current through the L-type calcium channels ICaL [pA][pF]^{-1}.
     """
+    assert_gt_numpy(CaSS, 0, "CaSS", strict=True)
+    __catch_invalid_state(LCC, 1, 12, "LCC")
+    __catch_invalid_state(LCC_inactivation, 0, 1, "LCC_inactivation")
     open_LCC = ((LCC == 6) | (LCC == 12)) & (LCC_inactivation == 1)
     VF_RT = V[..., np.newaxis, np.newaxis] * F_R / parameters.T
     exp2VF_RT = np.exp(2 * VF_RT)
@@ -410,7 +453,9 @@ def ICaL(
 def Ito2(
     V: npt.NDArray[np.floating], ClCh: npt.NDArray, parameters: GWParameters
 ) -> npt.NDArray[np.floating]:
-    """Calculate the calcium activated chloride transient outward current Ito2 for the Greenstein and Winslow model with nCRU calcium release units for any nCRU > 0
+    """Calculate the calcium activated chloride (ClCh) transient outward current Ito2 for the Greenstein and Winslow model with nCRU calcium release units for any nCaRU > 0.
+
+    The ClCh ion channel states are represented by a binary value (0 = closed, 1 = open).
 
     Args:
         V (npt.NDArray[np.floating]): Action potential across cell membrane (mV).
@@ -418,8 +463,9 @@ def Ito2(
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Total current through the calcium activated chloride channels Ito2 (pA/pF).
+        npt.NDArray[np.floating]: Total current through the calcium activated chloride channels Ito2 [pA][pF]^{-1}.
     """
+    __catch_invalid_state(ClCh, 0, 1, "ClCh")
     VF_RT = V[..., np.newaxis, np.newaxis] * F_R / parameters.T
     expmVF_RT = np.exp(-VF_RT)
     multiplier = (
@@ -442,13 +488,15 @@ def dCaLTRPN(
     """Calculate the instentaneous flux of calcium bound to low-affinity troponin sites (LTRPN).
 
     Args:
-        CaLTRPN (npt.NDArray[np.floating]): Concentration of calcium bound to LTRPN (mM). Value(s) must be > 0.
-        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration (mM). Value(s) must be > 0.
+        CaLTRPN (npt.NDArray[np.floating]): Concentration of calcium bound to LTRPN [mM]. Value(s) must be > 0.
+        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Instentaneous flux of calcium bound to LTRPN, dCaLTRPN/dt (mM/ms).
+        npt.NDArray[np.floating]: Instentaneous flux of calcium bound to LTRPN, dCaLTRPN/dt [mM][ms]^{-1}.
     """
+    assert_gt_numpy(Cai, 0, "Cai", strict=True)
+    assert_gt_numpy(CaLTRPN, 0, "CaLTRPN", strict=True)
     return (
         parameters.kLTRPNp * Cai * (parameters.LTRPNtot - CaLTRPN)
         - parameters.kLTRPNm * CaLTRPN
@@ -463,13 +511,15 @@ def dCaHTRPN(
     """Calculate the instentaneous flux of calcium bound to high-affinity troponin sites (HTRPN).
 
     Args:
-        CaHTRPN (npt.NDArray[np.floating]): Concentration of calcium bound to HTRPN (mM). Value(s) must be > 0.
-        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration (mM). Value(s) must be > 0.
+        CaHTRPN (npt.NDArray[np.floating]): Concentration of calcium bound to HTRPN [mM]. Value(s) must be > 0.
+        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: Instentaneous flux of calcium bound to HTRPN, dCaHTRPN/dt (mM/ms).
+        npt.NDArray[np.floating]: Instentaneous flux of calcium bound to HTRPN, dCaHTRPN/dt [mM][ms]^{-1}.
     """
+    assert_gt_numpy(Cai, 0, "Cai", strict=True)
+    assert_gt_numpy(CaHTRPN, 0, "CaHTRPN", strict=True)
     return (
         parameters.kHTRPNp * Cai * (parameters.HTRPNtot - CaHTRPN)
         - parameters.kHTRPNm * CaHTRPN
@@ -484,13 +534,15 @@ def Jup(
     """Calculate the SERCA2a mediated uptake from the intracellular space to the network sarcoplasmic reticulum (NSR).
 
     Args:
-        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration (mM). Value(s) must be > 0.
-        CaNSR (npt.NDArray[np.floating]): NSR calcium concentration (mM). Value(s) must be > 0.
+        Cai (npt.NDArray[np.floating]): Intracellular calcium concentration [mM]. Value(s) must be > 0.
+        CaNSR (npt.NDArray[np.floating]): NSR calcium concentration [mM]. Value(s) must be > 0.
         parameters (GWParameters): Greenstein and Winslow model parameters.
 
     Returns:
-        npt.NDArray[np.floating]: SERCA2a mediated calcium uptake flux Jup (mM/ms).
+        npt.NDArray[np.floating]: SERCA2a mediated calcium uptake flux Jup [mM][ms]^{-1}.
     """
+    assert_gt_numpy(Cai, 0, "Cai", strict=True)
+    assert_gt_numpy(CaNSR, 0, "CaNSR", strict=True)
     f = (Cai / parameters.Kmf) ** parameters.Hf
     r = (CaNSR / parameters.Kmr) ** parameters.Hr
     return (parameters.Vmaxf * f - parameters.Vmaxr * r) / (1 + f + r)
@@ -527,280 +579,162 @@ class GWSolution:
 
     @property
     def parameters(self) -> GWParameters:
-        """
-        Returns:
-            GWParameters: Model parameters
-        """
+        """GWParameters: Model parameters."""
         return self.__params
 
     @property
     def t(self) -> npt.NDArray[np.floating]:
-        """Times of snapshot recordings.
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of recording times."""
         return self.__vars.t
 
     @property
     def V(self) -> npt.NDArray[np.floating]:
-        """Recordings of the action potential (mV).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of action potential recordings [mV]."""
         return self.__vars.V
 
     @property
     def m(self) -> npt.NDArray[np.floating]:
-        """Recordings of activation gate for fast inward sodium current.
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of INa activation gating variable recordings."""
         return self.__vars.m
 
     @property
     def h(self) -> npt.NDArray[np.floating]:
-        """Recordings of fast inactivation gate for fast inward sodium current.
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of INa fast inactivation gating variable recordings."""
         return self.__vars.h
 
     @property
     def j(self) -> npt.NDArray[np.floating]:
-        """Recordings of slow inactivation gate for fast inward sodium current.
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of INa slow inactivation gating variable recordings."""
         return self.__vars.j
 
     @property
     def Nai(self) -> npt.NDArray[np.floating]:
-        """Recordings of the intracellular sodium concentration (mM).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of intracellular sodium recordings [mM]."""
         return self.__vars.Nai
 
     @property
     def Ki(self) -> npt.NDArray[np.floating]:
-        """Recordings of the intracellular potassium concentration (mM).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of intracellular potassium recordings [mM]."""
         return self.__vars.Ki
 
     @property
     def Cai(self) -> npt.NDArray[np.floating]:
-        """Recordings of the intracellular calcium concentration (mM).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of intracellular calcium recordings [mM]."""
         return self.__vars.Cai
 
     @property
     def CaNSR(self) -> npt.NDArray[np.floating]:
-        """Recordings of the network sarcoplasmic reticulum calcium concentration (mM).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of NSR calcium recordings [mM]."""
         return self.__vars.CaNSR
 
     @property
     def CaLTRPN(self) -> npt.NDArray[np.floating]:
-        """Recordings of calcium concentration at low affinity troponin sites (mM).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of LTRPN calcium recordings [mM]."""
         return self.__vars.CaLTRPN
 
     @property
     def CaHTRPN(self) -> npt.NDArray[np.floating]:
-        """Recordings of calcium concentration at high affinity troponin sites (mM).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of HTRPN calcium recordings [mM]."""
         return self.__vars.CaHTRPN
 
     @property
     def xKs(self) -> npt.NDArray[np.floating]:
-        """Recordings of the activation gating variable for the slow-activating delayed rectifier
-        current IKs.
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of IKs activation gating variable recordings."""
         return self.__vars.xKs
 
     @property
     def XKr(self) -> npt.NDArray[np.floating]:
-        """Recordings of the 5 state representation of HERG ion channels for the current IKr.
-
-        Returns:
-            npt.NDArray[np.floating]: 2D array of size num_steps x 5
-        """
+        """npt.NDArray[np.floating]: 2D array of IKr ion channel Markov model recordings. Shape is num_step x 5."""
         return self.__vars.XKr
 
     @property
     def XKv14(self) -> npt.NDArray[np.floating]:
-        """Recordings of the 10 state representation of Kv1.4 ion channels for the current IKv1.4.
-
-        Returns:
-            npt.NDArray[np.floating]: 2D array of size num_steps x 10
-        """
+        """npt.NDArray[np.floating]: 2D array of IKv1.4 ion channel Markov model recordings. Shape is num_step x 10."""
         return self.__vars.XKv14
 
     @property
     def XKv43(self) -> npt.NDArray[np.floating]:
-        """Recordings of the 10 state representation of Kv4.3 ion channels for the current IKv4.3.
-
-        Returns:
-            npt.NDArray[np.floating]: 2D array of size num_steps x 10
-        """
+        """npt.NDArray[np.floating]: 2D array of IKv4.3 ion channel Markov model recordings. Shape is num_step x 10."""
         return self.__vars.XKv43
 
     @property
     def CaSS(self) -> npt.NDArray[np.floating]:
-        """Recordings of dyadic subspace calcium concetrations (mM) for all CRU subunits.
-        Returns:
-            npt.NDArray[np.floating]: 3D array of size num_steps x num_CRU x 4
-        """
+        """npt.NDArray[np.floating]: 3D array of dyadic subspace calcium concentration recordings [mM]. Shape is num_step x NCaRU_sim x 4."""
         return self.__vars.CaSS
 
     @property
     def CaJSR(self) -> npt.NDArray[np.floating]:
-        """Recordings of junctional sarcoplasmic reticulum calcium concetrations (mM) for all CRUs.
-
-        Returns:
-            npt.NDArray[np.floating]: 2D array of size num_steps x num_CRU
-        """
+        """npt.NDArray[np.floating]: 2D array of JSR calcium concentration recordings [mM]. Shape is num_step x NCaRU_sim."""
         return self.__vars.CaJSR
 
     @property
     def LCC(self) -> npt.NDArray[np.integer]:
-        """Recordings of L-type calcium channel state, represented by an integer 1-12,
-        for all CRU subunits.
-
-        Returns:
-            npt.NDArray[npt.integer]: 3D array of size num_steps x num_CRU x 4
-        """
+        """npt.NDArray[np.floating]: 3D array of LCC state (not including voltage inactivation) recordings. Shape is num_step x NCaRU_sim x 4."""
         return self.__vars.LCC
 
     @property
     def LCC_inactivation(self) -> npt.NDArray[np.integer]:
-        """Recordings of L-type calcium channel voltage dependent inactivation state
-        (0 = closed, 1 = open) for all CRU subunits.
-
-        Returns:
-            npt.NDArray[npt.integer]: 3D array of size num_steps x num_CRU x 4
-        """
+        """npt.NDArray[np.floating]: 3D array of LCC voltage inactivation state recordings. Shape is num_step x NCaRU_sim x 4."""
         return self.__vars.LCC_inactivation
 
     @property
     def RyR(self) -> npt.NDArray[np.integer]:
-        """Recordings of all 5 RyR states for all CRU subunits.
+        """npt.NDArray[np.floating]: 4D array of the state of the 5 RyRs in each CaRU subunit. Shape is num_step x NCaRU_sim x 4 x 6.
 
-        The 6-states of the model are represented by the last dimension of the array,
-        which counts the number (<= 5) of RyRs in the coresponding state.
-
-        Returns:
-            npt.NDArray[npt.integer]: 4D array of size num_steps x num_CRU x 4 x 6
+        Note that unlike the other ion channel states, RyR[time, i, j, k] is the number of RyRs in state k in subunit j of CaRU i.
         """
         return self.__vars.RyR
 
     @property
     def ClCh(self) -> npt.NDArray[np.integer]:
-        """Recordings of calcium activated chloride channel activation states
-        (0 = closed, 1 = open) for all CRU subunits.
-
-        Returns:
-            npt.NDArray[npt.integer]: 3D array of size num_steps x num_CRU x 4
-        """
+        """npt.NDArray[np.floating]: 3D array of ClCh state recordings. Shape is num_step x NCaRU_sim x 4."""
         return self.__vars.ClCh
 
     @property
     def INa(self) -> npt.NDArray[np.floating]:
-        """Fast inward sodium current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of INa recordings [pA][pF]^{-1}."""
         if self.__INa is None:
             self.__INa = INa(self.V, self.m, self.h, self.j, self.Nai, self.parameters)
         return self.__INa
 
     @property
     def INab(self) -> npt.NDArray[np.floating]:
-        """Background sodium current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of INab recordings [pA][pF]^{-1}."""
         if self.__INab is None:
             self.__INab = INab(self.V, self.Nai, self.parameters)
         return self.__INab
 
     @property
     def INaCa(self) -> npt.NDArray[np.floating]:
-        """Sodium-calcium exchanger current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of INaCa recordings [pA][pF]^{-1}."""
         if self.__INaCa is None:
             self.__INaCa = INaCa(self.V, self.Nai, self.Cai, self.parameters)
         return self.__INaCa
 
     @property
     def INaK(self) -> npt.NDArray[np.floating]:
-        """Sodium-potassium pump currrent (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of INaK recordings [pA][pF]^{-1}."""
         if self.__INaK is None:
             self.__INaK = INaK(self.V, self.Nai, self.parameters)
         return self.__INaK
 
     @property
     def IKr(self) -> npt.NDArray[np.floating]:
-        """Delayed rapidly-activating rectifier current (pA/pA).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of IKr recordings [pA][pF]^{-1}."""
         if self.__IKr is None:
             self.__IKr = IKr(self.V, self.XKr[..., 3], self.Ki, self.parameters)
         return self.__IKr
 
     @property
     def IKs(self) -> npt.NDArray[np.floating]:
-        """Delayed slowly-activating rectifier current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of IKs recordings [pA][pF]^{-1}."""
         if self.__IKs is None:
             self.__IKs = IKs(self.V, self.xKs, self.Ki, self.Nai, self.parameters)
         return self.__IKs
 
     @property
     def IKv14(self) -> npt.NDArray[np.floating]:
-        """Kv1.4 component of transient outward current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of IKv14 recordings [pA][pF]^{-1}."""
         if self.__IKv14 is None:
             self.__IKv14 = IKv14(
                 self.V, self.XKv14[..., 4], self.Ki, self.Nai, self.parameters
@@ -809,64 +743,40 @@ class GWSolution:
 
     @property
     def IKv43(self) -> npt.NDArray[np.floating]:
-        """Kv4.3 component of transient outward current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of IKv43 recordings [pA][pF]^{-1}."""
         if self.__IKv43 is None:
             self.__IKv43 = IKv43(self.V, self.XKv43[..., 4], self.Ki, self.parameters)
         return self.__IKv43
 
     @property
     def Ito1(self) -> npt.NDArray[np.floating]:
-        """Transient outward current Ito1 = IKv1.4 + IKv4.3 (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of Ito1 recordings [pA][pF]^{-1}."""
         return self.IKv14 + self.IKv43
 
     @property
     def Ito2(self) -> npt.NDArray[np.floating]:
-        """Calcium mediated chloride transient outward current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of Ito2 recordings [pA][pF]^{-1}."""
         if self.__Ito2 is None:
             self.__Ito2 = Ito2(self.V, self.ClCh, self.parameters)
         return self.__Ito2
 
     @property
     def IK1(self) -> npt.NDArray[np.floating]:
-        """Time independent potassium current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of IK1 recordings [pA][pF]^{-1}."""
         if self.__IK1 is None:
             self.__IK1 = IK1(self.V, self.Ki, self.parameters)
         return self.__IK1
 
     @property
     def IKp(self) -> npt.NDArray[np.floating]:
-        """Plateau potassium current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of IKp recordings [pA][pF]^{-1}."""
         if self.__IKp is None:
             self.__IKp = IKp(self.V, self.Ki, self.parameters)
         return self.__IKp
 
     @property
     def ICaL(self) -> npt.NDArray[np.floating]:
-        """L-type calcium channel current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of ICaL recordings [pA][pF]^{-1}."""
         if self.__ICaL is None:
             self.__ICaL = ICaL(
                 self.V, self.LCC, self.LCC_inactivation, self.CaSS, self.parameters
@@ -875,55 +785,35 @@ class GWSolution:
 
     @property
     def ICab(self) -> npt.NDArray[np.floating]:
-        """Background calcium current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of ICab recordings [pA][pF]^{-1}."""
         if self.__ICab is None:
             self.__ICab = ICab(self.V, self.Cai, self.parameters)
         return self.__ICab
 
     @property
     def IpCa(self) -> npt.NDArray[np.floating]:
-        """Sarcolemmal calcium pump current (pA/pF).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of IpCa recordings [pA][pF]^{-1}."""
         if self.__IpCa is None:
             self.__IpCa = IpCa(self.Cai, self.parameters)
         return self.__IpCa
 
     @property
     def Jup(self) -> npt.NDArray[np.floating]:
-        """SERCA2a pump flux (mM/ms).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of Jup recordings [mM][ms]^{-1}."""
         if self.__Jup is None:
             self.__Jup = Jup(self.Cai, self.CaNSR, self.parameters)
         return self.__Jup
 
     @property
     def Jtr(self) -> npt.NDArray[np.floating]:
-        """SERCA2a pump flux (mM/ms).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of Jtr recordings [mM][ms]^{-1}."""
         if self.__Jtr is None:
             self.__Jtr = self.parameters.rtr * np.sum(self.CaNSR - self.CaJSR, axis=1)
         return self.__Jtr
 
     @property
     def Jxfer(self) -> npt.NDArray[np.floating]:
-        """SERCA2a pump flux (mM/ms).
-
-        Returns:
-            npt.NDArray[np.floating]: 1D array of size num_steps
-        """
+        """npt.NDArray[np.floating]: 1D array of Jxfer recordings [mM][ms]^{-1}."""
         if self.__Jxfer is None:
             self.__Jxfer = self.parameters.rxfer * np.sum(
                 self.CaSS - self.Cai, axis=(1, 2)

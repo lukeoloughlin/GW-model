@@ -1,20 +1,31 @@
-from typing import Any, List, Tuple
+from typing import Any
+import json
+
+import numpy as np
+import numpy.typing as npt
 
 
-def create_boilerplate(names: List[Tuple[str, str, str, float]]) -> str:
+def load_model_from_json(fname: str) -> dict:
+    """Load model related data from fname.json into a dictionary."""
+    with open(fname + ".json", "r", encoding="utf-8") as f:
+        model_data = json.load(f)
+    return model_data
+
+
+def create_boilerplate(model_data: dict) -> str:
     """Generate the boilerplate for parameters class fields."""
     out_str = ""
-    for name, constraint, description, default in names:
-        if constraint == "p":
+    for name, info in model_data["parameters"].items():
+        if info["constraint"] == "positive":
             constraint_fn = "assert_positive"
             constraint_symbol = "> 0"
-        else:
+        elif info["constraint"] == "non-negative":
             constraint_fn = "assert_nonnegative"
             constraint_symbol = ">= 0"
         out_str += f"""
     @property
     def {name}(self) -> float:
-        '''float: {description}. Value must be {constraint_symbol}. Defaults to {default}.
+        '''float: {info["description"]}. Value must be {constraint_symbol}. Defaults to {info["default"]}.
         '''
         return self.__cxx_struct.{name}
 
@@ -27,10 +38,10 @@ def create_boilerplate(names: List[Tuple[str, str, str, float]]) -> str:
 
 
 def add_docstring(docstring: str) -> Any:
-    """Decorator to add a docstring to a class
+    """Decorator to add a docstring to a class.
 
     Args:
-        docstring (str): Docstring to apply to class
+        docstring (str): Docstring to apply to class.
     """
 
     def apply_docstring(cls: Any) -> Any:
@@ -119,3 +130,59 @@ def assert_type(x: Any, tp: Any, name: str) -> None:
     """
     if not isinstance(x, tp):
         raise TypeError(f"{name} must be of type {tp}. Got type {type(x)}")
+
+
+def assert_gt_numpy(
+    x: npt.NDArray, lb: np.ScalarType, name: str, strict: bool = False
+) -> None:
+    """Assert that all elements of x are greater than (or equal to) a lower bound.
+
+    Args:
+        x (npt.NDArray): Array to check.
+        lb (np.ScalarType): Lower bound.
+        name (str): Name of value for throwing error.
+        strict (bool, optional): Whether the inequality is strict. Defaults to False.
+
+    Raises:
+        ValueError: When x <= lb (strict=True), or x < lb (strict=False).
+    """
+    if strict:
+        if np.all(x <= lb):
+            violated_indices = (x <= lb).nonzero()
+            raise ValueError(
+                f"All values of {name} must be > {lb}. Violated at indices {violated_indices}."
+            )
+    else:
+        if np.all(x < lb):
+            violated_indices = (x < lb).nonzero()
+            raise ValueError(
+                f"All values of {name} must be >= {lb}. Violated at indices {violated_indices}."
+            )
+
+
+def assert_lt_numpy(
+    x: npt.NDArray, ub: np.ScalarType, name: str, strict: bool = False
+) -> None:
+    """Assert that all elements of x are less than (or equal to) a lower bound.
+
+    Args:
+        x (npt.NDArray): Array to check.
+        ub (np.ScalarType): Upper bound.
+        name (str): Name of value for throwing error.
+        strict (bool, optional): Whether the inequality is strict. Defaults to False.
+
+    Raises:
+        ValueError: When x >= ub (strict=True), or x > ub (strict=False).
+    """
+    if strict:
+        if np.all(x >= ub):
+            violated_indices = (x >= ub).nonzero()
+            raise ValueError(
+                f"All values of {name} must be > {ub}. Violated at indices {violated_indices}."
+            )
+    else:
+        if np.all(x > ub):
+            violated_indices = (x > ub).nonzero()
+            raise ValueError(
+                f"All values of {name} must be >= {ub}. Violated at indices {violated_indices}."
+            )

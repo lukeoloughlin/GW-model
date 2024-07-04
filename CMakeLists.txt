@@ -8,7 +8,13 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+
 project(GreensteinWinslow LANGUAGES CXX)
+
+target_include_directories(GreensteinWinslow PRIVATE src/includes)
+target_include_directories(GreensteinWinslow PRIVATE extern/eigen3)
+target_include_directories(GreensteinWinslow PRIVATE extern/pybind11)
+
 if(APPLE)
     add_compile_options(
         -Wall
@@ -42,19 +48,19 @@ if(APPLE)
 else()
     find_package(Python 3.11 COMPONENTS Interpreter Development REQUIRED)
 endif()
-find_package(pybind11 CONFIG REQUIRED)
+#find_package(pybind11 CONFIG REQUIRED)
 pybind11_add_module(GreensteinWinslow MODULE pyGW.cpp)
 
-find_package(Eigen3 3.4 REQUIRED)
-if(Eigen3_FOUND)
-    MESSAGE(STATUS "Found Eigen3!")
-    get_target_property(inc_dir Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
-    message("[DEBUG] inc_dir: ${inc_dir}")
-else()
-    MESSAGE(STATUS "Failed to find Eigen3")
-endif()
+#find_package(Eigen3 3.4 REQUIRED)
+#if(Eigen3_FOUND)
+#    MESSAGE(STATUS "Found Eigen3!")
+#    get_target_property(inc_dir Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
+#    message("[DEBUG] inc_dir: ${inc_dir}")
+#else()
+#    MESSAGE(STATUS "Failed to find Eigen3")
+#endif()
 
-target_link_libraries(GreensteinWinslow PRIVATE Eigen3::Eigen)
+#target_link_libraries(GreensteinWinslow PRIVATE Eigen3::Eigen)
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)

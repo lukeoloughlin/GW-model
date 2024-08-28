@@ -14,7 +14,7 @@ F = 96.5
 R = 8.314
 F_R = F / R
 
-GWParametersCXX = type[gw_cxx.Parameters]
+GWParametersCXX = type[gw_cxx.GWParameters]
 GWVairablesCXX = type[gw_cxx.GWVariables]
 
 __IMPLEMENTED_PRNGS = [
@@ -835,6 +835,7 @@ class GWModel:
 
     def __init__(
         self,
+        init_state: None | dict = None,
         parameters: None | GWParameters = None,
         stimulus_fn: None | Callable[[float], float] = None,
     ):
@@ -850,6 +851,13 @@ class GWModel:
         self.__stim: Callable[[float], float] = (
             (lambda t: 0) if stimulus_fn is None else stimulus_fn
         )
+
+        if init_state is not None:
+            self.__global_state = _unpack_globals(init_state)
+            self.__cru_state = _unpack_crus(init_state)
+        else:
+            self.__global_state = gw_cxx.GWGlobalState()
+            self.__cru_state = gw_cxx.GWCRUState(self.parameters.NCaRU_sim)
 
     def simulate(
         self,
@@ -880,6 +888,8 @@ class GWModel:
                 num_steps,
                 self.__stim,
                 record_every,
+                init_crus=self.__cru_state,
+                init_globals=self.__global_state,
                 PRNG=PRNG,
             )
         except Exception as e:
@@ -911,3 +921,37 @@ class GWModel:
             stimulus_fn (Callable[[float], float]): Stimulus function.
         """
         self.__stim = stimulus_fn
+
+
+def _unpack_globals(state_dict: dict) -> gw_cxx.GWGlobalState:
+    state = gw_cxx.GWGlobalState()
+    state.V = state_dict["V"]
+    state.Nai = state_dict["Nai"]
+    state.Ki = state_dict["Ki"]
+    state.Cai = state_dict["Cai"]
+    state.CaNSR = state_dict["CaNSR"]
+    state.CaLTRPN = state_dict["CaLTRPN"]
+    state.CaHTRPN = state_dict["CaHTRPN"]
+
+    state.m = state_dict["m"]
+    state.h = state_dict["h"]
+    state.j = state_dict["j"]
+    state.xKs = state_dict["xKs"]
+
+    state.Kr = state_dict["Kr"]
+    state.Kv14 = state_dict["Kv14"]
+    state.Kv43 = state_dict["Kv43"]
+
+    return state
+
+
+def _unpack_crus(state_dict: dict) -> gw_cxx.GWCRUState:
+    NCaRU = state_dict["CaSS"].shape[0]
+    state = gw_cxx.GWCRUState(NCaRU)
+    state.CaSS = state_dict["CaSS"]
+    state.CaJSR = state_dict["CaJSR"]
+    state.LCC = state_dict["LCC"]
+    state.LCC_inactivation = state_dict["LCC_inactivation"]
+    state.RyR = state_dict["RyR"]
+    state.ClCh = state_dict["ClCh"]
+    return state

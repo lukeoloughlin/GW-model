@@ -13,6 +13,8 @@
 
 #include "pyGW.hpp"
 
+#define PYBIND11_DETAILED_ERROR_MESSAGES
+
 namespace py = pybind11;
 using namespace pybind11::literals;
 
@@ -27,34 +29,65 @@ typedef Eigen::Matrix<int,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Array2i
 typedef Eigen::Tensor<int,3,Eigen::RowMajor> Array3i;
 
 struct PyGlobalState {
-    double V;
-    double Nai;
-    double Ki;
-    double Cai;
-    double CaNSR;
-    double CaLTRPN;
-    double CaHTRPN;
-    double m;
-    double h;
-    double j;
-    double xKs;
+    double V = -91.382;
+    double Nai = 10.0;
+    double Ki = 131.84;
+    double Cai = 1.45273e-4;
+    double CaNSR = 0.908882;
+    double CaLTRPN = 8.9282e-3;
+    double CaHTRPN = 0.137617;
+    double m = 5.33837e-4;
+    double h = 0.996345;
+    double j = 0.997315;
+    double xKs = 2.04171e-4;
     Eigen::Matrix<double,1,5,Eigen::RowMajor> Kr;
     Eigen::Matrix<double,1,10,Eigen::RowMajor> Kv14;
     Eigen::Matrix<double,1,10,Eigen::RowMajor> Kv43;
+
+    PyGlobalState() {
+        Kr(0) = 0.999503;
+        Kr(1) = 4.13720e-4;
+        Kr(2) = 7.27568e-5; 
+        Kr(3) = 8.73984e-6; 
+        Kr(4) = 1.36159e-6;
+
+        Kv14(0) = 0.722328;
+        Kv14(1) = 0.101971; 
+        Kv14(2) = 0.00539932; 
+        Kv14(3) = 1.27081e-4; 
+        Kv14(4) = 1.82742e-6; 
+        Kv14(5) = 0.152769; 
+        Kv14(6) = 0.00962328; 
+        Kv14(7) = 0.00439043; 
+        Kv14(8) = 0.00195348; 
+        Kv14(9) = 0.00143629;
+        
+        Kv43(0) = 0.953060; 
+        Kv43(1) = 0.0253906; 
+        Kv43(2) = 2.53848e-4; 
+        Kv43(3) = 1.12796e-6; 
+        Kv43(4) = 1.87950e-9; 
+        Kv43(5) = 0.0151370; 
+        Kv43(6) = 0.00517622; 
+        Kv43(7) = 8.96600e-4; 
+        Kv43(8) = 8.17569e-5; 
+        Kv43(9) = 2.24032e-6;
+    }
 };
 
-//struct PyCRUState {
- //   Array2d CaSS;
- //   Array1d CaJSR;
- //   Array2i LCC;
- //   Array2i LCC_inactivation;
- //   Array3i RyR;
- //   Array2i ClCh;
- //   int N;
-//};
+struct PyCRUState {
+    Array2d CaSS;
+    Array1d CaJSR;
+    Array2i LCC;
+    Array2i LCC_inactivation;
+    Array3i RyR;
+    Array2i ClCh;
 
-GW::GlobalState<double> from_python(PyGlobalState &py_state){
-    GW::GlobalState<double> state();
+    PyCRUState(int nCRU) : CaSS(nCRU,4), CaJSR(nCRU), LCC(nCRU,4), LCC_inactivation(nCRU,4), RyR(nCRU,4,6), ClCh(nCRU,4) {}
+};
+
+GW::GlobalState<double> globals_from_python(const PyGlobalState &py_state){
+    GW::GlobalState<double> state;
     state.V = py_state.V;
     state.Nai = py_state.Nai;
     state.Ki = py_state.Ki;
@@ -78,29 +111,47 @@ GW::GlobalState<double> from_python(PyGlobalState &py_state){
     return state;
 }
 
+// Need this workaround because Python doesn't like Eigen::TensorMap
+GW::CRUState<double> crus_from_python(const PyCRUState &py_state, const int ncru){
+    GW::CRUState<double> state(ncru);
+    state.CaSS = py_state.CaSS;
+    state.CaJSR = py_state.CaJSR;
+    state.LCC = py_state.LCC;
+    state.LCC_inactivation = py_state.LCC_inactivation;
+    state.ClCh = py_state.ClCh;
 
+    for (int i = 0; i < ncru; ++i){
+        for (int j = 0; j < 4; ++j){
+            for (int k = 0; k < 6; ++k){
+                state.RyR.array(i,j,k) = py_state.RyR(i,j,k);
+            }
+        }
+    }
 
-
+    return state;
+}
 
 PyGWSimulation run_PRNG_arg(const GW::Parameters<double>& params, const int nCRU, double step_size, int num_steps, 
-                            const std::function<double(double)>& Is, int record_every, std::string& rng, PyGlobalState<double> &init_globals, GW::CRUState<double> &init_crus){
-    auto globals = from_python(init_globals);
+                            const std::function<double(double)>& Is, int record_every, PyCRUState &init_crus, 
+                            PyGlobalState &init_globals, std::string& rng){
+    auto globals = globals_from_python(init_globals);
+    auto crus = crus_from_python(init_crus, nCRU);
     if (rng == "mt19937")
-        return run<std::mt19937>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
+        return run<std::mt19937>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
     else if (rng == "mt19937_64")
-        return run<std::mt19937_64>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
+        return run<std::mt19937_64>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
     else if (rng == "xoshiro256+")
-        return run<Xoshiro256Plus>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
+        return run<Xoshiro256Plus>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
     else if (rng == "xoshiro256++")
-        return run<Xoshiro256PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
+        return run<Xoshiro256PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
     else if (rng == "xoshiro256**")
-        return run<Xoshiro256StarStar>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
+        return run<Xoshiro256StarStar>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
     else if (rng == "xoroshiro128+")
-        return run<Xoroshiro128Plus>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
+        return run<Xoroshiro128Plus>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
     else if (rng == "xoroshiro128++")
-        return run<Xoroshiro128PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
+        return run<Xoroshiro128PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
     else if (rng == "xoroshiro128**")
-        return run<Xoroshiro128StarStar>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
+        return run<Xoroshiro128StarStar>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
     else
         throw std::invalid_argument(rng);
 }
@@ -114,7 +165,7 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
     // Add a doc string to module
     m.doc() = "Pybind11 test.";
 
-    py::class_<PyParameters<double>>(m, "Parameters")
+    py::class_<PyParameters<double>>(m, "GWParameters")
         .def(py::init<>())
         .def("__repr__", [](const PyParameters<double> &params) { return "Greenstein and Winslow Model Parameters"; })
         .def_readwrite("T", &PyParameters<double>::T, "Temperature")
@@ -277,18 +328,18 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("Kv14", &PyGlobalState::Kv14)
         .def_readwrite("Kv43", &PyGlobalState::Kv43);
     
-    py::class_<GW::CRUState<double>>(m, "GWCRUState")
+    py::class_<PyCRUState>(m, "GWCRUState")
         .def(py::init<int>())
-        .def_readwrite("CaSS", &GW::CRUState<double>::CaSS)
-        .def_readwrite("CaJSR", &GW::CRUState<double>::CaJSR)
-        .def_readwrite("LCC", &GW::CRUState<double>::LCC)
-        .def_readwrite("LCC_inactivation", &GW::CRUState<double>::LCC_inactivation)
-        .def_readwrite("RyR", &GW::CRUState<double>::RyR)
-        .def_readwrite("ClCh", &GW::CRUState<double>::ClCh)
+        .def_readwrite("CaSS", &PyCRUState::CaSS)
+        .def_readwrite("CaJSR", &PyCRUState::CaJSR)
+        .def_readwrite("LCC", &PyCRUState::LCC)
+        .def_readwrite("LCC_inactivation", &PyCRUState::LCC_inactivation)
+        .def_readwrite("RyR", &PyCRUState::RyR)
+        .def_readwrite("ClCh", &PyCRUState::ClCh);
 
 
     m.def("run", &run_PRNG_arg, "Simulate the model", "parameters"_a, "nCRU"_a, "step_size"_a, "num_steps"_a, 
-                                                      "Istim"_a, "record_every"_a, "PRNG"_a = "mt19937_64", 
-                                                      "init_globals"_a = GW::GlobalState<double>(), "init_crus"_a = GW::CRUState<double>(),
+                                                      "Istim"_a, "record_every"_a, "init_crus"_a, "init_globals"_a = PyGlobalState(), 
+                                                      "PRNG"_a = "mt19937_64",
                                                        py::call_guard<py::gil_scoped_release>());
 }

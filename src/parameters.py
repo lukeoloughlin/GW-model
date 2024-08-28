@@ -446,20 +446,20 @@ _GW_NAMES = [
 class GWParameters:
     """Greenstein and Winslow model parameters."""
 
-    def __init__(self, cxx_struct: None | gw.Parameters = None, **kwargs):
+    def __init__(self, cxx_struct: None | gw.GWParameters = None, **kwargs):
         """Construct the GWParameters object. Uses default parameters unless otherwise specified.
 
         Args:
-            cxx_struct (None | gw.Parameters, optional): C++ Parameters struct for the GW model. Defaults to None.
+            cxx_struct (None | gw.GWParameters, optional): C++ Parameters struct for the GW model. Defaults to None.
             **kwargs: Keyword arguments for any of the model parameters.
         """
-        self.__cxx_struct: gw.Parameters = (
-            cxx_struct if cxx_struct is not None else gw.Parameters()
+        self.__cxx_struct: gw.GWParameters = (
+            cxx_struct if cxx_struct is not None else gw.GWParameters()
         )
         self.__NCaRU_sim: int = 1250
 
         if "NCaRU_sim" in kwargs:
-            self.NCaRU_sim = kwargs["NCaRU_sim"]
+            self.NCaRU_sim = kwargs.pop("NCaRU_sim")
 
         for name, value in kwargs.items():
             if name in dir(self.__cxx_struct):
@@ -470,7 +470,7 @@ class GWParameters:
                 )
 
     @property
-    def cxx_struct(self) -> gw.Parameters:
+    def cxx_struct(self) -> gw.GWParameters:
         """The C++ compatible struct.
 
         Returns:

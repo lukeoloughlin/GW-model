@@ -248,6 +248,7 @@ namespace GW {
 
         GlobalState() = default;
         GlobalState(FloatType value);
+        GlobalState& operator=(GlobalState& x) = default;
     };
 
     
@@ -261,6 +262,7 @@ namespace GW {
         Array2<int> ClCh;
 
         CRUState(const int nCRU);
+        CRUState& operator=(CRUState& x) = default;
     };
 
     inline void initialise_LCC(Array2<int> &LCC);

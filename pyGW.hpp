@@ -100,9 +100,11 @@ void record_state(PyGWSimulation& out, const GW::GW_model<double, PRNG>& model, 
 
 
 template <typename PRNG>
-PyGWSimulation run(const GW::Parameters<double>& params, const int nCRU, double step_size, int num_steps, const std::function<double(double)>& Is, int record_every, GW::GlobalState<double>& init_globals, GW::CRUState<double, PRNG>& init_crus){
+PyGWSimulation run(const GW::Parameters<double>& params, const int nCRU, double step_size, int num_steps, 
+                   const std::function<double(double)>& Is, int record_every, GW::GlobalState<double>& init_globals, 
+                   GW::CRUState<double>& init_crus){
     GW::GW_model<double, PRNG> model(params, nCRU);
-    model.set_initial_value(init_globals, init_crus)
+    model.set_initial_value(init_globals, init_crus);
 
     PyGWSimulation out(nCRU, num_steps / record_every, num_steps*step_size);
     double t = 0.0;

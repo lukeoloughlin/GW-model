@@ -8,6 +8,7 @@
 #include <vector>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <Eigen/Core>
+#include <random>
 
 template<typename T>
 using Array1 = Eigen::Array<T,1,Eigen::Dynamic,Eigen::RowMajor>;
@@ -250,7 +251,7 @@ namespace GW {
     };
 
     
-    template <typename FloatType, typename PRNG>
+    template <typename FloatType>//, typename PRNG>
     struct CRUState {
         Array2<FloatType> CaSS;
         Array1<FloatType> CaJSR;

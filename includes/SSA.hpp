@@ -34,8 +34,10 @@ namespace GW {
         FloatType ClCh_rates[4];
         FloatType subunit_rates[4];
 
-        template <typename PRNG>
-        void copy_from_CRUState(const CRUState<FloatType, PRNG> &cru_state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params);
+        //template <typename PRNG>
+        //void copy_from_CRUState(const CRUState<FloatType, PRNG> &cru_state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params);
+        void copy_from_CRUState(const CRUState<FloatType> &cru_state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params);
+        
         //void copy_from_CRUState(const CRUState<FloatType> &cru_state, const NDArray<FloatType,2> &JLCC, const int idx, const Parameters<FloatType> &params);
     };
 

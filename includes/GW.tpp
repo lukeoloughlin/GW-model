@@ -2,6 +2,12 @@
 
 namespace GW {
 
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::set_initial_value(GlobalState<FloatType>& global_vals, CRUState<FloatType>& cru_vals){
+        // Will this automatically create a copy constructor?
+        globals = global_vals; 
+        CRUs = cru_vals;
+    }
 
     template <typename FloatType, typename PRNG>
     void GW_model<FloatType, PRNG>::initialise_JLCC(){

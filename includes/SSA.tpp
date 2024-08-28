@@ -4,9 +4,10 @@
 namespace GW {
 
     template <typename FloatType>
-    template <typename PRNG>
+    //template <typename PRNG>
     //void CRUStateThread<FloatType>::copy_from_CRUState(const CRUState<FloatType> &state, const NDArray<FloatType,2> &JLCC, const int idx, const Parameters<FloatType> &params){
-    void CRUStateThread<FloatType>::copy_from_CRUState(const CRUState<FloatType, PRNG> &state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params){
+    //void CRUStateThread<FloatType>::copy_from_CRUState(const CRUState<FloatType, PRNG> &state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params){
+    void CRUStateThread<FloatType>::copy_from_CRUState(const CRUState<FloatType> &state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params){
         for (int j = 0; j < 4; j++){
             for (int k = 0; k < 6; k++)
                 RyR[6*j+k] = state.RyR.array(idx,j,k);

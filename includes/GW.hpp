@@ -41,12 +41,14 @@ namespace GW {
         FloatType Jxfer_tot = 0;
     };
 
+
     template <typename FloatType, typename PRNG>    
     class GW_model {
     public:
         Parameters<FloatType> parameters;
         GlobalState<FloatType> globals;
-        CRUState<FloatType, PRNG> CRUs;
+        //CRUState<FloatType, PRNG> CRUs;
+        CRUState<FloatType> CRUs;
         
         FloatType Istim = 0;
     private:
@@ -110,6 +112,7 @@ namespace GW {
             initialise_QKr();
         }
 
+        void set_initial_value(GlobalState<FloatType>& global_vals, CRUState<FloatType>& cru_vals);
 
         int get_nCRU() const { return nCRU; }
 

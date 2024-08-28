@@ -207,14 +207,14 @@ namespace GW {
     }
 
 
-    template <typename FloatType, typename PRNG>
-    CRUState<FloatType, PRNG>::CRUState(const int nCRU) : CaSS(nCRU,4), CaJSR(nCRU), LCC(nCRU,4), LCC_inactivation(nCRU,4), RyR(nCRU,4,6), ClCh(nCRU,4) {
+    template <typename FloatType>//, typename PRNG>
+    CRUState<FloatType>::CRUState(const int nCRU) : CaSS(nCRU,4), CaJSR(nCRU), LCC(nCRU,4), LCC_inactivation(nCRU,4), RyR(nCRU,4,6), ClCh(nCRU,4) {
         CaSS.setConstant(1.45370e-4);
         CaJSR.setConstant(0.908408);
-        initialise_LCC<PRNG>(LCC);
-        initialise_LCC_i<PRNG>(LCC_inactivation);
-        initialise_RyR<PRNG>(RyR);
-        initialise_ClCh<PRNG>(ClCh);
+        initialise_LCC<std::mt19937_64>(LCC);
+        initialise_LCC_i<std::mt19937_64>(LCC_inactivation);
+        initialise_RyR<std::mt19937_64>(RyR);
+        initialise_ClCh<std::mt19937_64>(ClCh);
     }
 
     // There are 12 separate rates we need to keep track of since there are multiple RyRs per subunit. Using (i,j) to denote the transition from state i to state j,

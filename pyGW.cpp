@@ -21,24 +21,86 @@ using PyParameters = GW::Parameters<T>;
 
 using namespace XoshiroCpp;
 
+typedef Eigen::RowVectorXd Array1d;
+typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Array2d;
+typedef Eigen::Matrix<int,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> Array2i;
+typedef Eigen::Tensor<int,3,Eigen::RowMajor> Array3i;
+
+struct PyGlobalState {
+    double V;
+    double Nai;
+    double Ki;
+    double Cai;
+    double CaNSR;
+    double CaLTRPN;
+    double CaHTRPN;
+    double m;
+    double h;
+    double j;
+    double xKs;
+    Eigen::Matrix<double,1,5,Eigen::RowMajor> Kr;
+    Eigen::Matrix<double,1,10,Eigen::RowMajor> Kv14;
+    Eigen::Matrix<double,1,10,Eigen::RowMajor> Kv43;
+};
+
+//struct PyCRUState {
+ //   Array2d CaSS;
+ //   Array1d CaJSR;
+ //   Array2i LCC;
+ //   Array2i LCC_inactivation;
+ //   Array3i RyR;
+ //   Array2i ClCh;
+ //   int N;
+//};
+
+GW::GlobalState<double> from_python(PyGlobalState &py_state){
+    GW::GlobalState<double> state();
+    state.V = py_state.V;
+    state.Nai = py_state.Nai;
+    state.Ki = py_state.Ki;
+    state.Cai = py_state.Cai;
+    state.CaNSR = py_state.CaNSR;
+    state.CaLTRPN = py_state.CaLTRPN;
+    state.CaHTRPN = py_state.CaHTRPN;
+    state.m = py_state.m;
+    state.h = py_state.h;
+    state.j = py_state.j;
+    state.xKs = py_state.xKs;
+
+    for (int i = 0; i < 5; ++i){
+        state.Kr[i] = py_state.Kr(i);
+    }
+
+    for (int i = 0; i < 10; ++i){
+        state.Kv14[i] = py_state.Kv14(i);
+        state.Kv43[i] = py_state.Kv43(i);
+    }
+    return state;
+}
+
+
+
+
+
 PyGWSimulation run_PRNG_arg(const GW::Parameters<double>& params, const int nCRU, double step_size, int num_steps, 
-                            const std::function<double(double)>& Is, int record_every, std::string& rng){
+                            const std::function<double(double)>& Is, int record_every, std::string& rng, PyGlobalState<double> &init_globals, GW::CRUState<double> &init_crus){
+    auto globals = from_python(init_globals);
     if (rng == "mt19937")
-        return run<std::mt19937>(params, nCRU, step_size, num_steps, Is, record_every);
+        return run<std::mt19937>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
     else if (rng == "mt19937_64")
-        return run<std::mt19937_64>(params, nCRU, step_size, num_steps, Is, record_every);
+        return run<std::mt19937_64>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
     else if (rng == "xoshiro256+")
-        return run<Xoshiro256Plus>(params, nCRU, step_size, num_steps, Is, record_every);
+        return run<Xoshiro256Plus>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
     else if (rng == "xoshiro256++")
-        return run<Xoshiro256PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every);
+        return run<Xoshiro256PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
     else if (rng == "xoshiro256**")
-        return run<Xoshiro256StarStar>(params, nCRU, step_size, num_steps, Is, record_every);
+        return run<Xoshiro256StarStar>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
     else if (rng == "xoroshiro128+")
-        return run<Xoroshiro128Plus>(params, nCRU, step_size, num_steps, Is, record_every);
+        return run<Xoroshiro128Plus>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
     else if (rng == "xoroshiro128++")
-        return run<Xoroshiro128PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every);
+        return run<Xoroshiro128PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
     else if (rng == "xoroshiro128**")
-        return run<Xoroshiro128StarStar>(params, nCRU, step_size, num_steps, Is, record_every);
+        return run<Xoroshiro128StarStar>(params, nCRU, step_size, num_steps, Is, record_every, globals, init_crus);
     else
         throw std::invalid_argument(rng);
 }
@@ -197,8 +259,36 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("ClCh", &PyGWSimulation::ClCh)
         .def("__repr__", [](const PyGWSimulation &x) {return "Greenstein and Winslow model solution over the interval [0, " + std::to_string(x.tspan) + "] with " + std::to_string(x.nCRU) + " CRUs"; });
    
+    // Needed for setting initial conditions
+    py::class_<PyGlobalState>(m, "GWGlobalState")
+        .def(py::init<>())
+        .def_readwrite("V", &PyGlobalState::V)
+        .def_readwrite("Nai", &PyGlobalState::Nai)
+        .def_readwrite("Ki", &PyGlobalState::Ki)
+        .def_readwrite("Cai", &PyGlobalState::Cai)
+        .def_readwrite("CaNSR", &PyGlobalState::CaNSR)
+        .def_readwrite("CaLTRPN", &PyGlobalState::CaLTRPN)
+        .def_readwrite("CaHTRPN", &PyGlobalState::CaHTRPN)
+        .def_readwrite("m", &PyGlobalState::m)
+        .def_readwrite("h", &PyGlobalState::h)
+        .def_readwrite("j", &PyGlobalState::j)
+        .def_readwrite("xKs", &PyGlobalState::xKs)
+        .def_readwrite("Kr", &PyGlobalState::Kr)
+        .def_readwrite("Kv14", &PyGlobalState::Kv14)
+        .def_readwrite("Kv43", &PyGlobalState::Kv43);
+    
+    py::class_<GW::CRUState<double>>(m, "GWCRUState")
+        .def(py::init<int>())
+        .def_readwrite("CaSS", &GW::CRUState<double>::CaSS)
+        .def_readwrite("CaJSR", &GW::CRUState<double>::CaJSR)
+        .def_readwrite("LCC", &GW::CRUState<double>::LCC)
+        .def_readwrite("LCC_inactivation", &GW::CRUState<double>::LCC_inactivation)
+        .def_readwrite("RyR", &GW::CRUState<double>::RyR)
+        .def_readwrite("ClCh", &GW::CRUState<double>::ClCh)
+
 
     m.def("run", &run_PRNG_arg, "Simulate the model", "parameters"_a, "nCRU"_a, "step_size"_a, "num_steps"_a, 
                                                       "Istim"_a, "record_every"_a, "PRNG"_a = "mt19937_64", 
+                                                      "init_globals"_a = GW::GlobalState<double>(), "init_crus"_a = GW::CRUState<double>(),
                                                        py::call_guard<py::gil_scoped_release>());
 }

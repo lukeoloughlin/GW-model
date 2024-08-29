@@ -40,38 +40,38 @@ struct PyGlobalState {
     double h = 0.996345;
     double j = 0.997315;
     double xKs = 2.04171e-4;
-    Eigen::Matrix<double,1,5,Eigen::RowMajor> Kr;
-    Eigen::Matrix<double,1,10,Eigen::RowMajor> Kv14;
-    Eigen::Matrix<double,1,10,Eigen::RowMajor> Kv43;
+    Eigen::Matrix<double,1,5,Eigen::RowMajor> XKr;
+    Eigen::Matrix<double,1,10,Eigen::RowMajor> XKv14;
+    Eigen::Matrix<double,1,10,Eigen::RowMajor> XKv43;
 
     PyGlobalState() {
-        Kr(0) = 0.999503;
-        Kr(1) = 4.13720e-4;
-        Kr(2) = 7.27568e-5; 
-        Kr(3) = 8.73984e-6; 
-        Kr(4) = 1.36159e-6;
+        XKr(0) = 0.999503;
+        XKr(1) = 4.13720e-4;
+        XKr(2) = 7.27568e-5; 
+        XKr(3) = 8.73984e-6; 
+        XKr(4) = 1.36159e-6;
 
-        Kv14(0) = 0.722328;
-        Kv14(1) = 0.101971; 
-        Kv14(2) = 0.00539932; 
-        Kv14(3) = 1.27081e-4; 
-        Kv14(4) = 1.82742e-6; 
-        Kv14(5) = 0.152769; 
-        Kv14(6) = 0.00962328; 
-        Kv14(7) = 0.00439043; 
-        Kv14(8) = 0.00195348; 
-        Kv14(9) = 0.00143629;
+        XKv14(0) = 0.722328;
+        XKv14(1) = 0.101971; 
+        XKv14(2) = 0.00539932; 
+        XKv14(3) = 1.27081e-4; 
+        XKv14(4) = 1.82742e-6; 
+        XKv14(5) = 0.152769; 
+        XKv14(6) = 0.00962328; 
+        XKv14(7) = 0.00439043; 
+        XKv14(8) = 0.00195348; 
+        XKv14(9) = 0.00143629;
         
-        Kv43(0) = 0.953060; 
-        Kv43(1) = 0.0253906; 
-        Kv43(2) = 2.53848e-4; 
-        Kv43(3) = 1.12796e-6; 
-        Kv43(4) = 1.87950e-9; 
-        Kv43(5) = 0.0151370; 
-        Kv43(6) = 0.00517622; 
-        Kv43(7) = 8.96600e-4; 
-        Kv43(8) = 8.17569e-5; 
-        Kv43(9) = 2.24032e-6;
+        XKv43(0) = 0.953060; 
+        XKv43(1) = 0.0253906; 
+        XKv43(2) = 2.53848e-4; 
+        XKv43(3) = 1.12796e-6; 
+        XKv43(4) = 1.87950e-9; 
+        XKv43(5) = 0.0151370; 
+        XKv43(6) = 0.00517622; 
+        XKv43(7) = 8.96600e-4; 
+        XKv43(8) = 8.17569e-5; 
+        XKv43(9) = 2.24032e-6;
     }
 };
 
@@ -101,12 +101,12 @@ GW::GlobalState<double> globals_from_python(const PyGlobalState &py_state){
     state.xKs = py_state.xKs;
 
     for (int i = 0; i < 5; ++i){
-        state.Kr[i] = py_state.Kr(i);
+        state.Kr[i] = py_state.XKr(i);
     }
 
     for (int i = 0; i < 10; ++i){
-        state.Kv14[i] = py_state.Kv14(i);
-        state.Kv43[i] = py_state.Kv43(i);
+        state.Kv14[i] = py_state.XKv14(i);
+        state.Kv43[i] = py_state.XKv43(i);
     }
     return state;
 }
@@ -324,9 +324,9 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("h", &PyGlobalState::h)
         .def_readwrite("j", &PyGlobalState::j)
         .def_readwrite("xKs", &PyGlobalState::xKs)
-        .def_readwrite("Kr", &PyGlobalState::Kr)
-        .def_readwrite("Kv14", &PyGlobalState::Kv14)
-        .def_readwrite("Kv43", &PyGlobalState::Kv43);
+        .def_readwrite("XKr", &PyGlobalState::XKr)
+        .def_readwrite("XKv14", &PyGlobalState::XKv14)
+        .def_readwrite("XKv43", &PyGlobalState::XKv43);
     
     py::class_<PyCRUState>(m, "GWCRUState")
         .def(py::init<int>())

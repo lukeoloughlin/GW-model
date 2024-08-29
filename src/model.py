@@ -1,6 +1,7 @@
 # pylint: disable=invalid-name,c-extension-no-member,broad-exception-caught,line-too-long
 from typing import Callable, List
 from functools import reduce
+import pickle as pkl
 
 import numpy as np
 import numpy.typing as npt
@@ -577,6 +578,83 @@ class GWSolution:
         self.__Jtr: npt.NDArray | None = None
         self.__Jxfer: npt.NDArray | None = None
 
+    @classmethod
+    def from_dict(cls, state_dict: dict):
+        """Construct from dict
+
+        Args:
+            state_dict (dict): Dictionary of model variables
+        """
+        _vars = state_dict["vars"]
+        _params = state_dict["params"]
+
+        NCaRU = _params["NCaRU_sim"]
+        t = _vars["t"]
+        cxx_vars = gw_cxx.GWVariables(NCaRU, t.shape[0], t[-1])
+        cxx_vars.t = t
+        cxx_vars.V = _vars["V"]
+        cxx_vars.Nai = _vars["Nai"]
+        cxx_vars.Ki = _vars["Ki"]
+        cxx_vars.Cai = _vars["Cai"]
+        cxx_vars.CaNSR = _vars["CaNSR"]
+        cxx_vars.CaLTRPN = _vars["CaLTRPN"]
+        cxx_vars.CaHTRPN = _vars["CaHTRPN"]
+        cxx_vars.m = _vars["m"]
+        cxx_vars.h = _vars["h"]
+        cxx_vars.j = _vars["j"]
+        cxx_vars.xKs = _vars["xKs"]
+        cxx_vars.XKr = _vars["XKr"]
+        cxx_vars.XKv14 = _vars["XKv14"]
+        cxx_vars.XKv43 = _vars["XKv43"]
+        cxx_vars.CaSS = _vars["CaSS"]
+        cxx_vars.CaJSR = _vars["CaJSR"]
+        cxx_vars.LCC = _vars["LCC"]
+        cxx_vars.LCC_inactivation = _vars["LCC_inactivation"]
+        cxx_vars.RyR = _vars["RyR"]
+        cxx_vars.ClCh = _vars["ClCh"]
+
+        params = GWParameters.from_dict(_params)
+        return cls(cxx_vars, params)
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for serialization"""
+        params_dict = self.__params.to_dict()
+        vars_dict = {
+            "t": self.t,
+            "V": self.V,
+            "Nai": self.Nai,
+            "Ki": self.Ki,
+            "Cai": self.Cai,
+            "CaNSR": self.CaNSR,
+            "CaLTRPN": self.CaLTRPN,
+            "CaHTRPN": self.CaHTRPN,
+            "m": self.m,
+            "h": self.h,
+            "j": self.j,
+            "xKs": self.xKs,
+            "XKr": self.XKr,
+            "XKv14": self.XKv14,
+            "XKv43": self.XKv43,
+            "CaSS": self.CaSS,
+            "CaJSR": self.CaJSR,
+            "LCC": self.LCC,
+            "LCC_inactivation": self.LCC_inactivation,
+            "RyR": self.RyR,
+            "ClCh": self.ClCh,
+        }
+        return {"params": params_dict, "vars": vars_dict}
+
+    def save(self, fname: str) -> None:
+        state_dict = self.to_dict()
+        with open(fname, "wb") as f:
+            pkl.dump(state_dict, f)
+
+    @classmethod
+    def load(cls, fname: str):
+        with open(fname, "rb") as f:
+            state_dict = pkl.load(f)
+        return cls.from_dict(state_dict)
+
     @property
     def parameters(self) -> GWParameters:
         """GWParameters: Model parameters."""
@@ -938,9 +1016,9 @@ def _unpack_globals(state_dict: dict) -> gw_cxx.GWGlobalState:
     state.j = state_dict["j"]
     state.xKs = state_dict["xKs"]
 
-    state.Kr = state_dict["Kr"]
-    state.Kv14 = state_dict["Kv14"]
-    state.Kv43 = state_dict["Kv43"]
+    state.XKr = state_dict["XKr"]
+    state.XKv14 = state_dict["XKv14"]
+    state.XKv43 = state_dict["XKv43"]
 
     return state
 

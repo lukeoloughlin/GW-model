@@ -469,6 +469,25 @@ class GWParameters:
                     f"{name} not a valid argument to GWParameters constructor. Call help(GWParameters) to see a list of acceptable parameter names"
                 )
 
+    @classmethod
+    def from_dict(cls, state_dict: dict):
+        """Recreate object from dict
+
+        Args:
+            state_dict (dict): dictionary of solution state
+        """
+        cxx_struct = gw.GWParameters()
+        for name, _, _, _ in _GW_NAMES:
+            setattr(cxx_struct, name, state_dict[name])
+        return cls(cxx_struct)
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for serialization"""
+        param_dict = {"NCaRU_sim": self.NCaRU_sim}
+        for name, _, _, _ in _GW_NAMES:
+            param_dict[name] = getattr(self, name)
+        return param_dict
+
     @property
     def cxx_struct(self) -> gw.GWParameters:
         """The C++ compatible struct.

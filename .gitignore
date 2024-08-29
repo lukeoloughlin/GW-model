@@ -33,6 +33,10 @@
 
 # Data
 *.csv
+*.pkl
+
+# Log files
+*.log
 
 # cmake cache
 build/

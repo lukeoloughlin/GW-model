@@ -1,17 +1,15 @@
-import time
+import os
 import argparse
 
 import dill
 import numpy as np
 
-from src import GWParameters, GWModel, save_sim_list
+from src import GWParameters, GWModel, save_sim_list, create_log, log_args, log_dict
 
 
 def main(args):
-    # params = GWParameters(NCaRU_sim=args.NCaRU)
-    # model = GWModel(parameters=params, stimulus_fn=Istim)
-    # print(model)
-    # print(model.stimulus_fn(1.0))
+    logger = create_log(args.fname + ".log", path=os.getcwd())
+    log_args(logger, args, indent=True)
 
     XKr = np.array([0.999503, 4.13720e-4, 7.27568e-5, 8.73984e-6, 1.36159e-6])
     XKv14 = np.array(
@@ -79,11 +77,13 @@ def main(args):
         "RyR": RyR,
         "ClCh": ClCh,
     }
+    Istim = lambda t: 35 if t < 2 else 0  # Stimulus function
 
     params = GWParameters(
         NCaRU_sim=args.NCaRU
     )  # Create parameters object using default values
-    Istim = lambda t: 35 if t < 2 else 0  # Stimulus function
+    logger.info("Parameters:", extra={"simple": True})
+    log_dict(logger, params.to_dict(), indent=True)
 
     model = GWModel(parameters=params, stimulus_fn=Istim, init_state=init_state)
 
@@ -96,14 +96,7 @@ def main(args):
         )
         for _ in range(args.nsim)
     ]
-    # for i in range(args.nsim):
-    #    sim = model.simulate(
-    #        step_size=args.step_size,
-    #        num_steps=args.num_steps,
-    #        record_every=args.record_every,
-    #    )
-    #    all_sims.append(sim)
-    save_sim_list(all_sims, args.fname)
+    save_sim_list(all_sims, args.fname + ".pkl")
 
 
 if __name__ == "__main__":
@@ -126,8 +119,4 @@ if __name__ == "__main__":
         default=500,
     )
     args = parser.parse_args()
-    print(args.nsim)
-    print(args.num_steps)
-    print(args.step_size)
-    print(args.record_every)
     main(args)

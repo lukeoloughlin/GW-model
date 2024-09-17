@@ -1,10 +1,12 @@
 import os
 import argparse
 
-import dill
 import numpy as np
 
 from src import GWParameters, GWModel, save_sim_list, create_log, log_args, log_dict
+
+# TODO: Make the size of the files much, much smaller. 17 experiments creates a 2.2Gb folder!
+# Some ideas: Collect at larger intervals, convert to float32, convert LCC_i and ClCh to bools, enumerate RyR state space and save as int, use int 16, don't save parameters more than once
 
 
 def main(args):
@@ -51,7 +53,7 @@ def main(args):
     RyR = np.zeros((args.NCaRU, 4, 6), dtype=np.int32)
     for i in range(args.NCaRU):
         for j in range(4):
-            for k in range(5):
+            for _ in range(5):
                 idx = np.random.choice([0, 4, 5], p=[0.609, 0.5 * 0.391, 0.5 * 0.391])
                 RyR[i, j, idx] += 1
 

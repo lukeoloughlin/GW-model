@@ -45,11 +45,14 @@ struct PyGWSimulation {
     Array4i RyR;
     Array3i ClCh;
 
+    Array1d int_QTXt;
+
     PyGWSimulation(int nCRU_, int num_step, double t_) : nCRU(nCRU_), tspan(t_), t(num_step), V(num_step), m(num_step), h(num_step), j(num_step), 
                                                      Nai(num_step), Ki(num_step), Cai(num_step), CaNSR(num_step), CaLTRPN(num_step), 
                                                      CaHTRPN(num_step), xKs(num_step), XKr(num_step,5), XKv14(num_step,10), XKv43(num_step,10), 
                                                      CaJSR(num_step,nCRU_), CaSS(num_step,nCRU_,4), LCC(num_step,nCRU_,4), 
-                                                     LCC_inactivation(num_step,nCRU_,4), RyR(num_step,nCRU_,4,6), ClCh(num_step,nCRU_,4) { }
+                                                     LCC_inactivation(num_step,nCRU_,4), RyR(num_step,nCRU_,4,6), ClCh(num_step,nCRU_,4), 
+                                                     int_QTXt(num_step) { }
 };
 
 
@@ -96,6 +99,8 @@ void record_state(PyGWSimulation& out, const GW::GW_model<double, PRNG>& model, 
             out.ClCh(idx,j,k) = model.CRUs.ClCh(j,k);
         }
     }
+
+    out.int_QTXt(idx) = model.int_QTXt;
 }
 
 

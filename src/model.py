@@ -898,6 +898,11 @@ class GWSolution:
             )
         return self.__Jxfer
 
+    @property
+    def int_QTXt(self) -> npt.NDArray[np.floating]:
+        """Integral of f_{open}(Q^T(s)RyR_s), where f_{open} is the linear functional giving the number of open RyRs"""
+        return self.__vars.int_QTXt
+
 
 class GWModel:
     """Simulates the Greenstein and Winslow model with specified parameters and stimulus."""

@@ -50,6 +50,9 @@ namespace GW {
         //CRUState<FloatType, PRNG> CRUs;
         CRUState<FloatType> CRUs;
         
+        // Track the martingale defined by open RyRs
+        FloatType int_QTXt;
+        
         FloatType Istim = 0;
     private:
 
@@ -68,7 +71,6 @@ namespace GW {
 
         Currents<FloatType> currents;
         GlobalState<FloatType> dGlobals;
-
     
         inline void initialise_Jxfer(){ Jxfer = parameters.rxfer * (CRUs.CaSS - globals.Cai); }
         inline void initialise_Jtr(){ Jtr = parameters.rtr * (globals.CaNSR - CRUs.CaJSR); }
@@ -87,12 +89,14 @@ namespace GW {
 
         /* Record the values of the CRUStateThread temp back to the CRUState state for CRU i */
         inline void update_CRUstate_from_temp(const CRUStateThread<FloatType> &temp, const int i);
+
+        inline void update_integral(const FloatType dt);
         
         
     public:
         GW_model(int nCRU_simulated) : parameters(), globals(), CRUs(nCRU_simulated), nCRU(nCRU_simulated), consts(parameters, nCRU), JLCC(nCRU_simulated,4), 
                                        Jxfer(nCRU_simulated,4), Jtr(nCRU_simulated), QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage), currents(), 
-                                       dGlobals(0.0) { 
+                                       dGlobals(0.0), int_QTXt(0.0) { 
             consts.VF_RT = globals.V * consts.F_RT;
             consts.JLCC_exp = exp(2*consts.VF_RT);
             initialise_JLCC();
@@ -103,7 +107,7 @@ namespace GW {
 
         GW_model(const Parameters<FloatType>& params, int nCRU_simulated) : parameters(params), globals(), CRUs(nCRU_simulated), nCRU(nCRU_simulated), consts(parameters, nCRU), JLCC(nCRU_simulated,4), 
                                        Jxfer(nCRU_simulated,4), Jtr(nCRU_simulated), QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage), currents(), 
-                                       dGlobals(0.0) { 
+                                       dGlobals(0.0), int_QTXt(0.0) { 
             consts.VF_RT = globals.V * consts.F_RT;
             consts.JLCC_exp = exp(2*consts.VF_RT);
             initialise_JLCC();

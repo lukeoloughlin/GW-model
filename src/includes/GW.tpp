@@ -244,8 +244,9 @@ namespace GW {
         update_V_and_concentration_derivatives(dt);
         update_gate_derivatives(dt);
         update_Kr_derivatives(dt);
-        update_Kv_derivatives(dt); // Updates both Kv14 and Kv43        
+        update_Kv_derivatives(dt); // Updates both Kv14 and Kv43
 
+        update_integral(dt); // Must do this before update to ensure we are taking the lefthand process
 
         SSA(dt);
 
@@ -279,6 +280,40 @@ namespace GW {
             euler_step(dt);
             t += dt;
         }
+    }
+    
+    template <typename FloatType, typename PRNG>
+    void GW_model<FloatType, PRNG>::update_integral(const FloatType dt){
+        FloatType increment = 0.0;
+        FloatType r1p, r2p, r1m, r2m, CaSS2;
+        for (int i = 0; i < nCRU; ++i){
+            for (int j = 0; j < 4; ++j){
+                CaSS2 = square(CRUs.CaSS(i,j));
+
+                r1p = CRUs.RyR.array(i,j,1) * parameters.k23 * CaSS2;
+                if (CRUs.CaSS(i,j) > 0.000115) {
+                    r2p = ((CRUs.RyR.array(i,j,4) + CRUs.RyR.array(i,j,5)) 
+                            * parameters.k54*parameters.k65*CaSS2 
+                            / (parameters.k56*CaSS2 + parameters.k65));
+                }
+                else {
+                    r2p = CRUs.RyR.array(i,j,4) * parameters.k54 * CaSS2;
+                } 
+                if (CRUs.CaSS(i,j) > 0.03685) {
+                    r1m = (CRUs.RyR.array(i,j,2) + CRUs.RyR.array(i,j,3)) * parameters.k32 * parameters.k43 
+                         / (parameters.k34 * CaSS2 + parameters.k43);
+                    r2m = (CRUs.RyR.array(i,j,2) + CRUs.RyR.array(i,j,3)) * (parameters.k45*parameters.k34*CaSS2)
+                         / (parameters.k34 * CaSS2 + parameters.k43);
+                }
+                else {
+                    r1m = CRUs.RyR.array(i,j,2) * parameters.k32;
+                    r2m = CRUs.RyR.array(i,j,3) * parameters.k45;
+                }
+
+                increment += (r1p + r2p - (r1m + r2m));
+            }
+        }
+        int_QTXt += dt * increment / (4.0*nCRU); // Update approximation of int_{0}^t RyR_open(Q^T(s) X_s) ds
     }
 
 /*

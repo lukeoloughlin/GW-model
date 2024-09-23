@@ -308,6 +308,7 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("LCC_inactivation", &PyGWSimulation::LCC_inactivation)
         .def_readwrite("RyR", &PyGWSimulation::RyR)
         .def_readwrite("ClCh", &PyGWSimulation::ClCh)
+        .def_readwrite("int_QTXt", &PyGWSimulation::int_QTXt)
         .def("__repr__", [](const PyGWSimulation &x) {return "Greenstein and Winslow model solution over the interval [0, " + std::to_string(x.tspan) + "] with " + std::to_string(x.nCRU) + " CRUs"; });
    
     // Needed for setting initial conditions

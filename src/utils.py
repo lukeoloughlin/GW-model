@@ -5,6 +5,23 @@ import numpy as np
 import numpy.typing as npt
 
 
+def RyR_state_to_int16(RyRs: npt.NDArray) -> npt.NDArray:
+    # If 3 and 4 are in equilibrium, then the way I wrote the code makes -ve values possible, so get rid of these
+    RyRs_34 = RyRs[..., 2] + RyRs[..., 3]
+    RyR_3or4_neg = np.logical_or(RyRs[..., 2] < 0, RyRs[..., 3] < 0)
+    RyRs2 = np.logical_not(RyR_3or4_neg) * RyRs[..., 2] + RyR_3or4_neg * RyRs_34
+    RyRs3 = np.logical_not(RyR_3or4_neg) * RyRs[..., 3]
+
+    # Same as above with 5 and 6
+    RyRs_56 = RyRs[..., 4] + RyRs[..., 5]
+    RyR_5or6_neg = np.logical_or(RyRs[..., 4] < 0, RyRs[..., 5] < 0)
+    RyRs4 = np.logical_not(RyR_5or6_neg) * RyRs[..., 4] + RyR_5or6_neg * RyRs_56
+    # RyRs5 = np.logical_not(RyR_5or6_neg) * RyRs[..., 5]
+
+    out = RyRs[..., 0] + 6 * RyRs[..., 1] + 36 * RyRs2 + 216 * RyRs3 + 1296 * RyRs4
+    return np.int16(out)
+
+
 def load_model_from_json(fname: str) -> dict:
     """Load model related data from fname.json into a dictionary."""
     with open(fname + ".json", "r", encoding="utf-8") as f:

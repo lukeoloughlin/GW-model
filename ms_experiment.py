@@ -1,9 +1,14 @@
 import os
+import sys
+
+sys.path.append(os.path.abspath(os.getcwd()) + "/src")
+
 import argparse
 
 import numpy as np
+import h5py
 
-from src import GWParameters, GWModel, save_sim_list, create_log, log_args, log_dict
+from src import GWParameters, GWModel, save_sim_group, create_log, log_args, log_dict
 
 # TODO: Make the size of the files much, much smaller. 17 experiments creates a 2.2Gb folder!
 # Some ideas: Collect at larger intervals, convert to float32, convert LCC_i and ClCh to bools, enumerate RyR state space and save as int, use int 16, don't save parameters more than once
@@ -89,16 +94,35 @@ def main(args):
 
     model = GWModel(parameters=params, stimulus_fn=Istim, init_state=init_state)
 
-    # all_sims = []
-    all_sims = [
-        model.simulate(
-            step_size=args.step_size,
-            num_steps=args.num_steps,
-            record_every=args.record_every,
-        )
-        for _ in range(args.nsim)
-    ]
-    save_sim_list(all_sims, args.fname + ".pkl")
+    direc = "experiments"
+    if not os.path.exists(direc):
+        os.makedirs(direc)
+
+    with h5py.File(direc + "/" + args.fname + ".h5py", "w") as f:
+        par_grp = f.create_group("params")
+        for par_name, par_val in params.to_dict().items():
+            par_grp.create_dataset(name=par_name, data=par_val)
+        del par_grp
+
+        for i in range(args.nsim):
+            sim = model.simulate(
+                step_size=args.step_size,
+                num_steps=args.num_steps,
+                record_every=args.record_every,
+            )
+            grp_name = f"sim{i}"
+            save_sim_group(sim, f, grp_name)
+            del sim
+
+    # all_sims = [
+    #    model.simulate(
+    #        step_size=args.step_size,
+    #        num_steps=args.num_steps,
+    #        record_every=args.record_every,
+    #    )
+    #    for _ in range(args.nsim)
+    # ]
+    # save_sim_list(all_sims, args.fname + ".pkl")
 
 
 if __name__ == "__main__":
@@ -118,7 +142,7 @@ if __name__ == "__main__":
         "--record-every",
         type=int,
         help="Number of Euler steps between recording of states",
-        default=500,
+        default=1000,
     )
     args = parser.parse_args()
     main(args)

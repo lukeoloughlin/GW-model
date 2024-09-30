@@ -50,8 +50,15 @@ namespace GW {
         //CRUState<FloatType, PRNG> CRUs;
         CRUState<FloatType> CRUs;
         
-        // Track the martingale defined by open RyRs
-        FloatType int_QTXt;
+        FloatType int_QTXt; // RyR_open(int_{0}^t Q^T(State(s))RyR_s ds)
+        FloatType increment;
+        FloatType mean_RyR_open;
+        FloatType dM; // dNRyR_open - RyR_open(Q^T(State(s))RyR_s)
+        FloatType sigma2_t; // instentaneous variance of open RyRs
+        FloatType dM_normalised; // = (1 / sigma_t) dM
+        
+        FloatType CaSS_mean;
+        FloatType dCaSS_mean;
         
         FloatType Istim = 0;
     private:
@@ -90,13 +97,16 @@ namespace GW {
         /* Record the values of the CRUStateThread temp back to the CRUState state for CRU i */
         inline void update_CRUstate_from_temp(const CRUStateThread<FloatType> &temp, const int i);
 
-        inline void update_integral(const FloatType dt);
+        inline void update_increment_and_sigma(const FloatType dt);
+        inline void update_mean_RyR_open();
+        inline void update_martingale_quantities();
         
         
     public:
         GW_model(int nCRU_simulated) : parameters(), globals(), CRUs(nCRU_simulated), nCRU(nCRU_simulated), consts(parameters, nCRU), JLCC(nCRU_simulated,4), 
                                        Jxfer(nCRU_simulated,4), Jtr(nCRU_simulated), QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage), currents(), 
-                                       dGlobals(0.0), int_QTXt(0.0) { 
+                                       dGlobals(0.0), int_QTXt(0.0), increment(0.0), mean_RyR_open(0.0), dM(0.0), sigma2_t(0.0), dM_normalised(0.0), 
+                                       CaSS_mean(0.0), dCaSS_mean(0.0) { 
             consts.VF_RT = globals.V * consts.F_RT;
             consts.JLCC_exp = exp(2*consts.VF_RT);
             initialise_JLCC();
@@ -107,7 +117,8 @@ namespace GW {
 
         GW_model(const Parameters<FloatType>& params, int nCRU_simulated) : parameters(params), globals(), CRUs(nCRU_simulated), nCRU(nCRU_simulated), consts(parameters, nCRU), JLCC(nCRU_simulated,4), 
                                        Jxfer(nCRU_simulated,4), Jtr(nCRU_simulated), QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage), currents(), 
-                                       dGlobals(0.0), int_QTXt(0.0) { 
+                                       dGlobals(0.0), int_QTXt(0.0), increment(0.0), mean_RyR_open(0.0), dM(0.0), sigma2_t(0.0), dM_normalised(0.0), 
+                                       CaSS_mean(0.0), dCaSS_mean(0.0) { 
             consts.VF_RT = globals.V * consts.F_RT;
             consts.JLCC_exp = exp(2*consts.VF_RT);
             initialise_JLCC();
@@ -123,6 +134,9 @@ namespace GW {
         void euler_step(const FloatType dt);
 
         void euler(const FloatType dt, const int nstep, const std::function<FloatType(FloatType)>& Is);
+        
+        void euler_step_martingale(const FloatType dt);
+        void euler_martingale(const FloatType dt, const int nstep, const std::function<FloatType(FloatType)>& Is);
 
 
 };

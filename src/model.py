@@ -17,7 +17,6 @@ F_R = F / R
 
 GWParametersCXX = type[gw_cxx.GWParameters]
 GWVariablesCXX = type[gw_cxx.GWVariables]
-GWMartingaleVariablesCXX = type[gw_cxx.GWMartingaleVariables]
 
 __IMPLEMENTED_PRNGS = [
     "mt19937",
@@ -770,6 +769,18 @@ class GWSolution:
         return self.__vars.ClCh
 
     @property
+    def RyR_open_int(self) -> npt.NDArray[np.floating]:
+        return self.__vars.RyR_open_int
+
+    @property
+    def RyR_open_martingale(self) -> npt.NDArray[np.floating]:
+        return self.__vars.RyR_open_martingale
+
+    @property
+    def RyR_open_martingale_normalised(self) -> npt.NDArray[np.floating]:
+        return self.__vars.RyR_open_martingale_normalised
+
+    @property
     def INa(self) -> npt.NDArray[np.floating]:
         """npt.NDArray[np.floating]: 1D array of INa recordings [pA][pF]^{-1}."""
         if self.__INa is None:
@@ -905,57 +916,6 @@ class GWSolution:
     #    return self.__vars.int_QTXt
 
 
-class GWMartingaleSolution:
-    """Container class for the results of simulating the Greenstein and Winslow model where only the Martingales and action poential are tracked."""
-
-    def __init__(
-        self, gw_cxx_output: gw_cxx.GWMartingaleVariables, gw_parameters: GWParameters
-    ):
-        """
-        Args:
-            gw_cxx_output (gw.GWVariables): C++ struct holding snapshots of the model state across time.
-            gw_parameters (GWParameters): Model parameters used to simulate the model realisation. Required for calculating the currents.
-        """
-        self.__vars: GWMartingaleVariablesCXX = gw_cxx_output
-        self.__params: GWParameters = gw_parameters
-
-    @property
-    def params(self):
-        return self.__params
-
-    @property
-    def t(self):
-        return self.__vars.t
-
-    @property
-    def V(self):
-        return self.__vars.V
-
-    @property
-    def intQTXt(self):
-        return self.__vars.intQTXt
-
-    @property
-    def dM(self):
-        return self.__vars.dM
-
-    @property
-    def dM_normalised(self):
-        return self.__vars.dM_normalised
-
-    @property
-    def sigma2_t(self):
-        return self.__vars.sigma2_t
-
-    @property
-    def RyR_open(self):
-        return self.__vars.RyR_open
-
-    @property
-    def dCaSS_mean(self):
-        return self.__vars.dCaSS_mean
-
-
 class GWModel:
     """Simulates the Greenstein and Winslow model with specified parameters and stimulus."""
 
@@ -1037,50 +997,6 @@ class GWModel:
                 raise e
 
         return GWSolution(cxx_sol, self.parameters)
-
-    def simulate_martingale(
-        self,
-        step_size: float,
-        num_steps: int,
-        record_every: int = 1,
-        PRNG: str = "xoshiro256++",
-    ) -> GWMartingaleSolution:
-        """Simulate the model with a step size of step_size over num_steps steps and collect the Martingale increments.
-
-        Args:
-            step_size (float): Size of the integrator time step (ms). Value must be > 0.
-            num_steps (int): Number of steps that the integrator should take. Value must be > 0.
-            record_every (int, optional): Number of steps between recording snapshots of the state. Value must be > 0. Defaults to 1.
-            PRNG (str, optional): PRNG to use within the algorithm. Call GWModel.PRNG_options() to get a list of options. Default is 'xoshiro256++'.
-
-        Returns:
-            GWSolution: Snapshots of state through simulation.
-        """
-        assert_positive(step_size, "step_size")
-        assert_positive(num_steps, "num_steps")
-        assert_positive(record_every, "record_every")
-        try:
-            cxx_sol = gw_cxx.run_martingale(
-                self.parameters.cxx_struct,
-                self.parameters.NCaRU_sim,
-                step_size,
-                num_steps,
-                self.__stim,
-                record_every,
-                init_crus=self.__cru_state,
-                init_globals=self.__global_state,
-                PRNG=PRNG,
-            )
-        except Exception as e:
-            if isinstance(e, ValueError):
-                raise ValueError(
-                    f"{PRNG} is an invalid argument for PRNG.\nAvailable options are: "
-                    + reduce(lambda x, y: x + ", " + y, self.PRNG_options())
-                ) from e
-            else:
-                raise e
-
-        return GWMartingaleSolution(cxx_sol, self.parameters)
 
     def stimulus_fn(self, t: float) -> float:
         """Evaluate the stimulus function Istim.

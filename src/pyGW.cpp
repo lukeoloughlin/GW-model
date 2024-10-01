@@ -156,32 +156,6 @@ PyGWSimulation run_PRNG_arg(const GW::Parameters<double>& params, const int nCRU
         throw std::invalid_argument(rng);
 }
 
-PyGWMartingaleSimulation run_martingale_PRNG_arg(const GW::Parameters<double>& params, const int nCRU, double step_size, int num_steps, 
-                            const std::function<double(double)>& Is, int record_every, PyCRUState &init_crus, 
-                            PyGlobalState &init_globals, std::string& rng){
-    auto globals = globals_from_python(init_globals);
-    auto crus = crus_from_python(init_crus, nCRU);
-    if (rng == "mt19937")
-        return run_martingale<std::mt19937>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
-    else if (rng == "mt19937_64")
-        return run_martingale<std::mt19937_64>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
-    else if (rng == "xoshiro256+")
-        return run_martingale<Xoshiro256Plus>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
-    else if (rng == "xoshiro256++")
-        return run_martingale<Xoshiro256PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
-    else if (rng == "xoshiro256**")
-        return run_martingale<Xoshiro256StarStar>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
-    else if (rng == "xoroshiro128+")
-        return run_martingale<Xoroshiro128Plus>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
-    else if (rng == "xoroshiro128++")
-        return run_martingale<Xoroshiro128PlusPlus>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
-    else if (rng == "xoroshiro128**")
-        return run_martingale<Xoroshiro128StarStar>(params, nCRU, step_size, num_steps, Is, record_every, globals, crus);
-    else
-        throw std::invalid_argument(rng);
-}
-
-
 PYBIND11_MODULE(GreensteinWinslow, m) {
     /**************** 
      Some basic functions
@@ -333,6 +307,9 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("LCC_inactivation", &PyGWSimulation::LCC_inactivation)
         .def_readwrite("RyR", &PyGWSimulation::RyR)
         .def_readwrite("ClCh", &PyGWSimulation::ClCh)
+        .def_readwrite("RyR_open_int", &PyGWSimulation::RyR_open_int)
+        .def_readwrite("RyR_open_martingale", &PyGWSimulation::RyR_open_martingale)
+        .def_readwrite("RyR_open_martingale_normalised", &PyGWSimulation::RyR_open_martingale_normalised)
         //.def_readwrite("int_QTXt", &PyGWSimulation::int_QTXt)
         .def("__repr__", [](const PyGWSimulation &x) {return "Greenstein and Winslow model solution over the interval [0, " + std::to_string(x.tspan) + "] with " + std::to_string(x.nCRU) + " CRUs"; });
    
@@ -363,25 +340,10 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("RyR", &PyCRUState::RyR)
         .def_readwrite("ClCh", &PyCRUState::ClCh);
 
-    py::class_<PyGWMartingaleSimulation>(m, "GWMartingaleVariables")
-        .def(py::init<int,int,double>())
-        .def_readwrite("t", &PyGWMartingaleSimulation::t)
-        .def_readwrite("V", &PyGWMartingaleSimulation::V)
-        .def_readwrite("intQTXt", &PyGWMartingaleSimulation::intQTXt)
-        .def_readwrite("dM", &PyGWMartingaleSimulation::dM)
-        .def_readwrite("dM_normalised", &PyGWMartingaleSimulation::dM_normalised)
-        .def_readwrite("sigma2_t", &PyGWMartingaleSimulation::sigma2_t)
-        .def_readwrite("RyR_open", &PyGWMartingaleSimulation::RyR_open)
-        .def_readwrite("dCaSS_mean", &PyGWMartingaleSimulation::dCaSS_mean);
-
 
     m.def("run", &run_PRNG_arg, "Simulate the model", "parameters"_a, "nCRU"_a, "step_size"_a, "num_steps"_a, 
                                                       "Istim"_a, "record_every"_a, "init_crus"_a, "init_globals"_a = PyGlobalState(), 
                                                       "PRNG"_a = "mt19937_64",
                                                        py::call_guard<py::gil_scoped_release>());
     
-    m.def("run_martingale", &run_martingale_PRNG_arg, "Simulate the model and track martingale behaviour", "parameters"_a, "nCRU"_a, "step_size"_a, "num_steps"_a, 
-                                                      "Istim"_a, "record_every"_a, "init_crus"_a, "init_globals"_a = PyGlobalState(), 
-                                                      "PRNG"_a = "mt19937_64",
-                                                       py::call_guard<py::gil_scoped_release>());
 }

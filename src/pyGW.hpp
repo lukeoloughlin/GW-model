@@ -44,37 +44,21 @@ struct PyGWSimulation {
     Array3i LCC_inactivation;
     Array4i RyR;
     Array3i ClCh;
+    
+    Array2d RyR_open_int;
+    Array2d RyR_open_martingale;
+    Array2d RyR_open_martingale_normalised;
 
     PyGWSimulation(int nCRU_, int num_step, double t_) : nCRU(nCRU_), tspan(t_), t(num_step), V(num_step), m(num_step), h(num_step), j(num_step), 
                                                      Nai(num_step), Ki(num_step), Cai(num_step), CaNSR(num_step), CaLTRPN(num_step), 
                                                      CaHTRPN(num_step), xKs(num_step), XKr(num_step,5), XKv14(num_step,10), XKv43(num_step,10), 
                                                      CaJSR(num_step,nCRU_), CaSS(num_step,nCRU_,4), LCC(num_step,nCRU_,4), 
-                                                     LCC_inactivation(num_step,nCRU_,4), RyR(num_step,nCRU_,4,6), ClCh(num_step,nCRU_,4) { }
-};
-
-struct PyGWMartingaleSimulation {
-    int nCRU;
-    double tspan;
-
-    Array1d t;
-    Array1d V;
-    Array1d intQTXt;
-    Array1d dM;
-    Array1d dM_normalised;
-    Array1d sigma2_t;
-    Array1d RyR_open;
-    //Array1d CaSS_mean;
-    Array1d dCaSS_mean;
-
-    PyGWMartingaleSimulation(int nCRU_, int num_step, double t_) : nCRU(nCRU_), tspan(t_), t(num_step), V(num_step), intQTXt(num_step), 
-                                                                   dM(num_step), dM_normalised(num_step), sigma2_t(num_step), RyR_open(num_step), dCaSS_mean(num_step) { }
+                                                     LCC_inactivation(num_step,nCRU_,4), RyR(num_step,nCRU_,4,6), ClCh(num_step,nCRU_,4),
+                                                     RyR_open_int(num_step,2), RyR_open_martingale(num_step,2), RyR_open_martingale_normalised(num_step,2) { }
 };
 
 
-template <typename PRNG>
-void record_state(PyGWSimulation& out, const GW::GW_model<double, PRNG>& model, const int idx, const int nCRU, const double t){
-        
-
+void record_state(PyGWSimulation& out, const GW::GW_model<double>& model, const int idx, const int nCRU, const double t){
     out.t(idx) = t;
     out.V(idx) = model.globals.V;
     out.m(idx) = model.globals.m;
@@ -115,6 +99,16 @@ void record_state(PyGWSimulation& out, const GW::GW_model<double, PRNG>& model, 
         }
     }
 
+    out.RyR_open_int(idx,0) = model.CRUs.RyR_open_int.mean();
+    out.RyR_open_int(idx,1) = model.CRUs.RyR_open_int(0,0);
+    
+    out.RyR_open_martingale(idx,0) = model.CRUs.RyR_open_martingale.mean();
+    out.RyR_open_martingale(idx,1) = model.CRUs.RyR_open_martingale(0,0);
+    
+    out.RyR_open_martingale_normalised(idx,0) = model.CRUs.RyR_open_martingale_normalised.mean();
+    out.RyR_open_martingale_normalised(idx,1) = model.CRUs.RyR_open_martingale_normalised(0,0);
+
+
     //out.int_QTXt(idx) = model.int_QTXt;
 }
 
@@ -123,7 +117,7 @@ template <typename PRNG>
 PyGWSimulation run(const GW::Parameters<double>& params, const int nCRU, double step_size, int num_steps, 
                    const std::function<double(double)>& Is, int record_every, GW::GlobalState<double>& init_globals, 
                    GW::CRUState<double>& init_crus){
-    GW::GW_model<double, PRNG> model(params, nCRU);
+    GW::GW_model<double> model(params, nCRU);
     model.set_initial_value(init_globals, init_crus);
 
     PyGWSimulation out(nCRU, num_steps / record_every, num_steps*step_size);
@@ -132,40 +126,10 @@ PyGWSimulation run(const GW::Parameters<double>& params, const int nCRU, double 
 
     for (int i = 0; i < num_steps; ++i){
         model.Istim = Is(t);
-        model.euler_step(step_size);
+        model.euler_step<PRNG>(step_size);
         t += step_size;
         if (i % record_every == 0){
             record_state(out, model, counter, nCRU, t);
-            ++counter;
-        }
-    }
-    return out;
-}
-
-template <typename PRNG>
-PyGWMartingaleSimulation run_martingale(const GW::Parameters<double>& params, const int nCRU, double step_size, int num_steps, 
-                   const std::function<double(double)>& Is, int record_every, GW::GlobalState<double>& init_globals, 
-                   GW::CRUState<double>& init_crus){
-    GW::GW_model<double, PRNG> model(params, nCRU);
-    model.set_initial_value(init_globals, init_crus);
-
-    PyGWMartingaleSimulation out(nCRU, num_steps / record_every, num_steps*step_size);
-    double t = 0.0;
-    int counter = 0;
-
-    for (int i = 0; i < num_steps; ++i){
-        model.Istim = Is(t);
-        model.euler_step_martingale(step_size);
-        t += step_size;
-        if (i % record_every == 0){
-            out.t[counter] = t;
-            out.V[counter] = model.globals.V;
-            out.intQTXt[counter] = model.int_QTXt;
-            out.dM[counter] = model.dM;
-            out.dM_normalised[counter] = model.dM_normalised;
-            out.sigma2_t[counter] = model.sigma2_t;
-            out.RyR_open[counter] = model.mean_RyR_open;
-            out.dCaSS_mean[counter] = model.dCaSS_mean;
             ++counter;
         }
     }

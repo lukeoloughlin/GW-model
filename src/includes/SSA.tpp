@@ -4,9 +4,6 @@
 namespace GW {
 
     template <typename FloatType>
-    //template <typename PRNG>
-    //void CRUStateThread<FloatType>::copy_from_CRUState(const CRUState<FloatType> &state, const NDArray<FloatType,2> &JLCC, const int idx, const Parameters<FloatType> &params){
-    //void CRUStateThread<FloatType>::copy_from_CRUState(const CRUState<FloatType, PRNG> &state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params){
     void CRUStateThread<FloatType>::copy_from_CRUState(const CRUState<FloatType> &state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params){
         for (int j = 0; j < 4; j++){
             for (int k = 0; k < 6; k++)
@@ -20,6 +17,12 @@ namespace GW {
             CaSS[j] = state.CaSS(idx,j);
             this->JLCC[j] = JLCC(idx,j); // This doesn't update at every iteration of loop so have to set it here
             Jrel[j] = params.rRyR * open_RyR[j] * (state.CaJSR(idx) - CaSS[j]);
+
+            RyR_open_increment[j] = 0.0;
+            RyR_open_int_increment[j] = 0.0;
+            RyR_open_int[j] = state.RyR_open_int(idx,j);
+            RyR_open_martingale[j] = state.RyR_open_martingale(idx,j);
+            RyR_open_martingale_normalised[j] = state.RyR_open_martingale_normalised(idx,j);
         }
         memset(LCC_rates, 0, 3*4*sizeof(FloatType));
         memset(LCC_inactivation_rates, 0, 4*sizeof(FloatType));
@@ -208,6 +211,7 @@ namespace GW {
             --state.RyR[6*subunit_idx+1];
             ++state.RyR[6*subunit_idx+2];   
             ++state.open_RyR[subunit_idx];
+            state.RyR_open_increment[subunit_idx] = 1.0;
             break;
         case 2: // 2 -> 5
             --state.RyR[6*subunit_idx+1];
@@ -221,6 +225,7 @@ namespace GW {
             --state.RyR[6*subunit_idx+3];
             ++state.RyR[6*subunit_idx+4];
             --state.open_RyR[subunit_idx];
+            state.RyR_open_increment[subunit_idx] = -1.0;
             break;
         case 5: // 5 -> 6
             --state.RyR[6*subunit_idx+4];
@@ -234,6 +239,7 @@ namespace GW {
             --state.RyR[6*subunit_idx+2];
             ++state.RyR[6*subunit_idx+1];
             --state.open_RyR[subunit_idx]; 
+            state.RyR_open_increment[subunit_idx] = -1.0;
             break;
         case 8: // 4 -> 3
             --state.RyR[6*subunit_idx+3];
@@ -247,6 +253,7 @@ namespace GW {
             --state.RyR[6*subunit_idx+4];
             ++state.RyR[6*subunit_idx+3];
             ++state.open_RyR[subunit_idx];
+            state.RyR_open_increment[subunit_idx] = 1.0;
             break;
         case 11: // 6 -> 5
             --state.RyR[6*subunit_idx+5];
@@ -293,19 +300,45 @@ namespace GW {
 
             total_rate = state.subunit_rates[0] + state.subunit_rates[1] + state.subunit_rates[2] + state.subunit_rates[3];
             jump_t = -log(urand<FloatType, Generator>()) / total_rate;
+
+            for (int i = 0; i < 4; ++i) { state.RyR_open_increment[i] = 0; }
             if (t + jump_t < dt){
+                update_integral_increment<FloatType>(state, jump_t);
                 update_CaSS<FloatType, Generator>(state, jump_t, params, consts);
                 update_CaJSR(state, jump_t, params, consts);
             } 
             else {
+                update_integral_increment<FloatType>(state, dt-t);
                 update_CaSS<FloatType, Generator>(state, dt-t, params, consts);
                 update_CaJSR(state, dt-t, params, consts);
+                update_martingale(state, dt-t);
                 break;
             }
             t += jump_t;
             
             subunit_idx = sample_weights<FloatType, int, Generator>(state.subunit_rates, total_rate, 4);
             sample_new_state<FloatType, Generator>(state, subunit_idx, params, consts);
+            update_martingale<FloatType>(state, jump_t);
+        }
+    }
+
+    template <typename FloatType>
+    void update_integral_increment(CRUStateThread<FloatType> &state, const FloatType dt){
+        for (int j = 0; j < 4; ++j){
+            state.RyR_open_int_increment[j] = dt * (state.RyR_rates[12*j+1] + state.RyR_rates[12*j+10] - (state.RyR_rates[12*j+4] + state.RyR_rates[12*j+7]));
+            state.RyR_open_int[j] += state.RyR_open_int_increment[j];
+        }
+    }
+    
+    template <typename FloatType>
+    void update_martingale(CRUStateThread<FloatType> &state, const FloatType dt){
+        FloatType mgle_increment, sigma2;
+        for (int j = 0; j < 4; ++j){
+            mgle_increment = state.RyR_open_increment[j] - state.RyR_open_int_increment[j];
+            state.RyR_open_martingale[j] += mgle_increment;
+            sigma2 = dt * (state.RyR_rates[12*j+1] + state.RyR_rates[12*j+10] + (state.RyR_rates[12*j+4] + state.RyR_rates[12*j+7]));
+            if (sigma2 > 0)
+                state.RyR_open_martingale_normalised[j] += mgle_increment / sqrt(sigma2);
         }
     }
 }

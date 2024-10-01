@@ -260,6 +260,9 @@ namespace GW {
         Array2<int> LCC_inactivation;
         Array3Container<int> RyR;
         Array2<int> ClCh;
+        Array2<FloatType> RyR_open_int;
+        Array2<FloatType> RyR_open_martingale;
+        Array2<FloatType> RyR_open_martingale_normalised;
 
         CRUState(const int nCRU);
         CRUState& operator=(CRUState& x) = default;

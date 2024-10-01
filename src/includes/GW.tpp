@@ -2,15 +2,15 @@
 
 namespace GW {
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::set_initial_value(GlobalState<FloatType>& global_vals, CRUState<FloatType>& cru_vals){
+    template <typename FloatType>
+    void GW_model<FloatType>::set_initial_value(GlobalState<FloatType>& global_vals, CRUState<FloatType>& cru_vals){
         // Will this automatically create a copy constructor?
         globals = global_vals; 
         CRUs = cru_vals;
     }
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::initialise_JLCC(){
+    template <typename FloatType>
+    void GW_model<FloatType>::initialise_JLCC(){
         for (int i = 0; i < JLCC.rows(); ++i){
         //for (int i = 0; i < JLCC.shape(0); ++i){
             for (int j = 0; j < 4; j++){
@@ -22,8 +22,8 @@ namespace GW {
         }
     }
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::update_QKr(){
+    template <typename FloatType>
+    void GW_model<FloatType>::update_QKr(){
         QKr(0,1) = 0.0069*exp(0.0272*globals.V);
         QKr(0,0) = -QKr(0,1);
 
@@ -44,8 +44,8 @@ namespace GW {
     }
 
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::update_CRUstate_from_temp(const CRUStateThread<FloatType> &temp, const int idx){
+    template <typename FloatType>
+    void GW_model<FloatType>::update_CRUstate_from_temp(const CRUStateThread<FloatType> &temp, const int idx){
         for (int j = 0; j < 4; j++){
             CRUs.LCC(idx,j) = temp.LCC[j];
             CRUs.LCC_inactivation(idx,j) = temp.LCC_inactivation[j];
@@ -56,13 +56,17 @@ namespace GW {
 
             JLCC(idx,j) = temp.JLCC[j];
             Jxfer(idx,j) = temp.Jxfer[j];
+
+            CRUs.RyR_open_int(idx,j) = temp.RyR_open_int[j];
+            CRUs.RyR_open_martingale(idx,j) = temp.RyR_open_martingale[j];
+            CRUs.RyR_open_martingale_normalised(idx,j) = temp.RyR_open_martingale_normalised[j];
         }
         CRUs.CaJSR(idx) = temp.CaJSR;
         Jtr(idx) = temp.Jtr;
     }
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::update_QKv(){
+    template <typename FloatType>
+    void GW_model<FloatType>::update_QKv(){
         const FloatType alphaa14 = parameters.alphaa0Kv14 * exp(parameters.aaKv14 * globals.V);
         const FloatType alphaa43 = parameters.alphaa0Kv43 * exp(parameters.aaKv43 * globals.V);
 
@@ -123,8 +127,8 @@ namespace GW {
     }
 
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::update_Kr_derivatives(const FloatType dt){
+    template <typename FloatType>
+    void GW_model<FloatType>::update_Kr_derivatives(const FloatType dt){
         dGlobals.Kr[0] = dt*(QKr(1,0)*globals.Kr[1] + QKr(0,0)*globals.Kr[0]);
         dGlobals.Kr[1] = dt*(QKr(0,1)*globals.Kr[0] + QKr(2,1)*globals.Kr[2] + QKr(1,1)*globals.Kr[1]);
         dGlobals.Kr[2] = dt*(QKr(1,2)*globals.Kr[1] + QKr(3,2)*globals.Kr[3] + QKr(4,2)*globals.Kr[4] + QKr(2,2)*globals.Kr[2]);
@@ -132,8 +136,8 @@ namespace GW {
         dGlobals.Kr[4] = dt*(QKr(2,4)*globals.Kr[2] + QKr(3,4)*globals.Kr[3] + QKr(4,4)*globals.Kr[4]);
     }
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::update_Kv_derivatives(const FloatType dt){
+    template <typename FloatType>
+    void GW_model<FloatType>::update_Kv_derivatives(const FloatType dt){
         dGlobals.Kv14[0] = dt*(QKv14(1,0)*globals.Kv14[1] + QKv14(5,0)*globals.Kv14[5] + QKv14(0,0)*globals.Kv14[0]);
         dGlobals.Kv14[1] = dt*(QKv14(0,1)*globals.Kv14[0] + QKv14(2,1)*globals.Kv14[2] + QKv14(6,1)*globals.Kv14[6] + QKv14(1,1)*globals.Kv14[1]);
         dGlobals.Kv14[2] = dt*(QKv14(1,2)*globals.Kv14[1] + QKv14(3,2)*globals.Kv14[3] + QKv14(7,2)*globals.Kv14[7] + QKv14(2,2)*globals.Kv14[2]);
@@ -159,16 +163,16 @@ namespace GW {
         dGlobals.Kv43[9] = dt*(QKv43(8,9)*globals.Kv43[8] + QKv43(4,9)*globals.Kv43[4] + QKv43(9,9)*globals.Kv43[9]);
     }
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::update_gate_derivatives(const FloatType dt){
+    template <typename FloatType>
+    void GW_model<FloatType>::update_gate_derivatives(const FloatType dt){
         dGlobals.m = dt * (common::alpha_m(globals.V) * (1.0 - globals.m) - common::beta_m(globals.V) * globals.m);
         dGlobals.h = dt * (common::alpha_h(globals.V) * (1.0 - globals.h) - common::beta_h(globals.V) * globals.h);
         dGlobals.j = dt * (common::alpha_j(globals.V) * (1.0 - globals.j) - common::beta_j(globals.V) * globals.j);
         dGlobals.xKs =  dt * (XKsinf(globals.V) - globals.xKs) * tauXKs_inv(globals.V);
     }
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::update_V_and_concentration_derivatives(const FloatType dt){
+    template <typename FloatType>
+    void GW_model<FloatType>::update_V_and_concentration_derivatives(const FloatType dt){
         FloatType IKv14, IKv43;
 
         consts.ENa = common::Nernst<FloatType>(globals.Nai, parameters.Nao, consts.RT_F, 1.0);
@@ -211,8 +215,9 @@ namespace GW {
         dGlobals.V = dt*(Istim - (currents.INa + currents.ICaL + currents.IKr + currents.IKs + currents.Ito1 + currents.IK1 + currents.IKp + currents.Ito2 + currents.INaK + currents.INaCa + currents.IpCa + currents.ICab + currents.INab));
     }
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::SSA(const FloatType dt){
+    template <typename FloatType>
+    template <typename PRNG>
+    void GW_model<FloatType>::SSA(const FloatType dt){
         consts.alphaLCC = alphaLCC<FloatType>(globals.V);
         consts.betaLCC = betaLCC<FloatType>(globals.V);
         consts.yinfLCC = yinfLCC<FloatType>(globals.V);
@@ -233,8 +238,9 @@ namespace GW {
         }
     }
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::euler_step(const FloatType dt){
+    template <typename FloatType>
+    template <typename PRNG>
+    void GW_model<FloatType>::euler_step(const FloatType dt){
         consts.VF_RT = globals.V*consts.F_RT;
         consts.expmVF_RT = exp(-consts.VF_RT);
 
@@ -246,7 +252,7 @@ namespace GW {
         update_Kr_derivatives(dt);
         update_Kv_derivatives(dt); // Updates both Kv14 and Kv43
 
-        SSA(dt);
+        SSA<PRNG>(dt);
 
         globals.V += dGlobals.V;
         globals.Nai += dGlobals.Nai;
@@ -270,8 +276,9 @@ namespace GW {
         }
     }
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::euler(const FloatType dt, const int nstep, const std::function<FloatType(FloatType)>& Ist){
+    template <typename FloatType>
+    template <typename PRNG>
+    void GW_model<FloatType>::euler(const FloatType dt, const int nstep, const std::function<FloatType(FloatType)>& Ist){
         FloatType t = 0.0;
         for (int i = 0; i < nstep; ++i){
             Istim = Ist(t);
@@ -281,134 +288,6 @@ namespace GW {
     }
     
 
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::update_mean_RyR_open(){
-        mean_RyR_open = 0.0;
-        CaSS_mean = 0.0;
-        for (int i = 0; i < nCRU; ++i){
-            for (int j = 0; j < 4; ++j){
-                mean_RyR_open += (CRUs.RyR.array(i,j,2) + CRUs.RyR.array(i,j,3));
-                CaSS_mean += CRUs.CaSS(i,j);
-            }
-        }
-        mean_RyR_open /= (4.0*nCRU);
-        CaSS_mean /= (4.0*nCRU);
-    }
-
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::update_increment_and_sigma(const FloatType dt){
-        FloatType r1p, r2p, r1m, r2m, CaSS2;
-        increment = 0.0;
-        sigma2_t = 0.0;
-        CaSS_mean = 0.0;
-        int sum_56, sum_34;
-        for (int i = 0; i < nCRU; ++i){
-            for (int j = 0; j < 4; ++j){
-                CaSS2 = square(CRUs.CaSS(i,j));
-
-                r1p = CRUs.RyR.array(i,j,1) * parameters.k23 * CaSS2;
-                if (CRUs.CaSS(i,j) > 0.000115) {
-                    sum_56 = CRUs.RyR.array(i,j,4) + CRUs.RyR.array(i,j,5);
-                    CRUs.RyR.array(i,j,4) = sample_binomial<FloatType, PRNG>(parameters.k65 / (parameters.k56*CaSS2 + parameters.k65), sum_56);
-                    CRUs.RyR.array(i,j,5) = sum_56 - CRUs.RyR.array(i,j,4);
-                    //r2p = ((CRUs.RyR.array(i,j,4) + CRUs.RyR.array(i,j,5)) 
-                    //        * parameters.k54*parameters.k65*CaSS2 
-                    //        / (parameters.k56*CaSS2 + parameters.k65));
-                }
-                //else {
-                r2p = CRUs.RyR.array(i,j,4) * parameters.k54 * CaSS2;
-                //} 
-                if (CRUs.CaSS(i,j) > 0.03685) {
-                    sum_34 = CRUs.RyR.array(i,j,2) + CRUs.RyR.array(i,j,3);
-                    CRUs.RyR.array(i,j,2) = sample_binomial<FloatType, PRNG>(parameters.k43 / (parameters.k43 + parameters.k34 * CaSS2), sum_34);
-                    CRUs.RyR.array(i,j,3) = sum_34 - CRUs.RyR.array(i,j,2);
-                    //r1m = (CRUs.RyR.array(i,j,2) + CRUs.RyR.array(i,j,3)) * parameters.k32 * parameters.k43 
-                    //     / (parameters.k34 * CaSS2 + parameters.k43);
-                    //r2m = (CRUs.RyR.array(i,j,2) + CRUs.RyR.array(i,j,3)) * (parameters.k45*parameters.k34*CaSS2)
-                    //     / (parameters.k34 * CaSS2 + parameters.k43);
-                }
-                //else {
-                r1m = CRUs.RyR.array(i,j,2) * parameters.k32;
-                r2m = CRUs.RyR.array(i,j,3) * parameters.k45;
-                //}
-
-                increment += (r1p + r2p - (r1m + r2m));
-                sigma2_t += (r1p + r2p + r1m + r2m);
-                CaSS_mean += CRUs.CaSS(i,j);
-            }
-        }
-        increment *= dt / (4.0*nCRU); // Update approximation of int_{0}^t RyR_open(Q^T(s) X_s) ds
-        sigma2_t *= 1.0 / (4.0*nCRU); 
-        CaSS_mean /= (4.0*nCRU);
-    }
-    
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::update_martingale_quantities(){
-        FloatType tmp = mean_RyR_open;
-        FloatType tmp_CaSS = CaSS_mean;
-        update_mean_RyR_open();
-
-        dM = (mean_RyR_open - tmp) - increment;
-        int_QTXt += increment;
-        if (sigma2_t > 0) {
-            dM_normalised = dM / sqrt(sigma2_t);
-        } else {
-            dM_normalised = dM;
-        }
-        dCaSS_mean = CaSS_mean - tmp_CaSS;
-    }
-    
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::euler_step_martingale(const FloatType dt){
-        consts.VF_RT = globals.V*consts.F_RT;
-        consts.expmVF_RT = exp(-consts.VF_RT);
-
-        update_QKr();
-        update_QKv(); // Updates Kv14 and Kv43
-        
-        update_V_and_concentration_derivatives(dt);
-        update_gate_derivatives(dt);
-        update_Kr_derivatives(dt);
-        update_Kv_derivatives(dt); // Updates both Kv14 and Kv43
-
-        update_increment_and_sigma(dt); // Must do this before update to ensure we are taking the lefthand process
-
-        SSA(dt);
-
-        update_martingale_quantities();
-
-        globals.V += dGlobals.V;
-        globals.Nai += dGlobals.Nai;
-        globals.Ki += dGlobals.Ki;
-        globals.Cai += dGlobals.Cai;
-        globals.CaNSR += dGlobals.CaNSR;
-        globals.CaLTRPN += dGlobals.CaLTRPN;
-        globals.CaHTRPN += dGlobals.CaHTRPN;
-        globals.m += dGlobals.m;
-        globals.h += dGlobals.h;
-        globals.j += dGlobals.j;
-        globals.xKs += dGlobals.xKs;
-        globals.Kr[0] += dGlobals.Kr[0];
-        globals.Kr[1] += dGlobals.Kr[1];
-        globals.Kr[2] += dGlobals.Kr[2];
-        globals.Kr[3] += dGlobals.Kr[3];
-        globals.Kr[4] += dGlobals.Kr[4];
-        for (int j = 0; j < 10; j++){
-            globals.Kv14[j] += dGlobals.Kv14[j];
-            globals.Kv43[j] += dGlobals.Kv43[j];
-        }
-    }
-
-    template <typename FloatType, typename PRNG>
-    void GW_model<FloatType, PRNG>::euler_martingale(const FloatType dt, const int nstep, const std::function<FloatType(FloatType)>& Ist){
-        FloatType t = 0.0;
-        update_mean_RyR_open();
-        for (int i = 0; i < nstep; ++i){
-            Istim = Ist(t);
-            euler_step_martingale(dt);
-            t += dt;
-        }
-    }
 
 
 /*

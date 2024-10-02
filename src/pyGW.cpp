@@ -310,6 +310,8 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("RyR_open_int", &PyGWSimulation::RyR_open_int)
         .def_readwrite("RyR_open_martingale", &PyGWSimulation::RyR_open_martingale)
         .def_readwrite("RyR_open_martingale_normalised", &PyGWSimulation::RyR_open_martingale_normalised)
+        .def_readwrite("sigma_mean", &PyGWSimulation::sigma_mean)
+        .def_readwrite("sigma_std", &PyGWSimulation::sigma_std)
         //.def_readwrite("int_QTXt", &PyGWSimulation::int_QTXt)
         .def("__repr__", [](const PyGWSimulation &x) {return "Greenstein and Winslow model solution over the interval [0, " + std::to_string(x.tspan) + "] with " + std::to_string(x.nCRU) + " CRUs"; });
    

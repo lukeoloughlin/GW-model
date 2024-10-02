@@ -63,6 +63,7 @@ namespace GW {
         }
         CRUs.CaJSR(idx) = temp.CaJSR;
         Jtr(idx) = temp.Jtr;
+        CRUs.sigma(idx) = temp.sigma;
     }
 
     template <typename FloatType>

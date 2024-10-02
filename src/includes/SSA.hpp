@@ -39,6 +39,7 @@ namespace GW {
         FloatType RyR_open_int[4];
         FloatType RyR_open_martingale[4];
         FloatType RyR_open_martingale_normalised[4];
+        FloatType sigma;
 
         //template <typename PRNG>
         //void copy_from_CRUState(const CRUState<FloatType, PRNG> &cru_state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params);
@@ -51,7 +52,7 @@ namespace GW {
     template <typename FloatType>
     inline void update_integral_increment(CRUStateThread<FloatType> &state, const FloatType dt);
 
-    template <typename FloatType>
+    template <typename FloatType, typename PRNG>
     inline void update_martingale(CRUStateThread<FloatType> &state, const FloatType dt);
 
     /* Perform the SSA on a single CRU (with fixed global variables) over an interval of length dt */

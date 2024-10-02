@@ -311,14 +311,14 @@ namespace GW {
                 update_integral_increment<FloatType>(state, dt-t);
                 update_CaSS<FloatType, Generator>(state, dt-t, params, consts);
                 update_CaJSR(state, dt-t, params, consts);
-                update_martingale(state, dt-t);
+                update_martingale<FloatType, Generator>(state, dt-t);
                 break;
             }
             t += jump_t;
             
             subunit_idx = sample_weights<FloatType, int, Generator>(state.subunit_rates, total_rate, 4);
             sample_new_state<FloatType, Generator>(state, subunit_idx, params, consts);
-            update_martingale<FloatType>(state, jump_t);
+            update_martingale<FloatType, Generator>(state, jump_t);
         }
     }
 
@@ -330,15 +330,27 @@ namespace GW {
         }
     }
     
-    template <typename FloatType>
+    template <typename FloatType, typename PRNG>
     void update_martingale(CRUStateThread<FloatType> &state, const FloatType dt){
-        FloatType mgle_increment, sigma2;
+        FloatType sigma2 = 0.0;
         for (int j = 0; j < 4; ++j){
-            mgle_increment = state.RyR_open_increment[j] - state.RyR_open_int_increment[j];
-            state.RyR_open_martingale[j] += mgle_increment;
-            sigma2 = dt * (state.RyR_rates[12*j+1] + state.RyR_rates[12*j+10] + (state.RyR_rates[12*j+4] + state.RyR_rates[12*j+7]));
-            if (sigma2 > 0)
-                state.RyR_open_martingale_normalised[j] += mgle_increment / sqrt(sigma2);
+            state.RyR_open_martingale[j] += state.RyR_open_increment[j] - state.RyR_open_int_increment[j];
+            sigma2 += (state.RyR_rates[12*j+1] + state.RyR_rates[12*j+10] + (state.RyR_rates[12*j+4] + state.RyR_rates[12*j+7]));
+            //if (sigma2 > 0){
+            //    state.RyR_open_martingale_normalised[j] += (state.RyR_open_increment[j] - state.RyR_open_int_increment[j]) / sqrt(sigma2);
+            //} else {
+            //    state.RyR_open_martingale_normalised[j] += sqrt(dt) * nrand<FloatType, PRNG>();
+            //}
+        }
+        if (sigma2 > 0){
+            state.sigma = sqrt(sigma2);
+            for (int j = 0; j < 4; ++j)
+                state.RyR_open_martingale_normalised[j] += (state.RyR_open_increment[j] - state.RyR_open_int_increment[j]) / state.sigma;
+        } 
+        else {
+            state.sigma = 0.0;
+            for (int j = 0; j < 4; ++j)
+                state.RyR_open_martingale_normalised[j] += sqrt(dt) * nrand<FloatType, PRNG>();
         }
     }
 }

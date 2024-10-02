@@ -781,6 +781,14 @@ class GWSolution:
         return self.__vars.RyR_open_martingale_normalised
 
     @property
+    def sigma_mean(self) -> npt.NDArray[np.floating]:
+        return self.__vars.sigma_mean
+
+    @property
+    def sigma_std(self) -> npt.NDArray[np.floating]:
+        return self.__vars.sigma_std
+
+    @property
     def INa(self) -> npt.NDArray[np.floating]:
         """npt.NDArray[np.floating]: 1D array of INa recordings [pA][pF]^{-1}."""
         if self.__INa is None:

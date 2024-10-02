@@ -48,13 +48,16 @@ struct PyGWSimulation {
     Array2d RyR_open_int;
     Array2d RyR_open_martingale;
     Array2d RyR_open_martingale_normalised;
+    Array1d sigma_mean;
+    Array1d sigma_std;
 
     PyGWSimulation(int nCRU_, int num_step, double t_) : nCRU(nCRU_), tspan(t_), t(num_step), V(num_step), m(num_step), h(num_step), j(num_step), 
                                                      Nai(num_step), Ki(num_step), Cai(num_step), CaNSR(num_step), CaLTRPN(num_step), 
                                                      CaHTRPN(num_step), xKs(num_step), XKr(num_step,5), XKv14(num_step,10), XKv43(num_step,10), 
                                                      CaJSR(num_step,nCRU_), CaSS(num_step,nCRU_,4), LCC(num_step,nCRU_,4), 
                                                      LCC_inactivation(num_step,nCRU_,4), RyR(num_step,nCRU_,4,6), ClCh(num_step,nCRU_,4),
-                                                     RyR_open_int(num_step,2), RyR_open_martingale(num_step,2), RyR_open_martingale_normalised(num_step,2) { }
+                                                     RyR_open_int(num_step,2), RyR_open_martingale(num_step,2), RyR_open_martingale_normalised(num_step,2),
+                                                     sigma_mean(num_step), sigma_std(num_step) { }
 };
 
 
@@ -99,15 +102,20 @@ void record_state(PyGWSimulation& out, const GW::GW_model<double>& model, const 
         }
     }
 
-    out.RyR_open_int(idx,0) = model.CRUs.RyR_open_int.mean();
-    out.RyR_open_int(idx,1) = model.CRUs.RyR_open_int(0,0);
+    out.RyR_open_int(idx,0) = model.CRUs.RyR_open_int.sum() / model.get_nCRU();
+    out.RyR_open_int(idx,1) = model.CRUs.RyR_open_int(0,0) + model.CRUs.RyR_open_int(0,1) + 
+                              model.CRUs.RyR_open_int(0,2) + model.CRUs.RyR_open_int(0,3);
     
-    out.RyR_open_martingale(idx,0) = model.CRUs.RyR_open_martingale.mean();
-    out.RyR_open_martingale(idx,1) = model.CRUs.RyR_open_martingale(0,0);
+    out.RyR_open_martingale(idx,0) = model.CRUs.RyR_open_martingale.sum() / model.get_nCRU();
+    out.RyR_open_martingale(idx,1) = model.CRUs.RyR_open_martingale(0,0) + model.CRUs.RyR_open_martingale(0,1) +
+                                     model.CRUs.RyR_open_martingale(0,2) + model.CRUs.RyR_open_martingale(0,3);
     
-    out.RyR_open_martingale_normalised(idx,0) = model.CRUs.RyR_open_martingale_normalised.mean();
-    out.RyR_open_martingale_normalised(idx,1) = model.CRUs.RyR_open_martingale_normalised(0,0);
-
+    out.RyR_open_martingale_normalised(idx,0) = model.CRUs.RyR_open_martingale_normalised.sum() / model.get_nCRU();
+    out.RyR_open_martingale_normalised(idx,1) = model.CRUs.RyR_open_martingale_normalised(0,0) + model.CRUs.RyR_open_martingale_normalised(0,1) 
+                                                + model.CRUs.RyR_open_martingale_normalised(0,2) + model.CRUs.RyR_open_martingale_normalised(0,3);
+    
+    out.sigma_mean(idx) = model.CRUs.sigma.mean();
+    out.sigma_std(idx) = (model.CRUs.sigma - out.sigma_mean(idx)).square().sum() / (model.get_nCRU() - 1);
 
     //out.int_QTXt(idx) = model.int_QTXt;
 }

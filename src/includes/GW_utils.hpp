@@ -263,7 +263,12 @@ namespace GW {
         Array2<FloatType> RyR_open_int;
         Array2<FloatType> RyR_open_martingale;
         Array2<FloatType> RyR_open_martingale_normalised;
-        Array1<FloatType> sigma;
+        Array1<FloatType> sigma_RyR;
+        
+        Array2<FloatType> LCC_open_int;
+        Array2<FloatType> LCC_open_martingale;
+        Array2<FloatType> LCC_open_martingale_normalised;
+        Array1<FloatType> sigma_LCC;
 
         CRUState(const int nCRU);
         CRUState& operator=(CRUState& x) = default;

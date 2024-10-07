@@ -23,6 +23,12 @@ namespace GW {
             RyR_open_int[j] = state.RyR_open_int(idx,j);
             RyR_open_martingale[j] = state.RyR_open_martingale(idx,j);
             RyR_open_martingale_normalised[j] = state.RyR_open_martingale_normalised(idx,j);
+            
+            LCC_open_increment[j] = 0.0;
+            LCC_open_int_increment[j] = 0.0;
+            LCC_open_int[j] = state.LCC_open_int(idx,j);
+            LCC_open_martingale[j] = state.LCC_open_martingale(idx,j);
+            LCC_open_martingale_normalised[j] = state.LCC_open_martingale_normalised(idx,j);
         }
         memset(LCC_rates, 0, 3*4*sizeof(FloatType));
         memset(LCC_inactivation_rates, 0, 4*sizeof(FloatType));
@@ -142,6 +148,7 @@ namespace GW {
             else if (transition == 1){ 
                 state.LCC[subunit_idx] = 6; 
                 state.JLCC[subunit_idx] = (state.LCC_inactivation[subunit_idx] == 1) ? consts.JLCC_multiplier * (consts.Cao_scaled - consts.JLCC_exp * state.CaSS[subunit_idx]) : 0; 
+                state.LCC_open_increment[subunit_idx] = (state.LCC_inactivation[subunit_idx] == 1) ? 1.0 : 0.0;
             }
             else 
                 state.LCC[subunit_idx] = 11;
@@ -149,6 +156,7 @@ namespace GW {
         case 6:
             state.LCC[subunit_idx] = 5;
             state.JLCC[subunit_idx] = 0;
+            state.LCC_open_increment[subunit_idx] = (state.LCC_inactivation[subunit_idx] == 1) ? -1.0 : 0.0;
             break;
         case 7:
             if (transition == 0)
@@ -188,11 +196,13 @@ namespace GW {
             else {
                 state.LCC[subunit_idx] = 12; 
                 state.JLCC[subunit_idx] = (state.LCC_inactivation[subunit_idx] == 1) ? consts.JLCC_multiplier * (consts.Cao_scaled - consts.JLCC_exp * state.CaSS[subunit_idx]) : 0.0;
+                state.LCC_open_increment[subunit_idx] = (state.LCC_inactivation[subunit_idx] == 1) ? 1.0 : 0.0;
             }
             break;
         case 12:
             state.LCC[subunit_idx] = 11;
             state.JLCC[subunit_idx] = 0.0;
+            state.LCC_open_increment[subunit_idx] = (state.LCC_inactivation[subunit_idx] == 1) ? -1.0 : 0.0;
             break;    
         default:
             break;
@@ -278,10 +288,11 @@ namespace GW {
             sample_LCC<FloatType, Generator>(state, sum_LCC_rates, subunit_idx, consts);
         else if (u < (sum_LCC_rates + LCC_inactivation_rate)) {
             state.LCC_inactivation[subunit_idx] = 1 - state.LCC_inactivation[subunit_idx];
-            if (state.LCC_inactivation[subunit_idx] == 0)
-                state.JLCC[subunit_idx] = 0;
-            else if ((state.LCC[subunit_idx] == 6) || (state.LCC[subunit_idx] == 12))
-                state.JLCC[subunit_idx] = consts.JLCC_multiplier * (consts.Cao_scaled - consts.JLCC_exp * state.CaSS[subunit_idx]);
+            if ((state.LCC[subunit_idx] == 6) || (state.LCC[subunit_idx] == 12)){
+                state.JLCC[subunit_idx] = (state.LCC_inactivation[subunit_idx] == 1) ? consts.JLCC_multiplier * (consts.Cao_scaled - consts.JLCC_exp * state.CaSS[subunit_idx]) : 0.0;
+                state.LCC_open_increment[subunit_idx] = (state.LCC_inactivation[subunit_idx] == 1) ? 1.0 : -1.0;
+            }
+            
         } 
         else if (u < (sum_LCC_rates + LCC_inactivation_rate + sum_RyR_rates))
             sample_RyR<FloatType, Generator>(state, sum_RyR_rates, subunit_idx, params);
@@ -301,14 +312,17 @@ namespace GW {
             total_rate = state.subunit_rates[0] + state.subunit_rates[1] + state.subunit_rates[2] + state.subunit_rates[3];
             jump_t = -log(urand<FloatType, Generator>()) / total_rate;
 
-            for (int i = 0; i < 4; ++i) { state.RyR_open_increment[i] = 0; }
+            for (int i = 0; i < 4; ++i) { 
+                state.RyR_open_increment[i] = 0; 
+                state.LCC_open_increment[i] = 0; 
+            }
             if (t + jump_t < dt){
-                update_integral_increment<FloatType>(state, jump_t);
+                update_integral_increment<FloatType>(state, jump_t, params);
                 update_CaSS<FloatType, Generator>(state, jump_t, params, consts);
                 update_CaJSR(state, jump_t, params, consts);
             } 
             else {
-                update_integral_increment<FloatType>(state, dt-t);
+                update_integral_increment<FloatType>(state, dt-t, params);
                 update_CaSS<FloatType, Generator>(state, dt-t, params, consts);
                 update_CaJSR(state, dt-t, params, consts);
                 update_martingale<FloatType, Generator>(state, dt-t);
@@ -323,34 +337,72 @@ namespace GW {
     }
 
     template <typename FloatType>
-    void update_integral_increment(CRUStateThread<FloatType> &state, const FloatType dt){
+    void update_integral_increment(CRUStateThread<FloatType> &state, const FloatType dt, const Parameters<FloatType> &params){
         for (int j = 0; j < 4; ++j){
             state.RyR_open_int_increment[j] = dt * (state.RyR_rates[12*j+1] + state.RyR_rates[12*j+10] - (state.RyR_rates[12*j+4] + state.RyR_rates[12*j+7]));
+            if ((state.LCC[j] == 5) && (state.LCC_inactivation[j] == 1)) {
+                state.LCC_open_int_increment[j] = dt * params.f;
+            }
+            else if ((state.LCC[j] == 11) && (state.LCC_inactivation[j] == 1)) {
+                state.LCC_open_int_increment[j] = dt * params.f1;
+            }
+            else if ((state.LCC[j] == 6) && (state.LCC_inactivation[j] == 0)) {
+                state.LCC_open_int_increment[j] = dt * state.LCC_inactivation_rates[j];
+            }
+            else if ((state.LCC[j] == 12) && (state.LCC_inactivation[j] == 0)) {
+                state.LCC_open_int_increment[j] = dt * state.LCC_inactivation_rates[j];
+            }
+            else if ((state.LCC[j] == 6) && (state.LCC_inactivation[j] == 1)) {
+                state.LCC_open_int_increment[j] = -dt * (state.LCC_inactivation_rates[j] + params.g);
+            }
+            else if ((state.LCC[j] == 12) && (state.LCC_inactivation[j] == 1)) {
+                state.LCC_open_int_increment[j] = -dt * (state.LCC_inactivation_rates[j] + params.g1);
+            }
+            else {
+                state.LCC_open_int_increment[j] = 0.0;
+            } 
+
             state.RyR_open_int[j] += state.RyR_open_int_increment[j];
+            state.LCC_open_int[j] += state.LCC_open_int_increment[j];
         }
     }
     
     template <typename FloatType, typename PRNG>
     void update_martingale(CRUStateThread<FloatType> &state, const FloatType dt){
-        FloatType sigma2 = 0.0;
+        FloatType sigma2_RyR = 0.0;
+        FloatType sigma2_LCC = 0.0;
         for (int j = 0; j < 4; ++j){
-            state.RyR_open_martingale[j] += state.RyR_open_increment[j] - state.RyR_open_int_increment[j];
-            sigma2 += (state.RyR_rates[12*j+1] + state.RyR_rates[12*j+10] + (state.RyR_rates[12*j+4] + state.RyR_rates[12*j+7]));
+            state.RyR_open_martingale[j] += (state.RyR_open_increment[j] - state.RyR_open_int_increment[j]);
+            state.LCC_open_martingale[j] += (state.LCC_open_increment[j] - state.LCC_open_int_increment[j]);
+
+            sigma2_RyR += (state.RyR_rates[12*j+1] + state.RyR_rates[12*j+10] + (state.RyR_rates[12*j+4] + state.RyR_rates[12*j+7]));
+            sigma2_LCC += abs(state.LCC_open_int_increment[j]) / dt;
             //if (sigma2 > 0){
             //    state.RyR_open_martingale_normalised[j] += (state.RyR_open_increment[j] - state.RyR_open_int_increment[j]) / sqrt(sigma2);
             //} else {
             //    state.RyR_open_martingale_normalised[j] += sqrt(dt) * nrand<FloatType, PRNG>();
             //}
         }
-        if (sigma2 > 0){
-            state.sigma = sqrt(sigma2);
+        if (sigma2_RyR > 0){
+            state.sigma_RyR = sqrt(sigma2_RyR);
             for (int j = 0; j < 4; ++j)
-                state.RyR_open_martingale_normalised[j] += (state.RyR_open_increment[j] - state.RyR_open_int_increment[j]) / state.sigma;
+                state.RyR_open_martingale_normalised[j] += (state.RyR_open_increment[j] - state.RyR_open_int_increment[j]) / state.sigma_RyR;
         } 
         else {
-            state.sigma = 0.0;
+            state.sigma_RyR = 0.0;
             for (int j = 0; j < 4; ++j)
                 state.RyR_open_martingale_normalised[j] += sqrt(dt) * nrand<FloatType, PRNG>();
+        }
+        
+        if (sigma2_LCC > 0){
+            state.sigma_LCC = sqrt(sigma2_LCC);
+            for (int j = 0; j < 4; ++j)
+                state.LCC_open_martingale_normalised[j] += (state.LCC_open_increment[j] - state.LCC_open_int_increment[j]) / state.sigma_LCC;
+        } 
+        else {
+            state.sigma_LCC = 0.0;
+            for (int j = 0; j < 4; ++j)
+                state.LCC_open_martingale_normalised[j] += sqrt(dt) * nrand<FloatType, PRNG>();
         }
     }
 }

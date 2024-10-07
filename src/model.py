@@ -781,12 +781,24 @@ class GWSolution:
         return self.__vars.RyR_open_martingale_normalised
 
     @property
-    def sigma_mean(self) -> npt.NDArray[np.floating]:
-        return self.__vars.sigma_mean
+    def sigma_RyR(self) -> npt.NDArray[np.floating]:
+        return self.__vars.sigma_RyR
 
     @property
-    def sigma_std(self) -> npt.NDArray[np.floating]:
-        return self.__vars.sigma_std
+    def LCC_open_int(self) -> npt.NDArray[np.floating]:
+        return self.__vars.LCC_open_int
+
+    @property
+    def LCC_open_martingale(self) -> npt.NDArray[np.floating]:
+        return self.__vars.LCC_open_martingale
+
+    @property
+    def LCC_open_martingale_normalised(self) -> npt.NDArray[np.floating]:
+        return self.__vars.LCC_open_martingale_normalised
+
+    @property
+    def sigma_LCC(self) -> npt.NDArray[np.floating]:
+        return self.__vars.sigma_LCC
 
     @property
     def INa(self) -> npt.NDArray[np.floating]:

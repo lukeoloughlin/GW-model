@@ -39,7 +39,16 @@ namespace GW {
         FloatType RyR_open_int[4];
         FloatType RyR_open_martingale[4];
         FloatType RyR_open_martingale_normalised[4];
-        FloatType sigma;
+        FloatType sigma_RyR;
+        
+        FloatType LCC_open_increment[4];
+        FloatType LCC_open_int_increment[4];
+        FloatType LCC_open_int[4];
+        FloatType LCC_open_martingale[4];
+        FloatType LCC_open_martingale_normalised[4];
+        FloatType sigma_LCC;
+
+
 
         //template <typename PRNG>
         //void copy_from_CRUState(const CRUState<FloatType, PRNG> &cru_state, const Array2<FloatType> &JLCC, const int idx, const Parameters<FloatType> &params);
@@ -50,7 +59,7 @@ namespace GW {
 
 
     template <typename FloatType>
-    inline void update_integral_increment(CRUStateThread<FloatType> &state, const FloatType dt);
+    inline void update_integral_increment(CRUStateThread<FloatType> &state, const FloatType dt, const Parameters<FloatType> &params);
 
     template <typename FloatType, typename PRNG>
     inline void update_martingale(CRUStateThread<FloatType> &state, const FloatType dt);

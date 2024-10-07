@@ -30,7 +30,7 @@ inline FloatType urand(){
 
 template <typename FloatType, typename Generator>
 inline FloatType nrand(){
-    static std::normal_distribution<FloatType> dist(0.0, 1.0);
+    static std::normal_distribution<FloatType> dist{0.0, 1.0};
     return dist(seed<Generator>());
 }
 

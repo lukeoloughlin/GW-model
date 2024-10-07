@@ -57,13 +57,26 @@ namespace GW {
             JLCC(idx,j) = temp.JLCC[j];
             Jxfer(idx,j) = temp.Jxfer[j];
 
-            CRUs.RyR_open_int(idx,j) = temp.RyR_open_int[j];
             CRUs.RyR_open_martingale(idx,j) = temp.RyR_open_martingale[j];
             CRUs.RyR_open_martingale_normalised(idx,j) = temp.RyR_open_martingale_normalised[j];
+            
+            CRUs.LCC_open_martingale(idx,j) = temp.LCC_open_martingale[j];
+            CRUs.LCC_open_martingale_normalised(idx,j) = temp.LCC_open_martingale_normalised[j];
         }
         CRUs.CaJSR(idx) = temp.CaJSR;
         Jtr(idx) = temp.Jtr;
-        CRUs.sigma(idx) = temp.sigma;
+        CRUs.sigma_RyR(idx) = temp.sigma_RyR;
+        CRUs.sigma_LCC(idx) = temp.sigma_LCC;
+
+        CRUs.RyR_open_int(idx,0) = temp.RyR_open_int[0];
+        CRUs.RyR_open_int(idx,1) = temp.RyR_open_int[1];
+        CRUs.RyR_open_int(idx,2) = temp.RyR_open_int[2];
+        CRUs.RyR_open_int(idx,3) = temp.RyR_open_int[3];
+            
+        CRUs.LCC_open_int(idx,0) = temp.LCC_open_int[0];
+        CRUs.LCC_open_int(idx,1) = temp.LCC_open_int[1];
+        CRUs.LCC_open_int(idx,2) = temp.LCC_open_int[2];
+        CRUs.LCC_open_int(idx,3) = temp.LCC_open_int[3];
     }
 
     template <typename FloatType>

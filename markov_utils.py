@@ -95,3 +95,19 @@ def LCC_Q(params: Any, V: float, CaSS: float) -> npt.NDArray:
     Q[11, 11] = -Q[11, 10]
 
     return Q
+
+
+def LCC_Q_no_open(params: Any, V: float, CaSS: float) -> npt.NDArray:
+    """LCC Q matrix with row/column 6 and 12 removed"""
+    Q = np.zeros((10, 10))
+    Q_full = LCC_Q(params, V, CaSS)
+    Q[:5, :5] = Q_full[:5, :5]  # 5x5 top left submatrix
+    Q[:5, 5:] = Q_full[:5, 6:-1]  # 5x5 top right submatrix, no column 6 or column 12
+    # skip row 6
+    Q[5:, :5] = Q_full[6:-1, :5]  # 5x5 bottom left submatrix
+    Q[5:, 5:] = Q_full[
+        6:-1, 6:-1
+    ]  # 5x5 bottom right submatrix, no column 5 or column 12
+    # skip row 12
+
+    return Q

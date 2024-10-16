@@ -3,6 +3,8 @@
 
 
 #include "GW.hpp"
+#include "SSA_lattice.hpp"
+#include "GW_lattice_utils.hpp"
 #include <Eigen/Core>
 
 template<typename T>
@@ -16,7 +18,7 @@ template<typename T>
 using QKvMap = Eigen::Map<Eigen::Array<T,10,10>,Eigen::RowMajor>;
 
 
-namespace GW {
+namespace GW_lattice {
     
     template <typename FloatType>//, typename PRNG>
     struct CRULatticeState {
@@ -26,15 +28,6 @@ namespace GW {
         Array2<int> LCC_inactivation;
         Array3Container<int> RyR;
         Array2<int> ClCh;
-        Array2<FloatType> RyR_open_int;
-        Array2<FloatType> RyR_open_martingale;
-        Array2<FloatType> RyR_open_martingale_normalised;
-        //Array1<FloatType> sigma_RyR;
-        
-        //Array2<FloatType> LCC_open_int;
-        //Array2<FloatType> LCC_open_martingale;
-        //Array2<FloatType> LCC_open_martingale_normalised;
-        //Array1<FloatType> sigma_LCC;
 
         CRULatticeState(const int nCRU_x, const int nCRU_y);
         CRULatticeState& operator=(CRULatticeState& x) = default;
@@ -70,22 +63,32 @@ namespace GW {
     class GW_lattice {
     public:
         Parameters<FloatType> parameters; // Will possibly need to adjust to hold a diffusion term for JSR
-        GlobalState<FloatType> globals;
+        GW::GlobalState<FloatType> globals;
         CRULatticeState<FloatType> CRU_lattice; // Replace the usual Array of CRUs with a lattice of subunits
         
-        FloatType CaSS_mean;
-        FloatType dCaSS_mean;
+        //FloatType CaSS_mean;
+        //FloatType dCaSS_mean;
         
         FloatType Istim = 0;
     private:
 
-        int nCRU;
+        // Hold the SSA results while ODE updates are applied
+        Array2<int> LCC_tmp;
+        Array2<int> LCC_inactivation_tmp;
+        Array3Container<int> RyR_tmp;
+        Array2<int> ClCh_tmp;
+
+        int nCRU_x;
+        int nCRU_y;
         Constants<FloatType> consts; // Will probably need to adjust to account for different constants showing up
         Array2<FloatType> JLCC;
         Array2<FloatType> Jxfer;
+        Array2<FloatType> Jrel;
         Array2<FloatType> Jtr; // This is a 2D array now since the JSR concentrations are configured on a lattice
         Array2<FloatType> Jiss_DS; // The Laplacian term for the dyadic space
         Array2<FloatType> Jiss_JSR; // The Laplacian term for the JSRs
+        Array2<FloatType> betaSS;
+        Array2<FloatType> betaJSR;
 
         FloatType QKr_storage[5*5] = {0};
         FloatType QKv14_storage[10*10] = {0};
@@ -94,59 +97,59 @@ namespace GW {
         QKvMap<FloatType> QKv14;
         QKvMap<FloatType> QKv43;
 
-        Currents<FloatType> currents;
-        GlobalState<FloatType> dGlobals;
+        //GW::Currents<FloatType> currents;
+        //GW::GlobalState<FloatType> dGlobals;
     
-        inline void initialise_Jxfer(){ Jxfer = parameters.rxfer * (CRUs.CaSS - globals.Cai); }
-        inline void initialise_Jtr(){ Jtr = parameters.rtr * (globals.CaNSR - CRUs.CaJSR); }
+        //inline void update_Jxfer(){ Jxfer = parameters.rxfer * (CRU_lattice.CaSS - globals.Cai); }
+        //inline void initialise_Jtr(){ Jtr = parameters.rtr * (globals.CaNSR - CRU_lattice.CaJSR); }
         inline void initialise_QKr(){ QKr(1,2) = parameters.Kf; QKr(2,1) = parameters.Kb; }
-        inline void initialise_JLCC();
+        //inline void initialise_JLCC();
         
         inline void update_QKr();
         inline void update_QKv();
 
-        inline void update_V_and_concentration_derivatives(const FloatType dt);
-        inline void update_gate_derivatives(const FloatType dt);
-        inline void update_Kr_derivatives(const FloatType dt);
-        inline void update_Kv_derivatives(const FloatType dt); // Updates both Kv14 and Kv43        
+        //inline void update_V_and_concentration_derivatives(const FloatType dt);
+        inline void euler_reaction_step(const FloatType dt);
+
+        void update_fluxes(); // Update non-diffusion flux terms
+        void update_diffusion_fluxes(); // Update diffusion flux terms
+        inline void euler_diffusion_step(const FloatType dt); // Apply diffusion update half step
 
         template <typename PRNG>
         void SSA(const FloatType dt);
 
         /* Record the values of the CRUStateThread temp back to the CRUState state for CRU i */
-        inline void update_CRUstate_from_temp(const CRUStateThread<FloatType> &temp, const int i);
-
-        inline void update_increment_and_sigma(const FloatType dt);
-        inline void update_mean_RyR_open();
-        inline void update_martingale_quantities();
+        inline void update_CRUstate_from_temp(const CRULatticeStateThread<FloatType> &temp, const int x, const int y);
         
         
     public:
-        GW_model(int nCRU_simulated) : parameters(), globals(), CRUs(nCRU_simulated), nCRU(nCRU_simulated), consts(parameters, nCRU), JLCC(nCRU_simulated,4), 
-                                       Jxfer(nCRU_simulated,4), Jtr(nCRU_simulated), QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage), currents(), 
-                                       dGlobals(0.0) { 
-            consts.VF_RT = globals.V * consts.F_RT;
-            consts.JLCC_exp = exp(2*consts.VF_RT);
-            initialise_JLCC();
-            initialise_Jxfer();
-            initialise_Jtr();
+        GW_lattice(int x, int y) : parameters(), globals(), CRU_lattice(x, y), LCC_tmp(x,y), LCC_inactivation_tmp(x,y), RyR_tmp(x,y,6), ClCh_tmp(x,y), nCRU_x(x), nCRU_y(y), consts(parameters, x*y), JLCC(x,y), 
+                                       Jxfer(x,y), Jrel(x,y), Jtr(x,y), Jiss_DS(x,y), Jiss_JSR(x,y), betaSS(x,y), betaJSR(x,y), QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage) { 
+            //consts.VF_RT = globals.V * consts.F_RT;
+            //consts.JLCC_exp = exp(2*consts.VF_RT);
             initialise_QKr();
+            LCC_tmp = CRU_lattice.LCC;
+            LCC_inactivation_tmp = CRU_lattice.LCC_inactivation;
+            RyR_tmp.set(CRU_lattice.RyR);
+            ClCh_tmp = CRU_lattice.ClCh;
+            //initialise_JLCC();
+            //initialise_Jxfer();
+            //initialise_Jtr();
         }
 
-        GW_model(const Parameters<FloatType>& params, int nCRU_simulated) : parameters(params), globals(), CRUs(nCRU_simulated), nCRU(nCRU_simulated), consts(parameters, nCRU), JLCC(nCRU_simulated,4), 
-                                       Jxfer(nCRU_simulated,4), Jtr(nCRU_simulated), QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage), currents(), 
-                                       dGlobals(0.0) { 
-            consts.VF_RT = globals.V * consts.F_RT;
-            consts.JLCC_exp = exp(2*consts.VF_RT);
-            initialise_JLCC();
-            initialise_Jxfer();
-            initialise_Jtr();
+        GW_lattice(const Parameters<FloatType>& params, int x, int y) : parameters(params), globals(), CRU_lattice(x,y), LCC_tmp(x,y), LCC_inactivation_tmp(x,y), RyR_tmp(x,y,6), ClCh_tmp(x,y), nCRU_x(x), 
+                                       nCRU_y(y), consts(parameters, x*y), JLCC(x,y), Jxfer(x,y), Jrel(x,y), Jtr(x,y), Jiss_DS(x,y), Jiss_JSR(x,y), betaSS(x,y), betaJSR(x,y), QKr(QKr_storage), QKv14(QKv14_storage), 
+                                       QKv43(QKv43_storage) { 
             initialise_QKr();
+            LCC_tmp = CRU_lattice.LCC;
+            LCC_inactivation_tmp = CRU_lattice.LCC_inactivation;
+            RyR_tmp.set(CRU_lattice.RyR);
+            ClCh_tmp = CRU_lattice.ClCh;
         }
 
-        void set_initial_value(GlobalState<FloatType>& global_vals, CRUState<FloatType>& cru_vals);
+        void set_initial_value(GW::GlobalState<FloatType>& global_vals, CRULatticeState<FloatType>& cru_vals);
 
-        int get_nCRU() const { return nCRU; }
+        //int get_nCRU() const { return nCRU; }
 
         template <typename PRNG>
         void euler_step(const FloatType dt);

@@ -1,7 +1,7 @@
 #include "SSA_lattice.hpp"
 
 
-namespace GW {
+namespace GW_lattice {
 
     template <typename FloatType>
     void CRULatticeStateThread<FloatType>::copy_from_CRULatticeState(const CRULatticeState<FloatType> &state, const int x, const int y, const Parameters<FloatType> &params){
@@ -14,12 +14,6 @@ namespace GW {
 
         CaSS = state.CaSS(x,y);
         CaJSR = state.CaJSR(x,y);
-
-        // Only need to set these at the end
-        this->JLCC = 0.0; 
-        Jrel = 0.0;
-        Jxfer = 0.0;
-        Jtr = 0.0;
     }
     
     template <typename FloatType>
@@ -143,16 +137,16 @@ namespace GW {
     }
 
 
-    template <typename FloatType>
-    void calculate_fluxes(CRUStateThread<FloatType> &state, const FloatType Cai, const FloatType CaNSR, const Parameters<FloatType> &params){
-        state.Jtr = params.rtr * (CaNSR - state.CaJSR);
-        state.Jxfer = params.rxfer * (state.CaSS - Cai); 
-        state.Jrel = (state.RyR[2] + state.RyR[3]) * params.rRyR * (state.CaJSR - state.CaSS);
-        if (state.LCC == 6 || state.LCC == 12)
-            state.JLCC = state.LCC_inactivation * consts.JLCC_multiplier * (consts.Cao_scaled - consts.JLCC_exp * state.CaSS); 
-        else
-            state.JLCC = 0.0;
-    }
+    //template <typename FloatType>
+    //void calculate_fluxes(CRUStateThread<FloatType> &state, const FloatType Cai, const FloatType CaNSR, const Parameters<FloatType> &params){
+    //    state.Jtr = params.rtr * (CaNSR - state.CaJSR);
+    //    state.Jxfer = params.rxfer * (state.CaSS - Cai); 
+    //    state.Jrel = (state.RyR[2] + state.RyR[3]) * params.rRyR * (state.CaJSR - state.CaSS);
+    //    if (state.LCC == 6 || state.LCC == 12)
+    //        state.JLCC = state.LCC_inactivation * consts.JLCC_multiplier * (consts.Cao_scaled - consts.JLCC_exp * state.CaSS); 
+    //    else
+    //        state.JLCC = 0.0;
+    //}
 
 
     template <typename FloatType, typename Generator>
@@ -620,7 +614,7 @@ namespace GW {
     }
 
     template <typename FloatType, typename Generator>
-    void SSA_single_su(CRULatticeStateThread<FloatType> &state, const FloatType Cai, const FloatType CaNSR, const FloatType time_int, const Parameters<FloatType> &params, const Constants<FloatType> &consts){
+    void SSA_single_su(CRULatticeStateThread<FloatType> &state, const FloatType time_int, const Parameters<FloatType> &params, const Constants<FloatType> &consts){
         int subunit_idx;
         FloatType t = 0, dt = 0, total_rate;
         init_rates(state, params, consts);
@@ -633,9 +627,9 @@ namespace GW {
 
 
             if (t + dt > time_int){
-                update_fluxes(state, Cai, CaNSR, params);
-                partial_euler_step(state, time_int, params, consts);
-                update_fluxes(state, Cai, CaNSR, params); // update again for use in diffusion step.
+                //update_fluxes(state, Cai, CaNSR, params);
+                //partial_euler_step(state, time_int, params, consts);
+                //update_fluxes(state, Cai, CaNSR, params); // update again for use in diffusion step.
                 break;
             } 
             t += dt;
@@ -644,12 +638,12 @@ namespace GW {
         }
     }
     
-    template <typename FloatType>
-    void partial_euler_step(CRULatticeStateThread<FloatType> &state, const FloatType dt, const Parameters<FloatType> &params, const Constants<FloatType> &consts){
-        FloatType betaSS = 1.0 / (1 + (consts.BSR_const / square(params.KBSR + state.CaSS)) + (consts.BSL_const / square(params.KBSL + state.CaSS)));
-        FloatType betaJSR = 1.0 / (1 + (consts.CSQN_const / square(params.KCSQN + state.CaJSR)));
-        state.CaSS += (dt * betaSS * (state.Jrel + state.JLCC - state.Jxfer));
-        state.CaJSR += (dt * (state.Jtr - consts.VSS_VJSR * state.Jrel));
-    }
+    //template <typename FloatType>
+    //void partial_euler_step(CRULatticeStateThread<FloatType> &state, const FloatType dt, const Parameters<FloatType> &params, const Constants<FloatType> &consts){
+    //    FloatType betaSS = 1.0 / (1 + (consts.BSR_const / square(params.KBSR + state.CaSS)) + (consts.BSL_const / square(params.KBSL + state.CaSS)));
+    //    FloatType betaJSR = 1.0 / (1 + (consts.CSQN_const / square(params.KCSQN + state.CaJSR)));
+    //    state.CaSS += (dt * betaSS * (state.Jrel + state.JLCC - state.Jxfer));
+    //    state.CaJSR += (dt * (state.Jtr - consts.VSS_VJSR * state.Jrel));
+    //}
 
 }

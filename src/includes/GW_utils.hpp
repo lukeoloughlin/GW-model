@@ -30,6 +30,11 @@ public:
     Eigen::TensorMap<Eigen::Tensor<T,3,Eigen::RowMajor>> array;
     Array3Container(int n1, int n2, int n3) : storage(n1*n2*n3), array(storage.data(),n1,n2,n3) { }
 
+    // Set the values of storage to that of other
+    void set(Array3Container &other){
+        for (int i; i < storage.size(); ++i) { storage[i] = other.storage[i]; }
+    }
+
 };
 
 

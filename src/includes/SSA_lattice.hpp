@@ -11,7 +11,7 @@ template<typename T>
 using Array2 = Eigen::Array<T,Eigen::Dynamic,4,Eigen::RowMajor>;
 
 
-namespace GW { 
+namespace GW_lattice { 
     
     template <typename FloatType>
     struct CRULatticeStateThread {
@@ -24,10 +24,6 @@ namespace GW {
         // May as well track the other fluxes though, because we use operator splitting, so the fluxes can be applied in an euler step first independently of one another
         FloatType CaSS;
         FloatType CaJSR;
-        FloatType JLCC;
-        FloatType Jrel;
-        FloatType Jxfer;
-        FloatType Jtr;
 
         FloatType LCC_rates[3]; // 3 rates to track at most
         FloatType LCC_inactivation_rate;
@@ -44,7 +40,7 @@ namespace GW {
 
     /* Perform the SSA on a single subunit (with fixed global variables) over an interval of length dt */
     template <typename FloatType, typename Generator>
-    inline void SSA_single_su(CRULatticeStateThread<FloatType> &state, const FloatType Cai, const FloatType CaNSR, const FloatType time_int, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
+    inline void SSA_single_su(CRULatticeStateThread<FloatType> &state, const FloatType time_int, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
 
     /* sample a new state based on the rates of the LCCs, RyRs and ClChs */
     template <typename FloatType, typename Generator>
@@ -73,15 +69,15 @@ namespace GW {
 
 
     /*  Calculate the flux values (except JLCC and Jrel) of the CRULatticeStateThread object */
-    template <typename FloatType>
-    void calculate_fluxes(CRULatticeStateThread<FloatType> &state, const FloatType Cai, const FloatType CaNSR, const Parameters<FloatType> &params);
+    //template <typename FloatType>
+    //void calculate_fluxes(CRULatticeStateThread<FloatType> &state, const FloatType Cai, const FloatType CaNSR, const Parameters<FloatType> &params);
 
     /* Update the transition rates of the CRULatticeStateThread object */
     template <typename FloatType>
     inline void init_rates(CRULatticeStateThread<FloatType> &state, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
 
-    template <typename FloatType>
-    inline void partial_euler_step(CRULatticeStateThread<FloatType> &state, const FloatType dt, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
+    //template <typename FloatType>
+    //inline void partial_euler_step(CRULatticeStateThread<FloatType> &state, const FloatType dt, const Parameters<FloatType> &params, const Constants<FloatType> &consts);
 
 
 }

@@ -117,23 +117,16 @@ namespace GW_lattice {
                              state.RyR_rates[8] + state.RyR_rates[9] + state.RyR_rates[10] + state.RyR_rates[11]; 
 
         
-        if (state.LCC_inactivation == 0){
-            state.LCC_inactivation = 1;
+        if (state.LCC_inactivation == 0)
+            state.LCC_inactivation_rate = consts.yinfLCC / consts.tauLCC;
+        else 
             state.LCC_inactivation_rate = (1.0 - consts.yinfLCC) / consts.tauLCC;
-        }
-        else {
-            state.LCC_inactivation = 0;
-            state.LCC_inactivation_rates = consts.yinfLCC / consts.tauLCC;
-        }
             
-        if (state.ClCh == 0){
-            state.ClCh = 1;
-            state.ClCh_rate = params.kbClCh;
-        }
-        else {
-            state.ClCh = 0;
+        if (state.ClCh == 0)
             state.ClCh_rate = params.kfClCh * state.CaSS;
-        }
+        else 
+            state.ClCh_rate = params.kbClCh;
+        
     }
 
 
@@ -246,7 +239,7 @@ namespace GW_lattice {
             else if (transition == 1){
                 state.LCC = 5;
                 state.LCC_rates[0] = 4*consts.betaLCC;
-                state.LCC_rates[1] = params.f;
+                state.LCC_rates[1] = consts.f;
                 state.LCC_rates[2] = consts.gamma0a4*state.CaSS;
             }
             else {
@@ -265,7 +258,7 @@ namespace GW_lattice {
             }
             else if (transition == 1) {
                 state.LCC = 6; 
-                state.LCC_rates[0] = params.g;
+                state.LCC_rates[0] = consts.g;
                 state.LCC_rates[1] = 0;
                 state.LCC_rates[2] = 0;
             }
@@ -273,13 +266,13 @@ namespace GW_lattice {
                 state.LCC = 11;
                 state.LCC_rates[0] = consts.omega_b4;
                 state.LCC_rates[1] = 4*consts.betaLCC*consts.binv;
-                state.LCC_rates[2] = params.f1;
+                state.LCC_rates[2] = consts.f1;
             }
             break;
         case 6:
             state.LCC = 5;
             state.LCC_rates[0] = 4*consts.betaLCC;
-            state.LCC_rates[1] = params.f;
+            state.LCC_rates[1] = consts.f;
             state.LCC_rates[2] = consts.gamma0a4*state.CaSS;
             break;
         case 7:
@@ -353,14 +346,14 @@ namespace GW_lattice {
                 state.LCC = 11;
                 state.LCC_rates[0] = consts.omega_b4;
                 state.LCC_rates[1] = 4*consts.betaLCC*consts.binv;
-                state.LCC_rates[2] = params.f1;
+                state.LCC_rates[2] = consts.f1;
             }
             break;
         case 11:
             if (transition == 0) {
                 state.LCC = 5; 
                 state.LCC_rates[0] = 4*consts.betaLCC;
-                state.LCC_rates[1] = params.f;
+                state.LCC_rates[1] = consts.f;
                 state.LCC_rates[2] = consts.gamma0a4*state.CaSS;
             }
             else if (transition == 1) {
@@ -371,7 +364,7 @@ namespace GW_lattice {
             }
             else { 
                 state.LCC = 12; 
-                state.LCC_rates[0] = params.g1;
+                state.LCC_rates[0] = consts.g1;
                 state.LCC_rates[1] = 0;
                 state.LCC_rates[2] = 0;
             }
@@ -380,7 +373,7 @@ namespace GW_lattice {
             state.LCC = 11;
             state.LCC_rates[0] = consts.omega_b4;
             state.LCC_rates[1] = 4*consts.betaLCC*consts.binv;
-            state.LCC_rates[2] = params.f1;
+            state.LCC_rates[2] = consts.f1;
             break;    
         default:
             break;
@@ -596,7 +589,7 @@ namespace GW_lattice {
             }
             else {
                 state.LCC_inactivation = 0;
-                state.LCC_inactivation_rates = consts.yinfLCC / consts.tauLCC;
+                state.LCC_inactivation_rate = consts.yinfLCC / consts.tauLCC;
             }
         } 
         else if (u < (state.LCC_tot_rate + state.LCC_inactivation_rate + state.RyR_tot_rate))
@@ -615,7 +608,6 @@ namespace GW_lattice {
 
     template <typename FloatType, typename Generator>
     void SSA_single_su(CRULatticeStateThread<FloatType> &state, const FloatType time_int, const Parameters<FloatType> &params, const Constants<FloatType> &consts){
-        int subunit_idx;
         FloatType t = 0, dt = 0, total_rate;
         init_rates(state, params, consts);
 

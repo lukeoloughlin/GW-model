@@ -21,6 +21,9 @@ using namespace pybind11::literals;
 template <typename T>
 using PyParameters = GW::Parameters<T>;
 
+template <typename T>
+using PyParametersLattice = GW_lattice::Parameters<T>;
+
 using namespace XoshiroCpp;
 
 typedef Eigen::RowVectorXd Array1d;
@@ -86,6 +89,19 @@ struct PyCRUState {
     PyCRUState(int nCRU) : CaSS(nCRU,4), CaJSR(nCRU), LCC(nCRU,4), LCC_inactivation(nCRU,4), RyR(nCRU,4,6), ClCh(nCRU,4) {}
 };
 
+struct PyCRULatticeState {
+    Array2d CaSS;
+    Array2d CaJSR;
+    Array2i LCC;
+    Array2i LCC_inactivation;
+    Array3i RyR;
+    Array2i ClCh;
+
+    PyCRULatticeState(int nCRU_x, int nCRU_y) : CaSS(nCRU_x,nCRU_y), CaJSR(nCRU_x,nCRU_y), LCC(nCRU_x,nCRU_y), 
+                                                LCC_inactivation(nCRU_x,nCRU_y), RyR(nCRU_x,nCRU_y,6), ClCh(nCRU_x,nCRU_y) {}
+};
+
+
 GW::GlobalState<double> globals_from_python(const PyGlobalState &py_state){
     GW::GlobalState<double> state;
     state.V = py_state.V;
@@ -131,6 +147,25 @@ GW::CRUState<double> crus_from_python(const PyCRUState &py_state, const int ncru
     return state;
 }
 
+GW_lattice::CRULatticeState<double> crus_from_python(const PyCRULatticeState &py_state, const int ncru_x, const int ncru_y){
+    GW_lattice::CRULatticeState<double> state(ncru_x, ncru_y);
+    state.CaSS = py_state.CaSS;
+    state.CaJSR = py_state.CaJSR;
+    state.LCC = py_state.LCC;
+    state.LCC_inactivation = py_state.LCC_inactivation;
+    state.ClCh = py_state.ClCh;
+
+    for (int i = 0; i < ncru_x; ++i){
+        for (int j = 0; j < ncru_y; ++j){
+            for (int k = 0; k < 6; ++k){
+                state.RyR.array(i,j,k) = py_state.RyR(i,j,k);
+            }
+        }
+    }
+
+    return state;
+}
+
 PyGWSimulation run_PRNG_arg(const GW::Parameters<double>& params, const int nCRU, double step_size, int num_steps, 
                             const std::function<double(double)>& Is, int record_every, PyCRUState &init_crus, 
                             PyGlobalState &init_globals, std::string& rng){
@@ -155,6 +190,33 @@ PyGWSimulation run_PRNG_arg(const GW::Parameters<double>& params, const int nCRU
     else
         throw std::invalid_argument(rng);
 }
+
+PyGWLatticeSimulation run_PRNG_arg_lattice(const GW_lattice::Parameters<double>& params, const int nCRU_x, const int nCRU_y, double step_size, int num_steps, 
+                            const std::function<double(double)>& Is, int record_every, PyCRULatticeState &init_crus, 
+                            PyGlobalState &init_globals, std::string& rng){
+    auto globals = globals_from_python(init_globals);
+    auto crus = crus_from_python(init_crus, nCRU_x, nCRU_y);
+    if (rng == "mt19937")
+        return run<std::mt19937>(params, nCRU_x, nCRU_y, step_size, num_steps, Is, record_every, globals, crus);
+    else if (rng == "mt19937_64")
+        return run<std::mt19937_64>(params, nCRU_x, nCRU_y, step_size, num_steps, Is, record_every, globals, crus);
+    else if (rng == "xoshiro256+")
+        return run<Xoshiro256Plus>(params, nCRU_x, nCRU_y, step_size, num_steps, Is, record_every, globals, crus);
+    else if (rng == "xoshiro256++")
+        return run<Xoshiro256PlusPlus>(params, nCRU_x, nCRU_y, step_size, num_steps, Is, record_every, globals, crus);
+    else if (rng == "xoshiro256**")
+        return run<Xoshiro256StarStar>(params, nCRU_x, nCRU_y, step_size, num_steps, Is, record_every, globals, crus);
+    else if (rng == "xoroshiro128+")
+        return run<Xoroshiro128Plus>(params, nCRU_x, nCRU_y, step_size, num_steps, Is, record_every, globals, crus);
+    else if (rng == "xoroshiro128++")
+        return run<Xoroshiro128PlusPlus>(params, nCRU_x, nCRU_y, step_size, num_steps, Is, record_every, globals, crus);
+    else if (rng == "xoroshiro128**")
+        return run<Xoroshiro128StarStar>(params, nCRU_x, nCRU_y, step_size, num_steps, Is, record_every, globals, crus);
+    else
+        throw std::invalid_argument(rng);
+}
+
+
 
 PYBIND11_MODULE(GreensteinWinslow, m) {
     /**************** 
@@ -282,6 +344,126 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("Kmr", &PyParameters<double>::Kmr, "Conductance of sodium channels")
         .def_readwrite("Hf", &PyParameters<double>::Hf, "Conductance of sodium channels")
         .def_readwrite("Hr", &PyParameters<double>::Hr, "Conductance of sodium channels");
+    
+    py::class_<PyParametersLattice<double>>(m, "GWLatticeParameters")
+        .def(py::init<>())
+        .def("__repr__", [](const PyParametersLattice<double> &params) { return "Greenstein and Winslow Model Parameters"; })
+        .def_readwrite("T", &PyParametersLattice<double>::T, "Temperature")
+        .def_readwrite("CSA", &PyParametersLattice<double>::CSA, "Membrane Capacitance")
+        .def_readwrite("Vcyto", &PyParametersLattice<double>::Vcyto, "Volume of cytosol")
+        .def_readwrite("VNSR", &PyParametersLattice<double>::VNSR, "Volume of NSR")
+        .def_readwrite("VJSR", &PyParametersLattice<double>::VJSR, "Volume of JSR")
+        .def_readwrite("VSS", &PyParametersLattice<double>::VSS, "Volume dyadic subspace")
+        .def_readwrite("NCaRU", &PyParametersLattice<double>::NCaRU, "Number of calcium release units")
+        .def_readwrite("Ko", &PyParametersLattice<double>::Ko, "Extracellular potassium concentration")
+        .def_readwrite("Nao", &PyParametersLattice<double>::Nao, "Extracellular sodium concentration")
+        .def_readwrite("Cao", &PyParametersLattice<double>::Cao, "Extracellular calcium concentration")
+        .def_readwrite("Clo", &PyParametersLattice<double>::Clo, "Extracellular chloride concentration")
+        .def_readwrite("Clcyto", &PyParametersLattice<double>::Clcyto, "Cytoplasm/intracellular chloride concentration")
+        .def_readwrite("f", &PyParametersLattice<double>::f, "State 5 -> state 6 LCC transition rate")
+        .def_readwrite("g", &PyParametersLattice<double>::g, "State 6 -> state 5 LCC transition rate")
+        .def_readwrite("f1", &PyParametersLattice<double>::f1, "State 11 -> state 12 LCC transition rate")
+        .def_readwrite("g1", &PyParametersLattice<double>::g1, "State 12 -> state 11 LCC transition rate")
+        .def_readwrite("a", &PyParametersLattice<double>::a, "LCC state dependent rate of calcium induced inactivation parameter")
+        .def_readwrite("b", &PyParametersLattice<double>::b, "LCC state dependent rate of activation from calcium inactivated state parameter")
+        .def_readwrite("gamma0", &PyParametersLattice<double>::gamma0, "LCC calcium induced inactivation rate parameter")
+        .def_readwrite("omega", &PyParametersLattice<double>::omega, "LCC reactivation from calcium induced inactivation rate parameter")
+        .def_readwrite("PCaL", &PyParametersLattice<double>::PCaL, "Permeability of the L-type calcium channels")
+        .def_readwrite("kfClCh", &PyParametersLattice<double>::kfClCh, "Activation rate of calcium dependent chloride channels")
+        .def_readwrite("kbClCh", &PyParametersLattice<double>::kbClCh, "Inactivation rate of calcium dependent chloride channels")
+        .def_readwrite("Pto2", &PyParametersLattice<double>::Pto2, "Permeability of calcium dependent chloride channels")
+        .def_readwrite("k12", &PyParametersLattice<double>::k12, "RyR state 1 -> state 2 transition rate")
+        .def_readwrite("k21", &PyParametersLattice<double>::k21, "RyR state 2 -> state 1 transition rate")
+        .def_readwrite("k23", &PyParametersLattice<double>::k23, "RyR state 2 -> state 3 transition rate")
+        .def_readwrite("k32", &PyParametersLattice<double>::k32, "RyR state 3 -> state 2 transition rate")
+        .def_readwrite("k34", &PyParametersLattice<double>::k34, "RyR state 3 -> state 4 transition rate")
+        .def_readwrite("k43", &PyParametersLattice<double>::k43, "RyR state 4 -> state 3 transition rate")
+        .def_readwrite("k45", &PyParametersLattice<double>::k45, "RyR state 4 -> state 5 transition rate")
+        .def_readwrite("k54", &PyParametersLattice<double>::k54, "RyR state 5 -> state 4 transition rate")
+        .def_readwrite("k56", &PyParametersLattice<double>::k56, "RyR state 5 -> state 6 transition rate")
+        .def_readwrite("k65", &PyParametersLattice<double>::k65, "RyR state 6 -> state 5 transition rate")
+        .def_readwrite("k25", &PyParametersLattice<double>::k25, "RyR state 2 -> state 5 transition rate")
+        .def_readwrite("k52", &PyParametersLattice<double>::k52, "RyR state 5 -> state 2 transition rate")
+        .def_readwrite("rRyR", &PyParametersLattice<double>::rRyR, "Rate of calcium release from RyRs")
+        .def_readwrite("rxfer", &PyParametersLattice<double>::rxfer, "Subspace calcium rate of transfer to cytosol")
+        .def_readwrite("rtr", &PyParametersLattice<double>::rtr, "Transfer rate of calcium from the NSR to the JSR")
+        .def_readwrite("riss", &PyParametersLattice<double>::riss, "Intersubspace calcium transfer rate")
+        .def_readwrite("rijsr", &PyParametersLattice<double>::rijsr, "Intersubspace calcium transfer rate")
+        .def_readwrite("BSRT", &PyParametersLattice<double>::BSRT, "Total concentration of BSR")
+        .def_readwrite("KBSR", &PyParametersLattice<double>::KBSR, "BSR half saturation")
+        .def_readwrite("BSLT", &PyParametersLattice<double>::BSLT, "Total concentration of BSL")
+        .def_readwrite("KBSL", &PyParametersLattice<double>::KBSL, "BSL half concentration")
+        .def_readwrite("CSQNT", &PyParametersLattice<double>::CSQNT, "Total concentration of CSQN")
+        .def_readwrite("KCSQN", &PyParametersLattice<double>::KCSQN, "CSQN half saturation")
+        .def_readwrite("CMDNT", &PyParametersLattice<double>::CMDNT, "Total CMDN concentration")
+        .def_readwrite("KCMDN", &PyParametersLattice<double>::KCMDN, "CMDN half saturation")
+        .def_readwrite("GNa", &PyParametersLattice<double>::GNa, "Fast sodium channel conductance")
+        .def_readwrite("GKr", &PyParametersLattice<double>::GKr, "Delayed rapidly activating rectifier current conductance")
+        .def_readwrite("Kf", &PyParametersLattice<double>::Kf, "Forward rate parameter for HERG ion-channel model")
+        .def_readwrite("Kb", &PyParametersLattice<double>::Kb, "Backwards rate parameter for HERG ion-channel model")
+        .def_readwrite("GKs", &PyParametersLattice<double>::GKs, "Delayed slowly-activating rectifier current conductance")
+        .def_readwrite("GKv43", &PyParametersLattice<double>::GKv43, "Conductance of sodium channels")
+        .def_readwrite("alphaa0Kv43", &PyParametersLattice<double>::alphaa0Kv43, "Conductance of sodium channels")
+        .def_readwrite("aaKv43", &PyParametersLattice<double>::aaKv43, "Conductance of sodium channels")
+        .def_readwrite("betaa0Kv43", &PyParametersLattice<double>::betaa0Kv43, "Conductance of sodium channels")
+        .def_readwrite("baKv43", &PyParametersLattice<double>::baKv43, "Conductance of sodium channels")
+        .def_readwrite("alphai0Kv43", &PyParametersLattice<double>::alphai0Kv43, "Conductance of sodium channels")
+        .def_readwrite("aiKv43", &PyParametersLattice<double>::aiKv43, "Conductance of sodium channels")
+        .def_readwrite("betai0Kv43", &PyParametersLattice<double>::betai0Kv43, "Conductance of sodium channels")
+        .def_readwrite("biKv43", &PyParametersLattice<double>::biKv43, "Conductance of sodium channels")
+        .def_readwrite("f1Kv43", &PyParametersLattice<double>::f1Kv43, "Conductance of sodium channels")
+        .def_readwrite("f2Kv43", &PyParametersLattice<double>::f2Kv43, "Conductance of sodium channels")
+        .def_readwrite("f3Kv43", &PyParametersLattice<double>::f3Kv43, "Conductance of sodium channels")
+        .def_readwrite("f4Kv43", &PyParametersLattice<double>::f4Kv43, "Conductance of sodium channels")
+        .def_readwrite("b1Kv43", &PyParametersLattice<double>::b1Kv43, "Conductance of sodium channels")
+        .def_readwrite("b2Kv43", &PyParametersLattice<double>::b2Kv43, "Conductance of sodium channels")
+        .def_readwrite("b3Kv43", &PyParametersLattice<double>::b3Kv43, "Conductance of sodium channels")
+        .def_readwrite("b4Kv43", &PyParametersLattice<double>::b4Kv43, "Conductance of sodium channels")
+        .def_readwrite("PKv14", &PyParametersLattice<double>::PKv14, "Conductance of sodium channels")
+        .def_readwrite("alphaa0Kv14", &PyParametersLattice<double>::alphaa0Kv14, "Conductance of sodium channels")
+        .def_readwrite("aaKv14", &PyParametersLattice<double>::aaKv14, "Conductance of sodium channels")
+        .def_readwrite("betaa0Kv14", &PyParametersLattice<double>::betaa0Kv14, "Conductance of sodium channels")
+        .def_readwrite("baKv14", &PyParametersLattice<double>::baKv14, "Conductance of sodium channels")
+        .def_readwrite("alphai0Kv14", &PyParametersLattice<double>::alphai0Kv14, "Conductance of sodium channels")
+        .def_readwrite("aiKv14", &PyParametersLattice<double>::aiKv14, "Conductance of sodium channels")
+        .def_readwrite("betai0Kv14", &PyParametersLattice<double>::betai0Kv14, "Conductance of sodium channels")
+        .def_readwrite("biKv14", &PyParametersLattice<double>::biKv14, "Conductance of sodium channels")
+        .def_readwrite("f1Kv14", &PyParametersLattice<double>::f1Kv14, "Conductance of sodium channels")
+        .def_readwrite("f2Kv14", &PyParametersLattice<double>::f2Kv14, "Conductance of sodium channels")
+        .def_readwrite("f3Kv14", &PyParametersLattice<double>::f3Kv14, "Conductance of sodium channels")
+        .def_readwrite("f4Kv14", &PyParametersLattice<double>::f4Kv14, "Conductance of sodium channels")
+        .def_readwrite("b1Kv14", &PyParametersLattice<double>::b1Kv14, "Conductance of sodium channels")
+        .def_readwrite("b2Kv14", &PyParametersLattice<double>::b2Kv14, "Conductance of sodium channels")
+        .def_readwrite("b3Kv14", &PyParametersLattice<double>::b3Kv14, "Conductance of sodium channels")
+        .def_readwrite("b4Kv14", &PyParametersLattice<double>::b4Kv14, "Conductance of sodium channels")
+        .def_readwrite("Csc", &PyParametersLattice<double>::Csc, "Conductance of sodium channels")
+        .def_readwrite("GK1", &PyParametersLattice<double>::GK1, "Conductance of sodium channels")
+        .def_readwrite("KmK1", &PyParametersLattice<double>::KmK1, "Conductance of sodium channels")
+        .def_readwrite("GKp", &PyParametersLattice<double>::GKp, "Conductance of sodium channels")
+        .def_readwrite("kNaCa", &PyParametersLattice<double>::kNaCa, "Conductance of sodium channels")
+        .def_readwrite("KmNa", &PyParametersLattice<double>::KmNa, "Conductance of sodium channels")
+        .def_readwrite("KmCa", &PyParametersLattice<double>::KmCa, "Conductance of sodium channels")
+        .def_readwrite("ksat", &PyParametersLattice<double>::ksat, "Conductance of sodium channels")
+        .def_readwrite("eta", &PyParametersLattice<double>::eta, "Conductance of sodium channels")
+        .def_readwrite("INaKmax", &PyParametersLattice<double>::INaKmax, "Conductance of sodium channels")
+        .def_readwrite("KmNai", &PyParametersLattice<double>::KmNai, "Conductance of sodium channels")
+        .def_readwrite("KmKo", &PyParametersLattice<double>::KmKo, "Conductance of sodium channels")
+        .def_readwrite("IpCamax", &PyParametersLattice<double>::IpCamax, "Conductance of sodium channels")
+        .def_readwrite("KmpCa", &PyParametersLattice<double>::KmpCa, "Conductance of sodium channels")
+        .def_readwrite("GCab", &PyParametersLattice<double>::GCab, "Conductance of sodium channels")
+        .def_readwrite("GNab", &PyParametersLattice<double>::GNab, "Conductance of sodium channels")
+        .def_readwrite("kHTRPNp", &PyParametersLattice<double>::kHTRPNp, "Conductance of sodium channels")
+        .def_readwrite("kHTRPNm", &PyParametersLattice<double>::kHTRPNm, "Conductance of sodium channels")
+        .def_readwrite("kLTRPNp", &PyParametersLattice<double>::kLTRPNp, "Conductance of sodium channels")
+        .def_readwrite("kLTRPNm", &PyParametersLattice<double>::kLTRPNm, "Conductance of sodium channels")
+        .def_readwrite("HTRPNtot", &PyParametersLattice<double>::HTRPNtot, "Conductance of sodium channels")
+        .def_readwrite("LTRPNtot", &PyParametersLattice<double>::LTRPNtot, "Conductance of sodium channels")
+        .def_readwrite("Vmaxf", &PyParametersLattice<double>::Vmaxf, "Conductance of sodium channels")
+        .def_readwrite("Vmaxr", &PyParametersLattice<double>::Vmaxr, "Conductance of sodium channels")
+        .def_readwrite("Kmf", &PyParametersLattice<double>::Kmf, "Conductance of sodium channels")
+        .def_readwrite("Kmr", &PyParametersLattice<double>::Kmr, "Conductance of sodium channels")
+        .def_readwrite("Hf", &PyParametersLattice<double>::Hf, "Conductance of sodium channels")
+        .def_readwrite("Hr", &PyParametersLattice<double>::Hr, "Conductance of sodium channels");
 
     
     py::class_<PyGWSimulation>(m, "GWVariables")
@@ -317,6 +499,31 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("sigma_LCC", &PyGWSimulation::sigma_LCC)
         //.def_readwrite("int_QTXt", &PyGWSimulation::int_QTXt)
         .def("__repr__", [](const PyGWSimulation &x) {return "Greenstein and Winslow model solution over the interval [0, " + std::to_string(x.tspan) + "] with " + std::to_string(x.nCRU) + " CRUs"; });
+    
+    py::class_<PyGWLatticeSimulation>(m, "GWLatticeVariables")
+        .def(py::init<int,int,int,double>())
+        .def_readwrite("t", &PyGWLatticeSimulation::t)
+        .def_readwrite("V", &PyGWLatticeSimulation::V)
+        .def_readwrite("m", &PyGWLatticeSimulation::m)
+        .def_readwrite("h", &PyGWLatticeSimulation::h)
+        .def_readwrite("j", &PyGWLatticeSimulation::j)
+        .def_readwrite("Nai", &PyGWLatticeSimulation::Nai)
+        .def_readwrite("Ki", &PyGWLatticeSimulation::Ki)
+        .def_readwrite("Cai", &PyGWLatticeSimulation::Cai)
+        .def_readwrite("CaNSR", &PyGWLatticeSimulation::CaNSR)
+        .def_readwrite("CaLTRPN", &PyGWLatticeSimulation::CaLTRPN)
+        .def_readwrite("CaHTRPN", &PyGWLatticeSimulation::CaHTRPN)
+        .def_readwrite("xKs", &PyGWLatticeSimulation::xKs)
+        .def_readwrite("XKr", &PyGWLatticeSimulation::XKr)
+        .def_readwrite("XKv14", &PyGWLatticeSimulation::XKv14)
+        .def_readwrite("XKv43", &PyGWLatticeSimulation::XKv43)
+        .def_readwrite("CaJSR", &PyGWLatticeSimulation::CaJSR)
+        .def_readwrite("CaSS", &PyGWLatticeSimulation::CaSS)
+        .def_readwrite("LCC", &PyGWLatticeSimulation::LCC)
+        .def_readwrite("LCC_inactivation", &PyGWLatticeSimulation::LCC_inactivation)
+        .def_readwrite("RyR", &PyGWLatticeSimulation::RyR)
+        .def_readwrite("ClCh", &PyGWLatticeSimulation::ClCh)
+        .def("__repr__", [](const PyGWLatticeSimulation &x) {return "Greenstein and Winslow Lattice model solution"; });
    
     // Needed for setting initial conditions
     py::class_<PyGlobalState>(m, "GWGlobalState")
@@ -344,9 +551,23 @@ PYBIND11_MODULE(GreensteinWinslow, m) {
         .def_readwrite("LCC_inactivation", &PyCRUState::LCC_inactivation)
         .def_readwrite("RyR", &PyCRUState::RyR)
         .def_readwrite("ClCh", &PyCRUState::ClCh);
+    
+    py::class_<PyCRULatticeState>(m, "GWCRULatticeState")
+        .def(py::init<int,int>())
+        .def_readwrite("CaSS", &PyCRULatticeState::CaSS)
+        .def_readwrite("CaJSR", &PyCRULatticeState::CaJSR)
+        .def_readwrite("LCC", &PyCRULatticeState::LCC)
+        .def_readwrite("LCC_inactivation", &PyCRULatticeState::LCC_inactivation)
+        .def_readwrite("RyR", &PyCRULatticeState::RyR)
+        .def_readwrite("ClCh", &PyCRULatticeState::ClCh);
 
 
     m.def("run", &run_PRNG_arg, "Simulate the model", "parameters"_a, "nCRU"_a, "step_size"_a, "num_steps"_a, 
+                                                      "Istim"_a, "record_every"_a, "init_crus"_a, "init_globals"_a = PyGlobalState(), 
+                                                      "PRNG"_a = "mt19937_64",
+                                                       py::call_guard<py::gil_scoped_release>());
+    
+    m.def("run_lattice", &run_PRNG_arg_lattice, "Simulate the model", "parameters"_a, "nCRU_x"_a, "nCRU_y"_a, "step_size"_a, "num_steps"_a, 
                                                       "Istim"_a, "record_every"_a, "init_crus"_a, "init_globals"_a = PyGlobalState(), 
                                                       "PRNG"_a = "mt19937_64",
                                                        py::call_guard<py::gil_scoped_release>());

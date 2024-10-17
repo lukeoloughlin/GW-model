@@ -125,18 +125,18 @@ namespace GW_lattice {
                 // Diffusion terms
                 if ((i > 0) && (i < nCRU_x-1) && (j > 0) && (j < nCRU_y-1)) {
                     // interior
-                    Jiss_DS(i,j) = params.riss * (CRU_lattice.CaSS(i-1,j) + CRU_lattice.CaSS(i+1,j) + CRU_lattice.CaSS(i,j-1) + CRU_lattice.CaSS(i,j+1) - 4*CRU_lattice.CaSS(i,j));
-                    Jiss_JSR(i,j) = params.rijsr * (CRU_lattice.CaJSR(i-1,j) + CRU_lattice.CaJSR(i+1,j) + CRU_lattice.CaJSR(i,j-1) + CRU_lattice.CaJSR(i,j+1) - 4*CRU_lattice.CaJSR(i,j));
+                    Jiss_DS(i,j) = parameters.riss * (CRU_lattice.CaSS(i-1,j) + CRU_lattice.CaSS(i+1,j) + CRU_lattice.CaSS(i,j-1) + CRU_lattice.CaSS(i,j+1) - 4*CRU_lattice.CaSS(i,j));
+                    Jiss_JSR(i,j) = parameters.rijsr * (CRU_lattice.CaJSR(i-1,j) + CRU_lattice.CaJSR(i+1,j) + CRU_lattice.CaJSR(i,j-1) + CRU_lattice.CaJSR(i,j+1) - 4*CRU_lattice.CaJSR(i,j));
                 }
                 else if ((i == 0) && (i < nCRU_x-1) && (j > 0) && (j < nCRU_y-1)) {
                     // left side, no corner
-                    Jiss_DS(i,j) = params.riss * (CRU_lattice.CaSS(i+1,j) + CRU_lattice.CaSS(i,j-1) + CRU_lattice.CaSS(i,j+1) - 3*CRU_lattice.CaSS(i,j));
-                    Jiss_JSR(i,j) = params.rijsr * (CRU_lattice.CaJSR(i+1,j) + CRU_lattice.CaJSR(i,j-1) + CRU_lattice.CaJSR(i,j+1) - 3*CRU_lattice.CaJSR(i,j));
+                    Jiss_DS(i,j) = parameters.riss * (CRU_lattice.CaSS(i+1,j) + CRU_lattice.CaSS(i,j-1) + CRU_lattice.CaSS(i,j+1) - 3*CRU_lattice.CaSS(i,j));
+                    Jiss_JSR(i,j) = parameters.rijsr * (CRU_lattice.CaJSR(i+1,j) + CRU_lattice.CaJSR(i,j-1) + CRU_lattice.CaJSR(i,j+1) - 3*CRU_lattice.CaJSR(i,j));
                 }
                 else if ((i > 0) && (i == nCRU_x-1) && (j > 0) && (j < nCRU_y-1)) {
                     // right side, no corner
-                    Jiss_DS(i,j) = params.riss * (CRU_lattice.CaSS(i-1,j) + CRU_lattice.CaSS(i,j-1) + CRU_lattice.CaSS(i,j+1) - 3*CRU_lattice.CaSS(i,j));
-                    Jiss_JSR(i,j) = params.rijsr * (CRU_lattice.CaJSR(i-1,j) + CRU_lattice.CaJSR(i,j-1) + CRU_lattice.CaJSR(i,j+1) - 3*CRU_lattice.CaJSR(i,j));
+                    Jiss_DS(i,j) = parameters.riss * (CRU_lattice.CaSS(i-1,j) + CRU_lattice.CaSS(i,j-1) + CRU_lattice.CaSS(i,j+1) - 3*CRU_lattice.CaSS(i,j));
+                    Jiss_JSR(i,j) = parameters.rijsr * (CRU_lattice.CaJSR(i-1,j) + CRU_lattice.CaJSR(i,j-1) + CRU_lattice.CaJSR(i,j+1) - 3*CRU_lattice.CaJSR(i,j));
                 }
                 else if ((i > 0) && (i < nCRU_x-1) && (j == 0) && (j < nCRU_y-1)) {
                     // top, no corner
@@ -181,7 +181,7 @@ namespace GW_lattice {
         consts.VF_RT = globals.V*consts.F_RT;
         consts.expmVF_RT = exp(-consts.VF_RT);
         consts.JLCC_exp = square(1.0 / consts.expmVF_RT);
-        consts.JLCC_multiplier = consts.JLCC_const * globals.V * consts.F_RT / (consts.JLCC_exp - 1);
+        consts.JLCC_multiplier = consts.JLCC_const * consts.VF_RT / (consts.JLCC_exp - 1);
 
         #pragma omp parallel for collapse(2)
         for (int i = 0; i < nCRU_x; i++){
@@ -189,10 +189,12 @@ namespace GW_lattice {
                 Jtr(i,j) = parameters.rtr * (globals.CaNSR - CRU_lattice.CaJSR(i,j));
                 Jxfer(i,j) = parameters.rxfer * (CRU_lattice.CaSS(i,j) - globals.Cai); 
                 if ((CRU_lattice.LCC_inactivation(i,j) == 1) && (CRU_lattice.LCC(i,j) == 6 || CRU_lattice.LCC(i,j) == 12))
-                    JLCC(i,j) = consts.JLCC_const * consts.VF_RT * (consts.Cao_scaled - consts.JLCC_exp * CRU_lattice.CaSS(i,j));
-                else
+                    JLCC(i,j) = consts.JLCC_multiplier * (consts.Cao_scaled - consts.JLCC_exp * CRU_lattice.CaSS(i,j));
+                else {
                     JLCC(i,j) = 0.0;
-                Jrel(i,j) = (CRU_lattice.RyR.array(i,j,2) + CRU_lattice.RyR.array(i,j,3)) * params.rRyR * (CRU_lattice.CaJSR(i,j) - CRU_lattice.CaSS(i,j));
+                }
+
+                Jrel(i,j) = (CRU_lattice.RyR.array(i,j,2) + CRU_lattice.RyR.array(i,j,3)) * parameters.rRyR * (CRU_lattice.CaJSR(i,j) - CRU_lattice.CaSS(i,j));
 
                 betaSS(i,j) = 1.0 / (1 + (consts.BSR_const / square(parameters.KBSR + CRU_lattice.CaSS(i,j))) + (consts.BSL_const / square(parameters.KBSL + CRU_lattice.CaSS(i,j))));
                 betaJSR(i,j) = 1.0 / (1 + (consts.CSQN_const / square(parameters.KCSQN + CRU_lattice.CaJSR(i,j))));
@@ -205,18 +207,25 @@ namespace GW_lattice {
 
     template <typename FloatType>
     inline void GW_lattice<FloatType>::euler_diffusion_step(const FloatType dt){
-        CRU_lattice.CaSS += (0.5*dt*betaSS*Jiss_DS);
-        CRU_lattice.CaJSR += (0.5*dt*betaJSR*Jiss_JSR);
+        #pragma omp parallel for collapse(2)
+        for (int i = 0; i < nCRU_x; i++){
+            for (int j = 0; j < nCRU_y; j++){
+                CRU_lattice.CaSS(i,j) += 0.5*dt*betaSS(i,j)*Jiss_DS(i,j);
+                CRU_lattice.CaJSR(i,j) += 0.5*dt*betaJSR(i,j)*Jiss_JSR(i,j);
+                if (CRU_lattice.CaSS(i,j) < 1e-10)
+                    CRU_lattice.CaSS(i,j) = 1e-10; // Clamp this to prevent negative values
+                if (CRU_lattice.CaJSR(i,j) < 1e-10)
+                    CRU_lattice.CaJSR(i,j) = 1e-10; // Clamp this to prevent negative values
+            }
+        }
     }
 
     template <typename FloatType>
     void GW_lattice<FloatType>::euler_reaction_step(const FloatType dt){
-        
-
         // Get all currents and fluxes
         FloatType ENa = common::Nernst<FloatType>(globals.Nai, parameters.Nao, consts.RT_F, 1.0);
         FloatType EK = common::Nernst<FloatType>(globals.Ki, parameters.Ko, consts.RT_F, 1.0);
-        FloatType ECa = common::Nernst<FloatType>(globals.Ki, parameters.Ko, consts.RT_F, 2.0);
+        FloatType ECa = common::Nernst<FloatType>(globals.Cai, parameters.Cao, consts.RT_F, 2.0);
 
         FloatType INa = common::INa<FloatType>(globals.V, globals.m, globals.h, globals.j, parameters.GNa, ENa);
         FloatType INab = common::Ib<FloatType>(globals.V, parameters.GNab, ENa);
@@ -228,7 +237,7 @@ namespace GW_lattice {
         FloatType IKv14 = GW::IKv14<FloatType>(consts.VF_RT, consts.expmVF_RT, globals.Kv14[4], globals.Ki, globals.Nai, consts.PKv14_Csc, parameters.Nao, parameters.Ko);
         FloatType IKv43 = GW::IKv43<FloatType>(globals.V, globals.Kv43[4], EK, parameters.GKv43);
         FloatType Ito1 = IKv14 + IKv43;
-        FloatType Ito2 = GW::Ito2<FloatType>(CRU_lattice.ClCh, consts.VF_RT, consts.expmVF_RT, parameters.Clcyto, parameters.Clo, consts.Ito2_const); // Need to check
+        FloatType Ito2 = GW::Ito2<FloatType>(CRU_lattice.ClCh, consts.VF_RT, consts.expmVF_RT, parameters.Clcyto, parameters.Clo, consts.Ito2_const);
         FloatType IK1 = GW::IK1<FloatType>(globals.V, EK, parameters.GK1, consts.IK1_const, consts.F_RT);
         FloatType IKp = GW::IKp<FloatType>(globals.V, EK, parameters.GKp);
         
@@ -248,7 +257,7 @@ namespace GW_lattice {
         FloatType dm = common::alpha_m(globals.V) * (1.0 - globals.m) - common::beta_m(globals.V) * globals.m;
         FloatType dh = common::alpha_h(globals.V) * (1.0 - globals.h) - common::beta_h(globals.V) * globals.h;
         FloatType dj = common::alpha_j(globals.V) * (1.0 - globals.j) - common::beta_j(globals.V) * globals.j;
-        FloatType dxKs =  (XKsinf(globals.V) - globals.xKs) * tauXKs_inv(globals.V);
+        FloatType dxKs =  (GW::XKsinf(globals.V) - globals.xKs) * GW::tauXKs_inv(globals.V);
         
         update_QKr();
         // Calculate derivatives of XKr terms
@@ -287,8 +296,8 @@ namespace GW_lattice {
 
         globals.Nai += -dt*consts.CSA_FVcyto * (INa + INab + 3*INaCa + 3*INaK);
         globals.Ki += -dt*consts.CSA_FVcyto * (IKr + IKs + Ito1 + IK1 + IKp - 2*INaK);
-        globals.Cai += dt*consts.beta_cyto * (-0.5*consts.CSA_FVcyto*(ICab + IpCa - 2*INaCa) + consts.VSS_Vcyto*currents.Jxfer_tot - Jup - (dCaLTRPN + dCaHTRPN));
-        globals.CaNSR += dt*(consts.Vcyto_VNSR * currents.Jup - consts.VJSR_VNSR * Jtr_tot);
+        globals.Cai += dt*beta_cyto*(-0.5*consts.CSA_FVcyto*(ICab + IpCa - 2*INaCa) + consts.VSS_Vcyto*Jxfer_tot - Jup - (dCaLTRPN + dCaHTRPN));
+        globals.CaNSR += dt*(consts.Vcyto_VNSR * Jup - consts.VJSR_VNSR * Jtr_tot);
         globals.CaLTRPN += dt*dCaLTRPN;
         globals.CaHTRPN += dt*dCaHTRPN;
 
@@ -346,7 +355,7 @@ namespace GW_lattice {
             #pragma omp for collapse(2) schedule( static )
             for (int i = 0; i < nCRU_x; i++){
                 for (int j = 0; j < nCRU_y; j++){
-                    temp.copy_from_CRUState(CRU_lattice, i, j, parameters);
+                    temp.copy_from_CRULatticeState(CRU_lattice, i, j, parameters);
                     SSA_single_su<FloatType, PRNG>(temp, dt, parameters, consts);
                     update_CRUstate_from_temp(temp, i, j);
                 }
@@ -357,6 +366,7 @@ namespace GW_lattice {
     template <typename FloatType>
     template <typename PRNG>
     void GW_lattice<FloatType>::euler_step(const FloatType dt){
+        // TODO: I think the implementation of this is incorrect. Check and fix.
         
         SSA<PRNG>(dt); // Do SSA step and hold the Markov chain states in temporary arrays
 

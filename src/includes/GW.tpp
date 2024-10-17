@@ -191,7 +191,7 @@ namespace GW {
 
         consts.ENa = common::Nernst<FloatType>(globals.Nai, parameters.Nao, consts.RT_F, 1.0);
         consts.EK = common::Nernst<FloatType>(globals.Ki, parameters.Ko, consts.RT_F, 1.0);
-        consts.ECa = common::Nernst<FloatType>(globals.Ki, parameters.Ko, consts.RT_F, 2.0);
+        consts.ECa = common::Nernst<FloatType>(globals.Cai, parameters.Cao, consts.RT_F, 2.0);
 
         currents.INa = common::INa<FloatType>(globals.V, globals.m, globals.h, globals.j, parameters.GNa, consts.ENa);
         currents.INab = common::Ib<FloatType>(globals.V, parameters.GNab, consts.ENa);

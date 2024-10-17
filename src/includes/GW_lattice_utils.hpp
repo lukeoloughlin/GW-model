@@ -32,15 +32,6 @@ namespace GW_lattice {
         Array2<int> LCC_inactivation;
         Array3Container<int> RyR;
         Array2<int> ClCh;
-        Array2<FloatType> RyR_open_int;
-        Array2<FloatType> RyR_open_martingale;
-        Array2<FloatType> RyR_open_martingale_normalised;
-        //Array1<FloatType> sigma_RyR;
-        
-        //Array2<FloatType> LCC_open_int;
-        //Array2<FloatType> LCC_open_martingale;
-        //Array2<FloatType> LCC_open_martingale_normalised;
-        //Array1<FloatType> sigma_LCC;
 
         CRULatticeState(const int nCRU_x, const int nCRU_y);
         CRULatticeState& operator=(CRULatticeState& x) = default;
@@ -89,8 +80,8 @@ namespace GW_lattice {
 
         FloatType rxfer = 200.0;
         FloatType rtr = 0.333;
-        FloatType riss = 20.0*0.5; // Halving this since each subunit interacts with double the number of neighbouring subunits now (except on the boundary)
-        FloatType rijsr = 100.0; // New parameter, JSR diffusion rate. Setting to 10*riss for simplicity
+        FloatType riss = 1.32; // See notes (Stoch. Switch in bio pg 20 on notes if not properly recored)
+        FloatType rijsr = 13.2; // New parameter, JSR diffusion rate. Setting to 10*riss for simplicity
         FloatType BSRT = 0.047;
         FloatType KBSR = 0.00087;
         FloatType BSLT = 1.124;
@@ -193,6 +184,10 @@ namespace GW_lattice {
         FloatType omega_b2; // omega / b^2
         FloatType omega_b3; // omega / b^3
         FloatType omega_b4; // omega / b^4
+        FloatType f; 
+        FloatType f1; 
+        FloatType g; 
+        FloatType g1; 
         // CaSS constants
         FloatType BSR_const;
         FloatType BSL_const;
@@ -231,7 +226,7 @@ namespace GW_lattice {
         FloatType yinfLCC; // LCC voltage inactivation steady state
         FloatType tauLCC; // LCC voltage inactivation time constant
 
-        Constants(const Parameters<FloatType> &params, const int nCRU_simulated);
+        Constants(const Parameters<FloatType> &params, const int nCRU_x, const int nCRU_y);
     };
     
 

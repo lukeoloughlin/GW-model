@@ -19,19 +19,6 @@ using QKvMap = Eigen::Map<Eigen::Array<T,10,10>,Eigen::RowMajor>;
 
 
 namespace GW_lattice {
-    
-    template <typename FloatType>//, typename PRNG>
-    struct CRULatticeState {
-        Array2<FloatType> CaSS;
-        Array2<FloatType> CaJSR; // changing this to Array2 because CRUs are no longer distinct structures
-        Array2<int> LCC;
-        Array2<int> LCC_inactivation;
-        Array3Container<int> RyR;
-        Array2<int> ClCh;
-
-        CRULatticeState(const int nCRU_x, const int nCRU_y);
-        CRULatticeState& operator=(CRULatticeState& x) = default;
-    };
 
 
 
@@ -123,7 +110,7 @@ namespace GW_lattice {
         
         
     public:
-        GW_lattice(int x, int y) : parameters(), globals(), CRU_lattice(x, y), LCC_tmp(x,y), LCC_inactivation_tmp(x,y), RyR_tmp(x,y,6), ClCh_tmp(x,y), nCRU_x(x), nCRU_y(y), consts(parameters, x*y), JLCC(x,y), 
+        GW_lattice(int x, int y) : parameters(), globals(), CRU_lattice(x, y), LCC_tmp(x,y), LCC_inactivation_tmp(x,y), RyR_tmp(x,y,6), ClCh_tmp(x,y), nCRU_x(x), nCRU_y(y), consts(parameters, x, y), JLCC(x,y), 
                                        Jxfer(x,y), Jrel(x,y), Jtr(x,y), Jiss_DS(x,y), Jiss_JSR(x,y), betaSS(x,y), betaJSR(x,y), QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage) { 
             //consts.VF_RT = globals.V * consts.F_RT;
             //consts.JLCC_exp = exp(2*consts.VF_RT);
@@ -138,7 +125,7 @@ namespace GW_lattice {
         }
 
         GW_lattice(const Parameters<FloatType>& params, int x, int y) : parameters(params), globals(), CRU_lattice(x,y), LCC_tmp(x,y), LCC_inactivation_tmp(x,y), RyR_tmp(x,y,6), ClCh_tmp(x,y), nCRU_x(x), 
-                                       nCRU_y(y), consts(parameters, x*y), JLCC(x,y), Jxfer(x,y), Jrel(x,y), Jtr(x,y), Jiss_DS(x,y), Jiss_JSR(x,y), betaSS(x,y), betaJSR(x,y), QKr(QKr_storage), QKv14(QKv14_storage), 
+                                       nCRU_y(y), consts(parameters, x, y), JLCC(x,y), Jxfer(x,y), Jrel(x,y), Jtr(x,y), Jiss_DS(x,y), Jiss_JSR(x,y), betaSS(x,y), betaJSR(x,y), QKr(QKr_storage), QKv14(QKv14_storage), 
                                        QKv43(QKv43_storage) { 
             initialise_QKr();
             LCC_tmp = CRU_lattice.LCC;

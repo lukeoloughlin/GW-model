@@ -3,7 +3,7 @@
 namespace GW_lattice {
 
     template <typename FloatType>
-    CRULatticeState<FloatType>::CRULatticeState(const int nCRU_x, const int nCRU_y) : CaSS(nCRU_x,nCRU_x), CaJSR(nCRU_x,nCRU_y), LCC(nCRU_x,nCRU_y), LCC_inactivation(nCRU_x,nCRU_y), RyR(nCRU_x,nCRU_y,6), ClCh(nCRU_x, nCRU_y, 4) {
+    CRULatticeState<FloatType>::CRULatticeState(const int nCRU_x, const int nCRU_y) : CaSS(nCRU_x,nCRU_x), CaJSR(nCRU_x,nCRU_y), LCC(nCRU_x,nCRU_y), LCC_inactivation(nCRU_x,nCRU_y), RyR(nCRU_x,nCRU_y,6), ClCh(nCRU_x, nCRU_y) {
         CaSS.setConstant(1.45370e-4);
         CaJSR.setConstant(0.908408);
 
@@ -45,10 +45,10 @@ namespace GW_lattice {
 
     
     template <typename FloatType>
-    Constants<FloatType>::Constants(const Parameters<FloatType> &params, const int nCRU_simulated){
+    Constants<FloatType>::Constants(const Parameters<FloatType> &params, const int nCRU_x, const int nCRU_y){
         RT_F = GAS_CONST * params.T / FARADAY;
         F_RT = 1.0 / RT_F;
-        CRU_factor = (FloatType)params.NCaRU / (FloatType)nCRU_simulated;
+        CRU_factor = (FloatType)params.NCaRU / (FloatType)(nCRU_x*nCRU_y);
         CSA_FVcyto = params.CSA / (1000 * params.Vcyto * FARADAY);
         VSS_Vcyto = params.VSS / params.Vcyto;
         Vcyto_VNSR = params.Vcyto / params.VNSR;
@@ -66,6 +66,10 @@ namespace GW_lattice {
         omega_b2 = omega_b * binv;
         omega_b3 = omega_b2 * binv;
         omega_b4 = omega_b3 * binv;
+        f = params.f;
+        f1 = params.f1;
+        g = params.g;
+        g1 = params.g1;
         // CaSS constants
         BSR_const = params.KBSR * params.BSRT;
         BSL_const = params.KBSL * params.BSLT;

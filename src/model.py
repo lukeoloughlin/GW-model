@@ -969,7 +969,12 @@ class GWModel:
 
         if init_state is not None:
             self.__global_state = _unpack_globals(init_state)
-            self.__cru_state = _unpack_crus(init_state)
+            self.__cru_state = _unpack_crus(init_state, self.parameters.lattice)
+        elif self.parameters.lattice:
+            self.__global_state = gw_cxx.GWGlobalState()
+            self.__cru_state = gw_cxx.GWCRULatticeState(
+                self.parameters.NCaRU_x, self.parameters.NCaRU_y
+            )
         else:
             self.__global_state = gw_cxx.GWGlobalState()
             self.__cru_state = gw_cxx.GWCRUState(self.parameters.NCaRU_sim)
@@ -996,17 +1001,31 @@ class GWModel:
         assert_positive(num_steps, "num_steps")
         assert_positive(record_every, "record_every")
         try:
-            cxx_sol = gw_cxx.run(
-                self.parameters.cxx_struct,
-                self.parameters.NCaRU_sim,
-                step_size,
-                num_steps,
-                self.__stim,
-                record_every,
-                init_crus=self.__cru_state,
-                init_globals=self.__global_state,
-                PRNG=PRNG,
-            )
+            if self.parameters.lattice:
+                cxx_sol = gw_cxx.run_lattice(
+                    self.parameters.cxx_struct,
+                    self.parameters.NCaRU_x,
+                    self.parameters.NCaRU_y,
+                    step_size,
+                    num_steps,
+                    self.__stim,
+                    record_every,
+                    init_crus=self.__cru_state,
+                    init_globals=self.__global_state,
+                    PRNG=PRNG,
+                )
+            else:
+                cxx_sol = gw_cxx.run(
+                    self.parameters.cxx_struct,
+                    self.parameters.NCaRU_sim,
+                    step_size,
+                    num_steps,
+                    self.__stim,
+                    record_every,
+                    init_crus=self.__cru_state,
+                    init_globals=self.__global_state,
+                    PRNG=PRNG,
+                )
         except Exception as e:
             if isinstance(e, ValueError):
                 raise ValueError(
@@ -1060,13 +1079,42 @@ def _unpack_globals(state_dict: dict) -> gw_cxx.GWGlobalState:
     return state
 
 
-def _unpack_crus(state_dict: dict) -> gw_cxx.GWCRUState:
-    NCaRU = state_dict["CaSS"].shape[0]
-    state = gw_cxx.GWCRUState(NCaRU)
-    state.CaSS = state_dict["CaSS"]
-    state.CaJSR = state_dict["CaJSR"]
-    state.LCC = state_dict["LCC"]
-    state.LCC_inactivation = state_dict["LCC_inactivation"]
-    state.RyR = state_dict["RyR"]
-    state.ClCh = state_dict["ClCh"]
+def _unpack_crus(
+    state_dict: dict, lattice: bool
+) -> gw_cxx.GWCRUState | gw_cxx.GWCRULatticeState:
+    if lattice:
+        CaSS_shape = state_dict["CaSS"].shape
+        assert len(CaSS_shape) == 2, "Wrong shape of CaSS"
+        NCaRU_x, NCaRU_y = CaSS_shape
+        state = gw_cxx.GWCRULatticeState(NCaRU_x, NCaRU_y)
+        state.CaSS = state_dict["CaSS"]
+        assert (
+            state_dict["CaJSR"].shape == CaSS_shape
+        ), "CaJSR shape must be the same as CaSS"
+        state.CaJSR = state_dict["CaJSR"]
+        assert (
+            state_dict["LCC"].shape == CaSS_shape
+        ), "LCC shape must be the same as CaSS"
+        state.LCC = state_dict["LCC"]
+        assert (
+            state_dict["LCC_inactivation"].shape == CaSS_shape
+        ), "LCC_inactivation shape must be the same as CaSS"
+        state.LCC_inactivation = state_dict["LCC_inactivation"]
+        assert (
+            state_dict["RyR"].shape[:-1] == CaSS_shape
+        ), "First two axes of RyR must have the same dimensions as CaSS"
+        state.RyR = state_dict["RyR"]
+        assert (
+            state_dict["ClCh"].shape == CaSS_shape
+        ), "ClCh shape must be the same as CaSS"
+        state.ClCh = state_dict["ClCh"]
+    else:
+        NCaRU = state_dict["CaSS"].shape[0]
+        state = gw_cxx.GWCRUState(NCaRU)
+        state.CaSS = state_dict["CaSS"]
+        state.CaJSR = state_dict["CaJSR"]
+        state.LCC = state_dict["LCC"]
+        state.LCC_inactivation = state_dict["LCC_inactivation"]
+        state.RyR = state_dict["RyR"]
+        state.ClCh = state_dict["ClCh"]
     return state

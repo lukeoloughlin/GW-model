@@ -4,7 +4,7 @@
 namespace GW_lattice {
 
     template <typename FloatType>
-    void CRULatticeStateThread<FloatType>::copy_from_CRULatticeState(const CRULatticeState<FloatType> &state, const int x, const int y, const Parameters<FloatType> &params){
+    void CRULatticeStateThread<FloatType>::copy_from_CRULatticeState(const CRULatticeState<FloatType> &state, const FloatType CaSS_prev_, const int x, const int y, const Parameters<FloatType> &params){
         for (int j = 0; j < 6; ++j)
             RyR[j] = state.RyR.array(x,y,j);
 
@@ -14,6 +14,8 @@ namespace GW_lattice {
 
         CaSS = state.CaSS(x,y);
         CaJSR = state.CaJSR(x,y);
+
+        CaSS_prev = CaSS_prev_;
     }
     
     template <typename FloatType>
@@ -146,7 +148,7 @@ namespace GW_lattice {
     void sample_RyR56(CRULatticeStateThread<FloatType> &state, const Parameters<FloatType> &params){
         int n56 = state.RyR[4] + state.RyR[5];
         if (n56 > 0){
-            FloatType p = params.k65 / (params.k65 + params.k56 * square(state.CaSS));
+            FloatType p = params.k65 / (params.k65 + params.k56 * square(state.CaSS_prev));
             state.RyR[4] = sample_binomial<FloatType, Generator>(p, n56);
             state.RyR[5] = n56 - state.RyR[4];
         }
@@ -160,7 +162,7 @@ namespace GW_lattice {
     void sample_RyR34(CRULatticeStateThread<FloatType> &state, const Parameters<FloatType> &params){
         int n34 = state.RyR[2] + state.RyR[3];
         if (n34 > 0){
-            FloatType p = params.k43 / (params.k43 + params.k34 * square(state.CaSS));
+            FloatType p = params.k43 / (params.k43 + params.k34 * square(state.CaSS_prev));
             state.RyR[2] = sample_binomial<FloatType, Generator>(p, n34);
             state.RyR[3] = n34 - state.RyR[2];
         }
@@ -609,6 +611,15 @@ namespace GW_lattice {
     template <typename FloatType, typename Generator>
     void SSA_single_su(CRULatticeStateThread<FloatType> &state, const FloatType time_int, const Parameters<FloatType> &params, const Constants<FloatType> &consts){
         FloatType t = 0, dt = 0, total_rate;
+
+        if ((state.CaSS_prev > 0.115e-3 && state.CaSS <= 0.115e-3)){
+            sample_RyR56<FloatType, Generator>(state, params);
+        }
+
+        if ((state.CaSS_prev > 36.85e-3 && state.CaSS <= 36.85e-3)){
+            sample_RyR34<FloatType, Generator>(state, params);
+        }
+        
         init_rates(state, params, consts);
 
         while (1){

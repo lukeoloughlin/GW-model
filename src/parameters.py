@@ -152,12 +152,8 @@ _GW_NAMES = [
     ),
     ("rtr", "p", "Rate of calcium flux between NSR and JSR [ms]^{-1}", 0.333),
     ("riss", "p", "Intersubspace caclium flux rate [ms]^{-1}", 20.0),
-    (
-        "rijsr",
-        "p",
-        "Inter-JSR caclium flux rate [ms]^{-1}. Only valid in lattice model",
-        13.2,
-    ),
+    ("rcyto", "p", "Scaled diffusion of caclium in cyto [ms]^{-1}", 0.7),
+    ("rnsr", "p", "Scaled diffusion of caclium in NSR [ms]^{-1}", 2.7),
     ("BSRT", "p", "Total subspace SR membrane site concentration [mM]", 0.047),
     ("KBSR", "p", "Calcium half-saturation constant for BSR [mM]", 0.00087),
     ("BSLT", "p", "Total subspace sarcolemma site concentration [mM]", 1.124),
@@ -483,7 +479,8 @@ class GWParameters:
         elif self.__lattice:
             self.__NCaRU_y = 100
 
-        self.__NCaRU_sim: int = self.__NCaRU_x * self.__NCaRU_y
+        if self.__lattice:
+            self.__NCaRU_sim: int = self.__NCaRU_x * self.__NCaRU_y
 
         if not self.__lattice and "NCaRU_sim" in kwargs:
             self.__NCaRU_sim = kwargs.pop("NCaRU_sim")

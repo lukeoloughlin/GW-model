@@ -10,7 +10,7 @@
 template<typename T>
 using Array1 = Eigen::Array<T,1,Eigen::Dynamic,Eigen::RowMajor>;
 template<typename T>
-using Array2 = Eigen::Array<T,Eigen::Dynamic,4,Eigen::RowMajor>;
+using Array2L = Eigen::Array<T,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor>;
 
 template<typename T>
 using QKrMap = Eigen::Map<Eigen::Array<T,5,5>,Eigen::RowMajor>;
@@ -57,26 +57,33 @@ namespace GW_lattice {
         //FloatType dCaSS_mean;
         
         FloatType Istim = 0;
-    private:
 
         // Hold the SSA results while ODE updates are applied
-        Array2<int> LCC_tmp;
-        Array2<int> LCC_inactivation_tmp;
+        Array2L<int> LCC_tmp;
+        Array2L<int> LCC_inactivation_tmp;
         Array3Container<int> RyR_tmp;
-        Array2<int> ClCh_tmp;
+        Array2L<int> ClCh_tmp;
+        Array2L<FloatType> CaSS_tmp;
 
         int nCRU_x;
         int nCRU_y;
         Constants<FloatType> consts; // Will probably need to adjust to account for different constants showing up
-        Array2<FloatType> JLCC;
-        Array2<FloatType> Jxfer;
-        Array2<FloatType> Jrel;
-        Array2<FloatType> Jtr; // This is a 2D array now since the JSR concentrations are configured on a lattice
-        Array2<FloatType> Jiss_DS; // The Laplacian term for the dyadic space
-        Array2<FloatType> Jiss_JSR; // The Laplacian term for the JSRs
-        Array2<FloatType> betaSS;
-        Array2<FloatType> betaJSR;
+        Array2L<FloatType> JLCC;
+        Array2L<FloatType> Jxfer;
+        Array2L<FloatType> Jrel;
+        Array2L<FloatType> Jtr; // This is a 2D array now since the JSR concentrations are configured on a lattice
+        Array2L<FloatType> Jcyto; // The Laplacian term for the cyto subspace
+        Array2L<FloatType> JNSR; // The Laplacian term for the NSR subspace
+        Array2L<FloatType> Jup;
+        Array2L<FloatType> betaSS;
+        Array2L<FloatType> betaJSR;
+        Array2L<FloatType> beta_cyto;
 
+        Array2L<FloatType> dCaLTRPN;
+        Array2L<FloatType> dCaHTRPN;
+
+        FloatType Cai_tot;
+    private:
         FloatType QKr_storage[5*5] = {0};
         FloatType QKv14_storage[10*10] = {0};
         FloatType QKv43_storage[10*10] = {0};
@@ -110,28 +117,42 @@ namespace GW_lattice {
         
         
     public:
-        GW_lattice(int x, int y) : parameters(), globals(), CRU_lattice(x, y), LCC_tmp(x,y), LCC_inactivation_tmp(x,y), RyR_tmp(x,y,6), ClCh_tmp(x,y), nCRU_x(x), nCRU_y(y), consts(parameters, x, y), JLCC(x,y), 
-                                       Jxfer(x,y), Jrel(x,y), Jtr(x,y), Jiss_DS(x,y), Jiss_JSR(x,y), betaSS(x,y), betaJSR(x,y), QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage) { 
+        GW_lattice(int x, int y) : parameters(), globals(), CRU_lattice(x, y), LCC_tmp(x,y), LCC_inactivation_tmp(x,y), RyR_tmp(x,y,6), ClCh_tmp(x,y), CaSS_tmp(x,y), nCRU_x(x), nCRU_y(y), consts(parameters, x, y), JLCC(x,y), 
+                                       Jxfer(x,y), Jrel(x,y), Jtr(x,y), Jcyto(x,y), JNSR(x,y), Jup(x,y), betaSS(x,y), betaJSR(x,y), beta_cyto(x,y), dCaLTRPN(x,y), dCaHTRPN(x,y), 
+                                       QKr(QKr_storage), QKv14(QKv14_storage), QKv43(QKv43_storage) { 
             //consts.VF_RT = globals.V * consts.F_RT;
             //consts.JLCC_exp = exp(2*consts.VF_RT);
             initialise_QKr();
-            LCC_tmp = CRU_lattice.LCC;
-            LCC_inactivation_tmp = CRU_lattice.LCC_inactivation;
             RyR_tmp.set(CRU_lattice.RyR);
-            ClCh_tmp = CRU_lattice.ClCh;
+            for (int i = 0; i < nCRU_x; ++i){
+                for (int j = 0; j < nCRU_y; ++j){
+                    LCC_tmp(i,j) = CRU_lattice.LCC(i,j);
+                    LCC_inactivation_tmp(i,j) = CRU_lattice.LCC_inactivation(i,j);
+                    ClCh_tmp(i,j) = CRU_lattice.ClCh(i,j);
+                    CaSS_tmp(i,j) = CRU_lattice.CaSS(i,j);
+                }
+            }
+            Cai_tot = CRU_lattice.Cai.sum() / (nCRU_x * nCRU_y);
             //initialise_JLCC();
             //initialise_Jxfer();
             //initialise_Jtr();
         }
 
-        GW_lattice(const Parameters<FloatType>& params, int x, int y) : parameters(params), globals(), CRU_lattice(x,y), LCC_tmp(x,y), LCC_inactivation_tmp(x,y), RyR_tmp(x,y,6), ClCh_tmp(x,y), nCRU_x(x), 
-                                       nCRU_y(y), consts(parameters, x, y), JLCC(x,y), Jxfer(x,y), Jrel(x,y), Jtr(x,y), Jiss_DS(x,y), Jiss_JSR(x,y), betaSS(x,y), betaJSR(x,y), QKr(QKr_storage), QKv14(QKv14_storage), 
+        GW_lattice(const Parameters<FloatType>& params, int x, int y) : parameters(params), globals(), CRU_lattice(x,y), LCC_tmp(x,y), CaSS_tmp(x,y), LCC_inactivation_tmp(x,y), RyR_tmp(x,y,6), ClCh_tmp(x,y), nCRU_x(x), 
+                                       nCRU_y(y), consts(parameters, x, y), JLCC(x,y), Jxfer(x,y), Jrel(x,y), Jtr(x,y), Jcyto(x,y), JNSR(x,y), Jup(x,y), betaSS(x,y), betaJSR(x,y), 
+                                       dCaLTRPN(x,y), dCaHTRPN(x,y), beta_cyto(x,y), QKr(QKr_storage), QKv14(QKv14_storage), 
                                        QKv43(QKv43_storage) { 
             initialise_QKr();
-            LCC_tmp = CRU_lattice.LCC;
-            LCC_inactivation_tmp = CRU_lattice.LCC_inactivation;
             RyR_tmp.set(CRU_lattice.RyR);
-            ClCh_tmp = CRU_lattice.ClCh;
+            for (int i = 0; i < nCRU_x; ++i){
+                for (int j = 0; j < nCRU_y; ++j){
+                    LCC_tmp(i,j) = CRU_lattice.LCC(i,j);
+                    LCC_inactivation_tmp(i,j) = CRU_lattice.LCC_inactivation(i,j);
+                    ClCh_tmp(i,j) = CRU_lattice.ClCh(i,j);
+                    CaSS_tmp(i,j) = CRU_lattice.CaSS(i,j);
+                }
+            }
+            Cai_tot = CRU_lattice.Cai.sum() / (nCRU_x * nCRU_y);
         }
 
         void set_initial_value(GW::GlobalState<FloatType>& global_vals, CRULatticeState<FloatType>& cru_vals);

@@ -7,10 +7,6 @@
 
 #include <Eigen/Core>
 
-template<typename T>
-using Array2 = Eigen::Array<T,Eigen::Dynamic,4,Eigen::RowMajor>;
-
-
 namespace GW_lattice { 
     
     template <typename FloatType>
@@ -33,7 +29,9 @@ namespace GW_lattice {
         FloatType LCC_tot_rate;
         FloatType RyR_tot_rate;
 
-        void copy_from_CRULatticeState(const CRULatticeState<FloatType> &cru_state, const int x, const int y, const Parameters<FloatType> &params);
+        FloatType CaSS_prev; // Needed to know whether to sample RyR state accroding to stationary dist
+
+        void copy_from_CRULatticeState(const CRULatticeState<FloatType> &cru_state, const FloatType CaSS_prev_, const int x, const int y, const Parameters<FloatType> &params);
         
     };
 

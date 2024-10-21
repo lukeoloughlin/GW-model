@@ -12,7 +12,7 @@
 template<typename T>
 using Array1 = Eigen::Array<T,1,Eigen::Dynamic,Eigen::RowMajor>;
 template<typename T>
-using Array2 = Eigen::Array<T,Eigen::Dynamic,4,Eigen::RowMajor>;
+using Array2L = Eigen::Array<T,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor>;
 template<typename T>
 using Array3 = Eigen::TensorMap<Eigen::Tensor<T,3,Eigen::RowMajor>>;
 
@@ -26,12 +26,16 @@ namespace GW_lattice {
     
     template <typename FloatType>//, typename PRNG>
     struct CRULatticeState {
-        Array2<FloatType> CaSS;
-        Array2<FloatType> CaJSR; // changing this to Array2 because CRUs are no longer distinct structures
-        Array2<int> LCC;
-        Array2<int> LCC_inactivation;
+        Array2L<FloatType> CaSS;
+        Array2L<FloatType> CaJSR; // changing this to Array2L because CRUs are no longer distinct structures
+        Array2L<FloatType> Cai;
+        Array2L<FloatType> CaNSR;
+        Array2L<FloatType> CaLTRPN;
+        Array2L<FloatType> CaHTRPN;
+        Array2L<int> LCC;
+        Array2L<int> LCC_inactivation;
         Array3Container<int> RyR;
-        Array2<int> ClCh;
+        Array2L<int> ClCh;
 
         CRULatticeState(const int nCRU_x, const int nCRU_y);
         CRULatticeState& operator=(CRULatticeState& x) = default;
@@ -80,8 +84,8 @@ namespace GW_lattice {
 
         FloatType rxfer = 200.0;
         FloatType rtr = 0.333;
-        FloatType riss = 1.32; // See notes (Stoch. Switch in bio pg 20 on notes if not properly recored)
-        FloatType rijsr = 13.2; // New parameter, JSR diffusion rate. Setting to 10*riss for simplicity
+        FloatType rcyto = 0.7; // Dcyto / dx^2
+        FloatType rnsr = 2.7; // Dnsr / dx^2
         FloatType BSRT = 0.047;
         FloatType KBSR = 0.00087;
         FloatType BSLT = 1.124;
@@ -166,8 +170,12 @@ namespace GW_lattice {
     struct Constants {
         FloatType RT_F;
         FloatType F_RT;
+
+        FloatType Vcyto_elem;
+        FloatType VNSR_elem;
+
         FloatType CRU_factor;
-        FloatType CSA_FVcyto;
+        FloatType CSA_F;
         FloatType VSS_Vcyto;
         FloatType Vcyto_VNSR;
         FloatType VJSR_VNSR;

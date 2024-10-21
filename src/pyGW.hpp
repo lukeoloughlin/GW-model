@@ -78,14 +78,14 @@ struct PyGWLatticeSimulation {
     Array1d j;
     Array1d Nai;
     Array1d Ki;
-    Array1d Cai;
-    Array1d CaNSR;
-    Array1d CaLTRPN;
-    Array1d CaHTRPN;
     Array1d xKs;
     Array2d XKr;
     Array2d XKv14;
     Array2d XKv43;
+    Array3d Cai;
+    Array3d CaNSR;
+    Array3d CaLTRPN;
+    Array3d CaHTRPN;
     Array3d CaJSR;
     Array3d CaSS;
     Array3i LCC;
@@ -95,11 +95,11 @@ struct PyGWLatticeSimulation {
     
     PyGWLatticeSimulation(int nCRU_x_, int nCRU_y_, int num_step, double t_) : nCRU_x(nCRU_x_), nCRU_y(nCRU_y_), tspan(t_), t(num_step), V(num_step), 
                                                                         m(num_step), h(num_step), j(num_step), Nai(num_step), Ki(num_step), 
-                                                                        Cai(num_step), CaNSR(num_step), CaLTRPN(num_step), CaHTRPN(num_step), 
                                                                         xKs(num_step), XKr(num_step,5), XKv14(num_step,10), XKv43(num_step,10), 
-                                                                        CaJSR(num_step,nCRU_x, nCRU_y), CaSS(num_step,nCRU_x,nCRU_y), LCC(num_step,nCRU_x,nCRU_y), 
-                                                                        LCC_inactivation(num_step,nCRU_x,nCRU_y), RyR(num_step,nCRU_x,nCRU_y,6), 
-                                                                        ClCh(num_step,nCRU_x,nCRU_y) { }
+                                                                        Cai(num_step,nCRU_x_,nCRU_y_), CaNSR(num_step,nCRU_x_,nCRU_y_), CaLTRPN(num_step,nCRU_x_,nCRU_y_),
+                                                                        CaHTRPN(num_step,nCRU_x_,nCRU_y_), CaJSR(num_step,nCRU_x, nCRU_y), CaSS(num_step,nCRU_x,nCRU_y), 
+                                                                        LCC(num_step,nCRU_x,nCRU_y), LCC_inactivation(num_step,nCRU_x,nCRU_y), 
+                                                                        RyR(num_step,nCRU_x,nCRU_y,6), ClCh(num_step,nCRU_x,nCRU_y) { }
 };
 
 void record_state(PyGWSimulation& out, const GW::GW_model<double>& model, const int idx, const int nCRU, const double t){
@@ -180,10 +180,6 @@ void record_state(PyGWLatticeSimulation& out, const GW_lattice::GW_lattice<doubl
     out.j(idx) = model.globals.j;
     out.Nai(idx) = model.globals.Nai;
     out.Ki(idx) = model.globals.Ki;
-    out.Cai(idx) = model.globals.Cai;
-    out.CaNSR(idx) = model.globals.CaNSR;
-    out.CaLTRPN(idx) = model.globals.CaLTRPN;
-    out.CaHTRPN(idx) = model.globals.CaHTRPN;
     out.xKs(idx) = model.globals.xKs;
     
     out.XKr(idx,0) = model.globals.Kr[0];
@@ -199,6 +195,10 @@ void record_state(PyGWLatticeSimulation& out, const GW_lattice::GW_lattice<doubl
 
     for (int j = 0; j < nCRU_x; ++j){
         for (int k = 0; k < nCRU_y; ++k){
+            out.Cai(idx,j,k) = model.CRU_lattice.Cai(j,k);
+            out.CaNSR(idx,j,k) = model.CRU_lattice.CaNSR(j,k);
+            out.CaLTRPN(idx,j,k) = model.CRU_lattice.CaLTRPN(j,k);
+            out.CaHTRPN(idx,j,k) = model.CRU_lattice.CaHTRPN(j,k);
             out.CaJSR(idx,j,k) = model.CRU_lattice.CaJSR(j,k);
             out.CaSS(idx,j,k) = model.CRU_lattice.CaSS(j,k);
             out.LCC(idx,j,k) = model.CRU_lattice.LCC(j,k);

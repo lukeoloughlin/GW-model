@@ -3,9 +3,17 @@
 namespace GW_lattice {
 
     template <typename FloatType>
-    CRULatticeState<FloatType>::CRULatticeState(const int nCRU_x, const int nCRU_y) : CaSS(nCRU_x,nCRU_x), CaJSR(nCRU_x,nCRU_y), LCC(nCRU_x,nCRU_y), LCC_inactivation(nCRU_x,nCRU_y), RyR(nCRU_x,nCRU_y,6), ClCh(nCRU_x, nCRU_y) {
+    CRULatticeState<FloatType>::CRULatticeState(const int nCRU_x, const int nCRU_y) : CaSS(nCRU_x,nCRU_x), CaJSR(nCRU_x,nCRU_y), Cai(nCRU_x, nCRU_y), 
+                                                                                      CaNSR(nCRU_x, nCRU_y), CaLTRPN(nCRU_x,nCRU_y), CaHTRPN(nCRU_x,nCRU_y), 
+                                                                                      LCC(nCRU_x,nCRU_y), LCC_inactivation(nCRU_x,nCRU_y), 
+                                                                                      RyR(nCRU_x,nCRU_y,6), ClCh(nCRU_x, nCRU_y) {
         CaSS.setConstant(1.45370e-4);
         CaJSR.setConstant(0.908408);
+        Cai.setConstant(1.45273e-4);
+        CaNSR.setConstant(0.908882);
+        CaLTRPN.setConstant(8.98282e-3);
+        CaHTRPN.setConstant(0.137617);
+
 
         const double LCC_weights[3] = { 0.958, 0.038, 0.004 };
         const double LCC_i_weights[2] = { 0.9425, 0.0575 };
@@ -48,11 +56,15 @@ namespace GW_lattice {
     Constants<FloatType>::Constants(const Parameters<FloatType> &params, const int nCRU_x, const int nCRU_y){
         RT_F = GAS_CONST * params.T / FARADAY;
         F_RT = 1.0 / RT_F;
+
         CRU_factor = (FloatType)params.NCaRU / (FloatType)(nCRU_x*nCRU_y);
-        CSA_FVcyto = params.CSA / (1000 * params.Vcyto * FARADAY);
-        VSS_Vcyto = params.VSS / params.Vcyto;
+        Vcyto_elem = params.Vcyto / (nCRU_x*nCRU_y);
+        VNSR_elem = params.VNSR / (nCRU_x*nCRU_y);
+
+        CSA_F = params.CSA / (1000 * FARADAY);
+        VSS_Vcyto = CRU_factor * params.VSS / Vcyto_elem;
         Vcyto_VNSR = params.Vcyto / params.VNSR;
-        VJSR_VNSR = params.VJSR / params.VNSR;
+        VJSR_VNSR = CRU_factor * params.VJSR / VNSR_elem;
         // LCC rates
         a = params.a;
         gamma0 = params.gamma0;
@@ -142,8 +154,8 @@ namespace GW_lattice {
 
         rxfer = other.rxfer;
         rtr = other.rtr;
-        riss = other.riss;
-        rijsr = other.rijsr;
+        rcyto = other.rcyto;
+        rnsr = other.rnsr;
         BSRT = other.BSRT;
         KBSR = other.KBSR;
         BSLT = other.BSLT;

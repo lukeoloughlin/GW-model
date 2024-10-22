@@ -16,41 +16,45 @@ template <typename NumType>
 inline NumType cube(NumType x) { return x*x*x; }
 
 
-template <typename Generator>
-inline Generator& seed(){
-    static thread_local Generator gen(std::random_device{}());
+template <typename PRNG>
+inline PRNG& seed(){
+    static thread_local PRNG gen(std::random_device{}());
     return gen;
 }
 
-template <typename FloatType, typename Generator>
-inline FloatType urand(){
-    static std::uniform_real_distribution<FloatType> dist(0.0, 1.0);
-    return dist(seed<Generator>());
+template <typename T, typename PRNG>
+inline T urand(){
+    static std::uniform_real_distribution<T> dist(0.0, 1.0);
+    return dist(seed<PRNG>());
 }
 
-template <typename FloatType, typename Generator>
-inline FloatType nrand(){
-    static std::normal_distribution<FloatType> dist{0.0, 1.0};
-    return dist(seed<Generator>());
+template <typename T, typename PRNG>
+inline T nrand(){
+    static std::normal_distribution<T> dist{0.0, 1.0};
+    return dist(seed<PRNG>());
 }
 
-template<typename FloatType, typename Generator>
-inline int sample_binomial(const FloatType p, const int N){
+template<typename T, typename PRNG>
+inline int sample_binomial(const T p, const int N){
     int X = 0;
-    FloatType u;
+    T u;
     for (int i = 0; i < N; i++){
-        u = urand<FloatType, Generator>();
+        u = urand<T, PRNG>();
         if (u < p)
             X++;
     }
     return X;
 }
 
-template <typename FloatType, typename IntType, typename Generator>
-inline int sample_weights(const FloatType* const weights, const FloatType total_weight, const IntType size){
-    const FloatType u = urand<FloatType, Generator>() * total_weight;
-    FloatType cum_weight = weights[0];
-    IntType i = 0;
+/*
+Sample from an unnormalised probability distribution, where weights are the unnormalised probabilities and total_weight is the normalising constant.
+Useful when sampling new state in the Gillespie algorithm, where weights are the transition rates and total_weight is the jump rate.
+*/
+template <typename T, typename SizeType, typename PRNG>
+inline int sample_weights(const T* const weights, const T total_weight, const SizeType size){
+    const T u = urand<T, PRNG>() * total_weight;
+    T cum_weight = weights[0];
+    SizeType i = 0;
     while (cum_weight < u && i < (size-1)){
         ++i;
         cum_weight += weights[i];
@@ -67,8 +71,8 @@ namespace common {
         * z is the valence of X
         * RT_F = (R*T)/F
     *****/
-    template <typename FloatType>
-    inline FloatType Nernst(const FloatType Xi, const FloatType Xo, const FloatType RT_F, const FloatType valence){
+    template <typename T>
+    inline T Nernst(const T Xi, const T Xo, const T RT_F, const T valence){
         if (Xi <= 0.0 || Xo <= 0.0){ 
             std::cout << "Invalid arguments to Nernst. Got Xi=" << Xi << ", Xo=" << Xo << ". Exiting program." << std::endl;
             exit(EXIT_FAILURE);
@@ -86,8 +90,8 @@ namespace common {
         * GNa >= 0 is the channel conductance 
         * ENa is the precalculated Nernst potential
     *******/
-    template <typename FloatType>
-    inline FloatType INa(const FloatType V, const FloatType m, const FloatType h, const FloatType j, const FloatType GNa, const FloatType ENa){ 
+    template <typename T>
+    inline T INa(const T V, const T m, const T h, const T j, const T GNa, const T ENa){ 
         return GNa*cube(m)*h*j*(V-ENa); 
     }
 
@@ -97,8 +101,8 @@ namespace common {
     * Gx is the conductance of the channel
     * Ex is the Nernst potential of the channel
     ******/
-    template <typename FloatType>
-    inline FloatType Ib(const FloatType V, const FloatType Gx, const FloatType Ex){ return Gx*(V-Ex); }
+    template <typename T>
+    inline T Ib(const T V, const T Gx, const T Ex){ return Gx*(V-Ex); }
 
     /****** 
     Common term for the sarcolemmal calcium pump Ip(Ca). 
@@ -106,8 +110,8 @@ namespace common {
         * IpCa_max > 0 is the maximum pump current
         * Km_pCa is the half saturation constant for the Sarcolemmal pump
     ******/
-    template <typename FloatType>
-    inline FloatType IpCa(const FloatType Cai, const FloatType IpCa_max, const FloatType Km_pCa) { return IpCa_max * (Cai / (Km_pCa + Cai)); }
+    template <typename T>
+    inline T IpCa(const T Cai, const T IpCa_max, const T Km_pCa) { return IpCa_max * (Cai / (Km_pCa + Cai)); }
 
 
     /***** 
@@ -116,10 +120,10 @@ namespace common {
         * sigma = (exp(Nao / 67.3) - 1) / 7 is assumed to be precalculated
         * expmVF_RT (in the second definition) = exp(-VF/RT) which will be precalculated in most models. 
     *****/
-    template <typename FloatType>
-    inline FloatType fNaK(const FloatType VF_RT, const FloatType sigma){ return 1.0 / (1.0 + 0.1245 * exp(-0.1*VF_RT) + 0.0365 * sigma * exp(-VF_RT)); }
-    template <typename FloatType>
-    inline FloatType fNaK(const FloatType VF_RT, const FloatType expmVF_RT, FloatType sigma){ 
+    template <typename T>
+    inline T fNaK(const T VF_RT, const T sigma){ return 1.0 / (1.0 + 0.1245 * exp(-0.1*VF_RT) + 0.0365 * sigma * exp(-VF_RT)); }
+    template <typename T>
+    inline T fNaK(const T VF_RT, const T expmVF_RT, T sigma){ 
         return 1.0 / (1.0 + 0.1245 * exp(-0.1*VF_RT) + 0.0365 * sigma * expmVF_RT); 
     }
 
@@ -133,12 +137,12 @@ namespace common {
         * Km_Nai > 0 is the Na half saturation constant for the Na-K pump
         * expmVF_RT (in the second definition) = exp(-VF/RT) which will be precalculated in most models. 
     *****/
-    template <typename FloatType>
-    inline FloatType INaK(const FloatType VF_RT, const FloatType Nai, const FloatType sigma, const FloatType Km_Nai, const FloatType INaK_multiplier){
+    template <typename T>
+    inline T INaK(const T VF_RT, const T Nai, const T sigma, const T Km_Nai, const T INaK_multiplier){
         return INaK_multiplier * fNaK(VF_RT, sigma) / (1.0 + pow(Km_Nai / Nai, 1.5));
     }
-    template <typename FloatType>
-    inline FloatType INaK(const FloatType VF_RT, const FloatType expmVF_RT, const FloatType Nai, const FloatType sigma, const FloatType Km_Nai, const FloatType INaK_multiplier){
+    template <typename T>
+    inline T INaK(const T VF_RT, const T expmVF_RT, const T Nai, const T sigma, const T Km_Nai, const T INaK_multiplier){
         return INaK_multiplier * fNaK(VF_RT, expmVF_RT, sigma) / (1.0 + pow(Km_Nai / Nai, 1.5));
     }
 
@@ -154,16 +158,16 @@ namespace common {
         * ksat is the Na-Ca saturation factor at negative potentials
         * INaCa_multiplier = INaCa_max / ((Km_Na^3 + Nao^3) * (Km_Ca + Cao)) is precalculated.
     *******/
-    template <typename FloatType>
-    inline FloatType INaCa(const FloatType VF_RT, const FloatType Nai, const FloatType Cai, const FloatType Nao3, const FloatType Cao, const FloatType eta, const FloatType ksat, const FloatType INaCa_multiplier){
-        const FloatType exp_term1 = exp(eta*VF_RT);
-        const FloatType exp_term2 = exp((eta-1.0)*VF_RT);
+    template <typename T>
+    inline T INaCa(const T VF_RT, const T Nai, const T Cai, const T Nao3, const T Cao, const T eta, const T ksat, const T INaCa_multiplier){
+        const T exp_term1 = exp(eta*VF_RT);
+        const T exp_term2 = exp((eta-1.0)*VF_RT);
         return INaCa_multiplier * (exp_term1 * cube(Nai) * Cao - exp_term2 * Nao3 * Cai) / (1.0 + ksat * exp_term2);
     }
-    template <typename FloatType>
-    inline FloatType INaCa(const FloatType VF_RT, const FloatType expmVF_RT, const FloatType Nai, const FloatType Cai, const FloatType Nao3, const FloatType Cao, const FloatType eta, const FloatType ksat, const FloatType INaCa_multiplier){
-        const FloatType exp_term1 = exp(eta*VF_RT);
-        const FloatType exp_term2 = exp_term1 * expmVF_RT;
+    template <typename T>
+    inline T INaCa(const T VF_RT, const T expmVF_RT, const T Nai, const T Cai, const T Nao3, const T Cao, const T eta, const T ksat, const T INaCa_multiplier){
+        const T exp_term1 = exp(eta*VF_RT);
+        const T exp_term2 = exp_term1 * expmVF_RT;
         return INaCa_multiplier * (exp_term1 * cube(Nai) * Cao - exp_term2 * Nao3 * Cai) / (1.0 + ksat * exp_term2);
     }
 
@@ -172,29 +176,29 @@ namespace common {
     Forward rate for gating variable m in the Beeler-Reuter model. Most Cardiac AP models leave this unchanged.
         * V is the action potential.  
     ******/
-    template <typename FloatType>
-    inline FloatType alpha_m(const FloatType V){ return (V == -47.13) ? 3.2 : 0.32 * (V + 47.13) / (1.0 - exp(-0.1 * (V + 47.13))); }
+    template <typename T>
+    inline T alpha_m(const T V){ return (V == -47.13) ? 3.2 : 0.32 * (V + 47.13) / (1.0 - exp(-0.1 * (V + 47.13))); }
 
     /****** 
     Backwards rate for gating variable m in the Beeler-Reuter model. Most Cardiac AP models leave this unchanged.
         * V is the action potential.  
     ******/
-    template <typename FloatType>
-    inline FloatType beta_m(const FloatType V){ return 0.08 * exp(-V / 11.0); }
+    template <typename T>
+    inline T beta_m(const T V){ return 0.08 * exp(-V / 11.0); }
 
     /****** 
     Forward rate for gating variable h in the Beeler-Reuter model. Most Cardiac AP models leave this unchanged.
         * V is the action potential.  
     ******/
-    template <typename FloatType>
-    inline FloatType alpha_h(const FloatType V){ return (V >= -40.0) ? 0.0 : 0.135 * exp(-(V + 80.0) / 6.8); }
+    template <typename T>
+    inline T alpha_h(const T V){ return (V >= -40.0) ? 0.0 : 0.135 * exp(-(V + 80.0) / 6.8); }
 
     /****** 
     Backwards rate for gating variable h in the Beeler-Reuter model. Most Cardiac AP models leave this unchanged.
         * V is the action potential.  
     ******/
-    template <typename FloatType>
-    inline FloatType beta_h(const FloatType V){ return (V >= -40.0) ?  1.0 / (0.13 * (1.0 + exp(-(V + 10.66) / 11.1)))
+    template <typename T>
+    inline T beta_h(const T V){ return (V >= -40.0) ?  1.0 / (0.13 * (1.0 + exp(-(V + 10.66) / 11.1)))
                                                                     : 3.56 * exp(0.079 * V) + 3.1e5 * exp(0.35 * V); }
 
 
@@ -202,8 +206,8 @@ namespace common {
     Forward rate for gating variable j in the Beeler-Reuter model. Most Cardiac AP models leave this unchanged.
         * V is the action potential.  
     ******/
-    template <typename FloatType>
-    inline FloatType alpha_j(const FloatType V){
+    template <typename T>
+    inline T alpha_j(const T V){
         return (V >= -40.0) ? 0.0 
                             : (-127140.0*exp(0.2444*V) - 3.474e-5 * exp(-0.04391 * V)) * (V + 37.78) / (1.0 + exp(0.311 * (V + 79.23)));
     }
@@ -213,8 +217,8 @@ namespace common {
     Backwards rate for gating variable j in the Beeler-Reuter model. Most Cardiac AP models leave this unchanged.
         * V is the action potential.  
     ******/
-    template <typename FloatType>
-    inline FloatType beta_j(const FloatType V){ return (V >= -40.0) ? 0.3 * exp(-2.535e-7 * V) / (1.0 + exp(-0.1 * (V + 32.0))) 
+    template <typename T>
+    inline T beta_j(const T V){ return (V >= -40.0) ? 0.3 * exp(-2.535e-7 * V) / (1.0 + exp(-0.1 * (V + 32.0))) 
                                                                     : 0.1212 * exp(-0.01052 * V) / (1.0 +  exp(-0.1378 * (V + 40.14))); }
 
 }

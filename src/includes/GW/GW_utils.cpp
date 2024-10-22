@@ -2,14 +2,14 @@
 
 namespace GW {
 
-    template <typename PRNG>
+    //template <typename PRNG>
     void initialise_LCC(Array2<int> &LCC){
         const double weights[3] = { 0.958, 0.038, 0.004 };
         int idx;
 
         for (int i = 0; i < LCC.rows(); i++){
             for (int j = 0; j < 4; j++){
-                idx = sample_weights<double, int, PRNG>(weights, 1.0, 3);
+                idx = sample_weights<double, int, std::mt19937_64>(weights, 1.0, 3);
                 if (idx == 0)
                     LCC(i,j) = 1;
                 else if (idx == 1)
@@ -20,26 +20,26 @@ namespace GW {
         }
     }
 
-    template <typename PRNG>
+    //template <typename PRNG>
     void initialise_LCC_i(Array2<int> &LCC_i){
         const double weights[2] = { 0.9425, 0.0575 };
         int idx;
         for (unsigned int i = 0; i < LCC_i.rows(); i++){
             for (unsigned int j = 0; j < 4; j++){
-                idx = sample_weights<double, int, PRNG>(weights, 1.0, 2);
+                idx = sample_weights<double, int, std::mt19937_64>(weights, 1.0, 2);
                 LCC_i(i,j) = (idx == 0) ? 1 : 0;
             }
         }
     }
 
-    template <typename PRNG>
+    //template <typename PRNG>
     void initialise_RyR(Array3Container<int> &RyR){
         const double weights[3] = { 0.609, 0.5*0.391, 0.5*0.391 };
         int idx;
         for (int i = 0; i < RyR.array.dimensions()[0]; i++){
             for (int j = 0; j < 4; j++){
                 for (int k = 0; k < 5; k++){
-                    idx = sample_weights<double, int, PRNG>(weights, 1.0, 3);
+                    idx = sample_weights<double, int, std::mt19937_64>(weights, 1.0, 3);
                     if (idx == 0)
                         ++RyR.array(i,j,0);
                     else if (idx == 1)
@@ -51,24 +51,24 @@ namespace GW {
         }
     }
 
-    template <typename PRNG>
+    //template <typename PRNG>
     void initialise_ClCh(Array2<int> &ClCh){
         const double weights[2] = { 0.998, 0.002 };
         int idx;
         for (unsigned int i = 0; i < ClCh.rows(); i++){
             for (unsigned int j = 0; j < 4; j++){
-                idx = sample_weights<double, int, PRNG>(weights, 1.0, 2);
+                idx = sample_weights<double, int, std::mt19937_64>(weights, 1.0, 2);
                 ClCh(i,j) = idx;
             }
         }
     }
 
 
-    template <typename FloatType>
-    Constants<FloatType>::Constants(const Parameters<FloatType> &params, const int nCRU_simulated){
+    //template <typename T>
+    Constants::Constants(const Parameters& params, const int nCRU_simulated){
         RT_F = GAS_CONST * params.T / FARADAY;
         F_RT = 1.0 / RT_F;
-        CRU_factor = (FloatType)params.NCaRU / (FloatType)nCRU_simulated;
+        CRU_factor = (double)params.NCaRU / (double)nCRU_simulated;
         CSA_FVcyto = params.CSA / (1000 * params.Vcyto * FARADAY);
         VSS_Vcyto = params.VSS / params.Vcyto;
         Vcyto_VNSR = params.Vcyto / params.VNSR;
@@ -115,9 +115,8 @@ namespace GW {
         CMDN_const = params.KCMDN * params.CMDNT;
     }
     
-    template <typename FloatType>
-    void update_LCC_rates(FloatType* const LCC_rates, FloatType* const subunit_rates, const int* const LCC, const FloatType* const CaSS, 
-                            const int idx, const Parameters<FloatType> &params, const Constants<FloatType> &consts){
+    //template <typename T>
+    void update_LCC_rates(double* const LCC_rates, double* const subunit_rates, const int* const LCC, const double* const CaSS, const int idx, const Parameters& params, const Constants& consts){
         switch (LCC[idx]){
         case 1:
             LCC_rates[3*idx] = 4*consts.alphaLCC;
@@ -185,8 +184,8 @@ namespace GW {
         subunit_rates[idx] += (LCC_rates[3*idx] + LCC_rates[3*idx+1] + LCC_rates[3*idx+2]);
     }
 
-    template <typename FloatType>
-    GlobalState<FloatType>::GlobalState(FloatType val){
+    //template <typename T>
+    GlobalState::GlobalState(double val){
         V = val;
         Nai = val;
         Ki = val;
@@ -207,10 +206,10 @@ namespace GW {
     }
 
 
-    template <typename FloatType>//, typename PRNG>
-    CRUState<FloatType>::CRUState(const int nCRU) : CaSS(nCRU,4), CaJSR(nCRU), LCC(nCRU,4), LCC_inactivation(nCRU,4), RyR(nCRU,4,6), ClCh(nCRU,4), 
-                                                    RyR_open_int(nCRU,4), RyR_open_martingale(nCRU,4), RyR_open_martingale_normalised(nCRU,4), sigma_RyR(nCRU),
-                                                    LCC_open_int(nCRU,4), LCC_open_martingale(nCRU,4), LCC_open_martingale_normalised(nCRU,4), sigma_LCC(nCRU) {
+    //template <typename T>
+    CRUState::CRUState(const int nCRU) : CaSS(nCRU,4), CaJSR(nCRU), LCC(nCRU,4), LCC_inactivation(nCRU,4), RyR(nCRU,4,6), ClCh(nCRU,4), 
+                                        RyR_open_int(nCRU,4), RyR_open_martingale(nCRU,4), RyR_open_martingale_normalised(nCRU,4), sigma_RyR(nCRU),
+                                        LCC_open_int(nCRU,4), LCC_open_martingale(nCRU,4), LCC_open_martingale_normalised(nCRU,4), sigma_LCC(nCRU) {
         CaSS.setConstant(1.45370e-4);
         CaJSR.setConstant(0.908408);
         initialise_LCC<std::mt19937_64>(LCC);
@@ -231,11 +230,11 @@ namespace GW {
 
     // There are 12 separate rates we need to keep track of since there are multiple RyRs per subunit. Using (i,j) to denote the transition from state i to state j,
     // then the rates are stored in bookeeping order in terms of (i,j) for convenience
-    template <typename FloatType>
-    void update_RyR_rates(FloatType* const RyR_rates, FloatType* const subunit_rates, const int* const RyR, const FloatType* const CaSS, const int idx, const Parameters<FloatType> &params){
-        const FloatType CaSS2 = CaSS[idx]*CaSS[idx];
-        const FloatType eq56 = params.k65 / (params.k56*CaSS2 + params.k65);
-        const FloatType tau34 = 1.0 / (params.k34*CaSS2 + params.k43);
+    //template <typename T>
+    void update_RyR_rates(double* const RyR_rates, double* const subunit_rates, const int* const RyR, const double* const CaSS, const int idx, const Parameters& params){
+        const double CaSS2 = CaSS[idx]*CaSS[idx];
+        const double eq56 = params.k65 / (params.k56*CaSS2 + params.k65);
+        const double tau34 = 1.0 / (params.k34*CaSS2 + params.k43);
 
         // state 1 -> state 2
         RyR_rates[12*idx] = RyR[6*idx]*params.k12*CaSS2;
@@ -266,8 +265,8 @@ namespace GW {
             subunit_rates[idx] += RyR_rates[12*idx+k];
     }
 
-    template <typename FloatType>
-    Parameters<FloatType>::Parameters(const Parameters<FloatType>& other){
+    //template <typename T>
+    Parameters::Parameters(const Parameters& other){
         T = other.T;
         CSA = other.CSA;
         Vcyto = other.Vcyto;

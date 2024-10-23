@@ -1,8 +1,5 @@
-#ifndef GW_UTILS_H
-#define GW_UTILS_H
+#pragma once
 
-//#include "GW.hpp"
-//#include "ndarray.hpp"
 #include "common.hpp"
 #include <cstring>
 #include <vector>
@@ -21,22 +18,6 @@ using Array3 = Eigen::TensorMap<Eigen::Tensor<T,3,Eigen::RowMajor>>;
 Bug in pybind11 interface of Eigen tensors that causes hangs in python after calling a function more than once. Using a TensorMap works, so
 we use this container class as a work around
 */
-
-template<typename T>
-class Array3Container {
-private:
-    std::vector<T> storage;
-public:
-    Eigen::TensorMap<Eigen::Tensor<T,3,Eigen::RowMajor>> array;
-    Array3Container(int n1, int n2, int n3) : storage(n1*n2*n3), array(storage.data(),n1,n2,n3) { }
-
-    // Set the values of storage to that of other
-    void set(Array3Container &other){
-        for (int i; i < storage.size(); ++i) { storage[i] = other.storage[i]; }
-    }
-
-};
-
 
 namespace GW {
     
@@ -303,53 +284,6 @@ namespace GW {
     inline void initialise_RyR(Array3<int> &RyR);
     inline void initialise_ClCh(Array2<int> &ClCh);
 
-    //template <typename T>
-    inline double RKr(const double V){ return 1.0 / (1.0 + 1.4945*exp(0.0446*V)); }
-
-    //template <typename T>
-    inline double IKr(const double V, const double XKr, const double EK, const double GKr, const double sqrtKo){
-        return GKr * sqrtKo * RKr(V) * XKr * (V - EK) * 0.5;
-    }
-
-
-    //template <typename T>
-    inline double EKs(const double Ki, const double Ko, const double Nai, const double Nao, const double RT_F){
-        return log((Ko+0.01833*Nao) / (Ki + 0.01833*Nai)) * RT_F;
-    }
-
-
-    //template <typename T>
-    inline double IKs(const double V, const double XKs, const double Ki, const double Nai, const double Nao, const double Ko, const double GKs, const double RT_F){
-        return GKs * square(XKs) * (V - EKs(Ki, Ko, Nai, Nao, RT_F));
-    }
-
-
-    //template <typename T>
-    inline double IKv43(const double V, const double XKv43, const double EK, const double GKv43){
-        return GKv43 * XKv43 * (V - EK);
-    }
-
-    //template <typename T>
-    inline double IKv14(const double VFRT, const double exp_term, const double XKv14, const double Ki, const double Nai, const double PKv14_Csc, const double Nao, const double Ko){
-        double m = (PKv14_Csc) * (FARADAY*VFRT) * XKv14 / (1 - exp_term);
-        return m * ((Ki - Ko*exp_term) + 0.02*(Nai - Nao*exp_term)) * 1.0e9; // 1e9 required to convert to mV / ms
-    }
-
-
-    //template <typename T>
-    inline double K1inf(const double V, const double EK, const double F_RT){ return 1.0 / (2.0 + exp(1.5*(V-EK)*F_RT)); }
-
-    //template <typename T>
-    inline double IK1(const double V, const double EK, const double GK1, const double IK1_const, const double FR_T){ 
-        return GK1 * K1inf(V, EK, FR_T) * IK1_const * (V - EK); 
-    }
-
-
-    //template <typename T>
-    inline double Kp(const double V){ return 1. / (1. + exp((7.488 - V) / 5.98)); }
-
-    //template <typename T>
-    inline double IKp(const double V, const double EK, const double GKp){ return GKp * Kp(V) * (V-EK); }
 
 
     //template <typename T>
@@ -436,7 +370,6 @@ namespace GW {
 
 //#include "GW_utils.tpp"
 
-#endif
 
 
 

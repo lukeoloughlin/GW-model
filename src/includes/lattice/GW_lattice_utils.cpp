@@ -1,9 +1,9 @@
+#pragma once
 #include "GW_lattice.hpp"
     
 namespace GW_lattice {
 
-    template <typename FloatType>
-    CRULatticeState<FloatType>::CRULatticeState(const int nCRU_x, const int nCRU_y) : CaSS(nCRU_x,nCRU_x), CaJSR(nCRU_x,nCRU_y), Cai(nCRU_x, nCRU_y), 
+    CRULatticeState::CRULatticeState(const int nCRU_x, const int nCRU_y) : CaSS(nCRU_x,nCRU_x), CaJSR(nCRU_x,nCRU_y), Cai(nCRU_x, nCRU_y), 
                                                                                       CaNSR(nCRU_x, nCRU_y), CaLTRPN(nCRU_x,nCRU_y), CaHTRPN(nCRU_x,nCRU_y), 
                                                                                       LCC(nCRU_x,nCRU_y), LCC_inactivation(nCRU_x,nCRU_y), 
                                                                                       RyR(nCRU_x,nCRU_y,6), ClCh(nCRU_x, nCRU_y) {
@@ -31,11 +31,11 @@ namespace GW_lattice {
                 else 
                     LCC(i,j) = 7;
                 
-                LCC_i_idx = sample_weights<double, int, std::mt19937>(LCC_i_weights, 1.0, 2);
+                LCC_i_idx = sample_weights<double, int, std::mt19937_64>(LCC_i_weights, 1.0, 2);
                 LCC_inactivation(i,j) = (LCC_i_idx == 0) ? 1 : 0;
                     
                 for (int k = 0; k < 5; k++){
-                    RyR_idx = sample_weights<double, int, std::mt19937>(RyR_weights, 1.0, 3);
+                    RyR_idx = sample_weights<double, int, std::mt19937_64>(RyR_weights, 1.0, 3);
                     if (RyR_idx == 0)
                         ++RyR.array(i,j,0);
                     else if (RyR_idx == 1)
@@ -52,12 +52,11 @@ namespace GW_lattice {
     }
 
     
-    template <typename FloatType>
-    Constants<FloatType>::Constants(const Parameters<FloatType> &params, const int nCRU_x, const int nCRU_y){
+    Constants::Constants(const Parameters& params, const int nCRU_x, const int nCRU_y){
         RT_F = GAS_CONST * params.T / FARADAY;
         F_RT = 1.0 / RT_F;
 
-        CRU_factor = (FloatType)params.NCaRU / (FloatType)(nCRU_x*nCRU_y);
+        CRU_factor = (double)params.NCaRU / (double)(nCRU_x*nCRU_y);
         Vcyto_elem = params.Vcyto / (nCRU_x*nCRU_y);
         VNSR_elem = params.VNSR / (nCRU_x*nCRU_y);
 
@@ -111,8 +110,8 @@ namespace GW_lattice {
         CMDN_const = params.KCMDN * params.CMDNT;
     }
     
-    template <typename FloatType>
-    Parameters<FloatType>::Parameters(const Parameters<FloatType>& other){
+    /*
+    Parameters::Parameters(const Parameters& other){
         T = other.T;
         CSA = other.CSA;
         Vcyto = other.Vcyto;
@@ -232,6 +231,7 @@ namespace GW_lattice {
         Hf = other.Hf;
         Hr = other.Hr;
     }
+    */
 
 
 }

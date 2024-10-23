@@ -1,10 +1,6 @@
+#pragma once
 
-#ifndef GW_LATTICE_UTILS_H
-#define GW_LATTICE_UTILS_H
-
-//#include "GW.hpp"
-//#include "ndarray.hpp"
-#include "GW_utils.hpp"
+//#include "GW_utils.hpp"
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <Eigen/Core>
 #include <random>
@@ -24,14 +20,14 @@ we use this container class as a work around
 
 namespace GW_lattice {
     
-    template <typename FloatType>//, typename PRNG>
+    //template <typename T>
     struct CRULatticeState {
-        Array2L<FloatType> CaSS;
-        Array2L<FloatType> CaJSR; // changing this to Array2L because CRUs are no longer distinct structures
-        Array2L<FloatType> Cai;
-        Array2L<FloatType> CaNSR;
-        Array2L<FloatType> CaLTRPN;
-        Array2L<FloatType> CaHTRPN;
+        Array2L<double> CaSS;
+        Array2L<double> CaJSR; // changing this to Array2L because CRUs are no longer distinct structures
+        Array2L<double> Cai;
+        Array2L<double> CaNSR;
+        Array2L<double> CaLTRPN;
+        Array2L<double> CaHTRPN;
         Array2L<int> LCC;
         Array2L<int> LCC_inactivation;
         Array3Container<int> RyR;
@@ -41,206 +37,223 @@ namespace GW_lattice {
         CRULatticeState& operator=(CRULatticeState& x) = default;
     };
     
-    template <typename FloatType>
+    //template <typename T>
     struct Parameters {
-        FloatType T = 310.0;
-        FloatType CSA = 153.4;
-        FloatType Vcyto = 25.84;
-        FloatType VNSR = 1.113;
-        FloatType VJSR = 22.26e-6 / 4; // Dividing by 4 since I split the JSR compartment into 4 subpaces
-        FloatType VSS = 0.2303e-6;
+        double T = 310.0;
+        double CSA = 153.4;
+        double Vcyto = 25.84;
+        double VNSR = 1.113;
+        double VJSR = 22.26e-6 / 4; // Dividing by 4 since I split the JSR compartment into 4 subpaces
+        double VSS = 0.2303e-6;
         int NCaRU = 50000; // 12,500 * 4 since I only consider subspaces now
-        FloatType Ko = 4.0;
-        FloatType Nao = 138.0;
-        FloatType Cao = 2.0;
-        FloatType Clo = 150.0;
-        FloatType Clcyto = 20.0;
-        FloatType f = 0.85;
-        FloatType g = 2.0;
-        FloatType f1 = 0.005;
-        FloatType g1 = 7.0;
-        FloatType a = 2.0;
-        FloatType b = 1.9356;
-        FloatType gamma0 = 0.44;
-        FloatType omega = 0.02158;
-        FloatType PCaL = 9.13e-13;
-        FloatType kfClCh = 13.3156;
-        FloatType kbClCh = 2.0;
-        FloatType Pto2 = 2.65e-15;
+        double Ko = 4.0;
+        double Nao = 138.0;
+        double Cao = 2.0;
+        double Clo = 150.0;
+        double Clcyto = 20.0;
+        double f = 0.85;
+        double g = 2.0;
+        double f1 = 0.005;
+        double g1 = 7.0;
+        double a = 2.0;
+        double b = 1.9356;
+        double gamma0 = 0.44;
+        double omega = 0.02158;
+        double PCaL = 9.13e-13;
+        double kfClCh = 13.3156;
+        double kbClCh = 2.0;
+        double Pto2 = 2.65e-15;
 
-        FloatType k12 = 877.5;
-        FloatType k21 = 250.0;
-        FloatType k23 = 2.358e8;
-        FloatType k32 = 9.6;
-        FloatType k34 = 1.415e6;
-        FloatType k43 = 13.65;
-        FloatType k45 = 0.07;
-        FloatType k54 = 93.385;
-        FloatType k56 = 1.887e7;
-        FloatType k65 = 30.0;
-        FloatType k25 = 2.358e6;
-        FloatType k52 = 0.001235;
-        FloatType rRyR = 3.92;
+        double k12 = 877.5;
+        double k21 = 250.0;
+        double k23 = 2.358e8;
+        double k32 = 9.6;
+        double k34 = 1.415e6;
+        double k43 = 13.65;
+        double k45 = 0.07;
+        double k54 = 93.385;
+        double k56 = 1.887e7;
+        double k65 = 30.0;
+        double k25 = 2.358e6;
+        double k52 = 0.001235;
+        double rRyR = 3.92;
 
-        FloatType rxfer = 200.0;
-        FloatType rtr = 0.333;
-        FloatType rcyto = 0.7; // Dcyto / dx^2
-        FloatType rnsr = 2.7; // Dnsr / dx^2
-        FloatType BSRT = 0.047;
-        FloatType KBSR = 0.00087;
-        FloatType BSLT = 1.124;
-        FloatType KBSL = 0.0087;
-        FloatType CSQNT = 13.5;
-        FloatType KCSQN = 0.63;
-        FloatType CMDNT = 0.05;
-        FloatType KCMDN = 0.00238;
-        FloatType GNa = 12.8;
-        FloatType GKr = 0.024;
-        FloatType Kf = 0.0266;
-        FloatType Kb = 0.1348;
-        FloatType GKs = 0.00271;
-        FloatType GKv43 = 0.1389;
-        FloatType alphaa0Kv43 = 0.5437;
-        FloatType aaKv43 = 0.02898;
-        FloatType betaa0Kv43 = 0.08019;
-        FloatType baKv43 = 0.04684;
-        FloatType alphai0Kv43 = 0.04984;
-        FloatType aiKv43 = 3.37302e-4;
-        FloatType betai0Kv43 = 8.1948e-4;
-        FloatType biKv43 = 5.374e-8;
-        FloatType f1Kv43 = 1.8936;
-        FloatType f2Kv43 = 14.225;
-        FloatType f3Kv43 = 158.574;
-        FloatType f4Kv43 = 142.937;
-        FloatType b1Kv43 = 6.7735;
-        FloatType b2Kv43 = 15.621;
-        FloatType b3Kv43 = 28.753;
-        FloatType b4Kv43 = 524.576;
-        FloatType PKv14 = 1.989e-7;
-        FloatType alphaa0Kv14 = 1.8931;
-        FloatType aaKv14 = 0.006950;
-        FloatType betaa0Kv14 = 0.01179;
-        FloatType baKv14 = 0.08527;
-        FloatType alphai0Kv14 = 0.002963;
-        FloatType aiKv14 = 0.0;
-        FloatType betai0Kv14 = 1.0571e-4;
-        FloatType biKv14 = 0.0;
-        FloatType f1Kv14 = 0.2001;
-        FloatType f2Kv14 = 0.3203;
-        FloatType f3Kv14 = 13.509;
-        FloatType f4Kv14 = 1151.765;
-        FloatType b1Kv14 = 2.230;
-        FloatType b2Kv14 = 12.0;
-        FloatType b3Kv14 = 5.370;
-        FloatType b4Kv14 = 5.240;
-        FloatType Csc = 1.0e6;
-        FloatType GK1 = 3.0;
-        FloatType KmK1 = 13.0;
-        FloatType GKp = 0.002659;
-        FloatType kNaCa = 0.27;
-        FloatType KmNa = 87.5;
-        FloatType KmCa = 1.38;
-        FloatType ksat = 0.2;
-        FloatType eta = 0.35;
-        FloatType INaKmax = 0.901;
-        FloatType KmNai = 10.0;
-        FloatType KmKo = 1.5;
-        FloatType IpCamax = 0.03;
-        FloatType KmpCa = 0.0005;
-        FloatType GCab = 0.0002536;
-        FloatType GNab = 0.00264;
-        FloatType kHTRPNp = 20.0;
-        FloatType kHTRPNm = 6.60e-5;
-        FloatType kLTRPNp = 40.0;
-        FloatType kLTRPNm = 0.04;
-        FloatType HTRPNtot = 0.140;
-        FloatType LTRPNtot = 0.070;
-        FloatType Vmaxf = 0.0002096;
-        FloatType Vmaxr = 0.0002096;
-        FloatType Kmf = 0.000260;
-        FloatType Kmr = 1.8;
-        FloatType Hf = 0.75;
-        FloatType Hr = 0.75;
+        double rxfer = 200.0;
+        double rtr = 0.333;
+        double rcyto = 0.7; // Dcyto / dx^2
+        double rnsr = 2.7; // Dnsr / dx^2
+        double BSRT = 0.047;
+        double KBSR = 0.00087;
+        double BSLT = 1.124;
+        double KBSL = 0.0087;
+        double CSQNT = 13.5;
+        double KCSQN = 0.63;
+        double CMDNT = 0.05;
+        double KCMDN = 0.00238;
+        double GNa = 12.8;
+        double GKr = 0.024;
+        double Kf = 0.0266;
+        double Kb = 0.1348;
+        double GKs = 0.00271;
+        double GKv43 = 0.1389;
+        double alphaa0Kv43 = 0.5437;
+        double aaKv43 = 0.02898;
+        double betaa0Kv43 = 0.08019;
+        double baKv43 = 0.04684;
+        double alphai0Kv43 = 0.04984;
+        double aiKv43 = 3.37302e-4;
+        double betai0Kv43 = 8.1948e-4;
+        double biKv43 = 5.374e-8;
+        double f1Kv43 = 1.8936;
+        double f2Kv43 = 14.225;
+        double f3Kv43 = 158.574;
+        double f4Kv43 = 142.937;
+        double b1Kv43 = 6.7735;
+        double b2Kv43 = 15.621;
+        double b3Kv43 = 28.753;
+        double b4Kv43 = 524.576;
+        double PKv14 = 1.989e-7;
+        double alphaa0Kv14 = 1.8931;
+        double aaKv14 = 0.006950;
+        double betaa0Kv14 = 0.01179;
+        double baKv14 = 0.08527;
+        double alphai0Kv14 = 0.002963;
+        double aiKv14 = 0.0;
+        double betai0Kv14 = 1.0571e-4;
+        double biKv14 = 0.0;
+        double f1Kv14 = 0.2001;
+        double f2Kv14 = 0.3203;
+        double f3Kv14 = 13.509;
+        double f4Kv14 = 1151.765;
+        double b1Kv14 = 2.230;
+        double b2Kv14 = 12.0;
+        double b3Kv14 = 5.370;
+        double b4Kv14 = 5.240;
+        double Csc = 1.0e6;
+        double GK1 = 3.0;
+        double KmK1 = 13.0;
+        double GKp = 0.002659;
+        double kNaCa = 0.27;
+        double KmNa = 87.5;
+        double KmCa = 1.38;
+        double ksat = 0.2;
+        double eta = 0.35;
+        double INaKmax = 0.901;
+        double KmNai = 10.0;
+        double KmKo = 1.5;
+        double IpCamax = 0.03;
+        double KmpCa = 0.0005;
+        double GCab = 0.0002536;
+        double GNab = 0.00264;
+        double kHTRPNp = 20.0;
+        double kHTRPNm = 6.60e-5;
+        double kLTRPNp = 40.0;
+        double kLTRPNm = 0.04;
+        double HTRPNtot = 0.140;
+        double LTRPNtot = 0.070;
+        double Vmaxf = 0.0002096;
+        double Vmaxr = 0.0002096;
+        double Kmf = 0.000260;
+        double Kmr = 1.8;
+        double Hf = 0.75;
+        double Hr = 0.75;
 
         Parameters() = default;
-        Parameters(const Parameters<FloatType>& other);
+        Parameters(const Parameters& other) = default;
     };
 
-    template <typename FloatType>
+    //template <typename T>
     struct Constants {
-        FloatType RT_F;
-        FloatType F_RT;
+        double RT_F;
+        double F_RT;
 
-        FloatType Vcyto_elem;
-        FloatType VNSR_elem;
+        double Vcyto_elem;
+        double VNSR_elem;
 
-        FloatType CRU_factor;
-        FloatType CSA_F;
-        FloatType VSS_Vcyto;
-        FloatType Vcyto_VNSR;
-        FloatType VJSR_VNSR;
+        double CRU_factor;
+        double CSA_F;
+        double VSS_Vcyto;
+        double Vcyto_VNSR;
+        double VJSR_VNSR;
         // LCC rates
-        FloatType a;
-        FloatType gamma0;
-        FloatType gamma0a;
-        FloatType gamma0a2; // gamma0*a^2
-        FloatType gamma0a3; // gamma0*a^3
-        FloatType gamma0a4; // gamma0*a^4
-        FloatType binv; // 1/b
-        FloatType omega;
-        FloatType omega_b; // omega / b
-        FloatType omega_b2; // omega / b^2
-        FloatType omega_b3; // omega / b^3
-        FloatType omega_b4; // omega / b^4
-        FloatType f; 
-        FloatType f1; 
-        FloatType g; 
-        FloatType g1; 
+        double a;
+        double gamma0;
+        double gamma0a;
+        double gamma0a2; // gamma0*a^2
+        double gamma0a3; // gamma0*a^3
+        double gamma0a4; // gamma0*a^4
+        double binv; // 1/b
+        double omega;
+        double omega_b; // omega / b
+        double omega_b2; // omega / b^2
+        double omega_b3; // omega / b^3
+        double omega_b4; // omega / b^4
+        double f; 
+        double f1; 
+        double g; 
+        double g1; 
         // CaSS constants
-        FloatType BSR_const;
-        FloatType BSL_const;
+        double BSR_const;
+        double BSL_const;
         // CaJSR constants
-        FloatType VSS_VJSR; // VSS / VJSR
-        FloatType CSQN_const;
+        double VSS_VJSR; // VSS / VJSR
+        double CSQN_const;
         // JLCC constants
-        FloatType JLCC_const;
-        FloatType Cao_scaled; // 0.341*Cao
+        double JLCC_const;
+        double Cao_scaled; // 0.341*Cao
         // INaCa constants
-        FloatType Nao3; // Nao^3
-        FloatType INaCa_const; // 5000*kNaCa / ((KmNa^3 + Nao^3) * (KmCa + Cao))
+        double Nao3; // Nao^3
+        double INaCa_const; // 5000*kNaCa / ((KmNa^3 + Nao^3) * (KmCa + Cao))
         // INaK consts
-        FloatType sigma; // (exp(Nao / 67.3) - 1.0) / 7.0
-        FloatType INaK_const; // (exp(Nao / 67.3) - 1) / 7
+        double sigma; // (exp(Nao / 67.3) - 1.0) / 7.0
+        double INaK_const; // (exp(Nao / 67.3) - 1) / 7
         // Ikr consts
-        FloatType sqrtKo;
+        double sqrtKo;
         // Ito1 consts
-        FloatType PKv14_Csc; // PKv14 / Csc
+        double PKv14_Csc; // PKv14 / Csc
         // Ito2 consts
-        FloatType Ito2_const; // 1e9 * Pto2 * F * (NCaRU / size) / CSA
+        double Ito2_const; // 1e9 * Pto2 * F * (NCaRU / size) / CSA
         // IK1 consts
-        FloatType IK1_const; // Ko / (Ko + KmK1)
+        double IK1_const; // Ko / (Ko + KmK1)
         // ICaL consts
-        FloatType ICaL_const; // -1000. * (2F * VSS) * (NCaRU / size) / CSA
+        double ICaL_const; // -1000. * (2F * VSS) * (NCaRU / size) / CSA
         // CMDN consts
-        FloatType CMDN_const;
+        double CMDN_const;
 
         // All are constant within the SSA
-        FloatType VF_RT; // (V*F) / (R*T) 
-        FloatType expmVF_RT; // exp(-VF_RT)
-        FloatType JLCC_multiplier; // 
-        FloatType JLCC_exp; // exp(2 * VF_RT)
-        FloatType alphaLCC; // LCC upwards transition rate
-        FloatType betaLCC; // LCC downwards transition rate
-        FloatType yinfLCC; // LCC voltage inactivation steady state
-        FloatType tauLCC; // LCC voltage inactivation time constant
+        double VF_RT; // (V*F) / (R*T) 
+        double expmVF_RT; // exp(-VF_RT)
+        double JLCC_multiplier; // 
+        double JLCC_exp; // exp(2 * VF_RT)
+        double alphaLCC; // LCC upwards transition rate
+        double betaLCC; // LCC downwards transition rate
+        double yinfLCC; // LCC voltage inactivation steady state
+        double tauLCC; // LCC voltage inactivation time constant
 
-        Constants(const Parameters<FloatType> &params, const int nCRU_x, const int nCRU_y);
+        Constants(const Parameters& params, const int nCRU_x, const int nCRU_y);
     };
-    
+
+
+    struct GlobalState {
+        double V = -91.382;
+
+        double Nai = 10.0;
+        double Ki = 131.84;
+        
+        double m = 5.33837e-4;
+        double h = 0.996345;
+        double j = 0.997315;
+        double xKs = 2.04171e-4;
+        
+        double Kr[5] = { 0.999503, 4.13720e-4, 7.27568e-5, 8.73984e-6, 1.36159e-6 };
+        double Kv43[10] = { 0.953060, 0.0253906, 2.53848e-4, 1.12796e-6, 1.87950e-9, 0.0151370, 0.00517622, 8.96600e-4, 8.17569e-5, 2.24032e-6 };
+        double Kv14[10] = { 0.722328, 0.101971, 0.00539932, 1.27081e-4, 1.82742e-6, 0.152769, 0.00962328, 0.00439043, 0.00195348, 0.00143629 }; 
+
+        GlobalState() = default;
+        GlobalState(double value);
+        GlobalState& operator=(GlobalState& x) = default;
+    }; 
 
 }
 
 
-#include "GW_lattice_utils.tpp"
-
-#endif

@@ -8,7 +8,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-project(GreensteinWinslow LANGUAGES CXX)
+project(Models LANGUAGES CXX)
 if(APPLE)
     add_compile_options(
         -Wall
@@ -43,7 +43,7 @@ else()
     find_package(Python 3.11 COMPONENTS Interpreter Development REQUIRED)
 endif()
 find_package(pybind11 CONFIG REQUIRED)
-pybind11_add_module(GreensteinWinslow MODULE pyGW.cpp)
+pybind11_add_module(Models MODULE Pymodels.cpp GW.cpp GW_utils.cpp GW_lattice.cpp GW_lattice_utils.cpp)
 
 find_package(Eigen3 3.4 REQUIRED)
 if(Eigen3_FOUND)
@@ -54,13 +54,13 @@ else()
     MESSAGE(STATUS "Failed to find Eigen3")
 endif()
 
-target_link_libraries(GreensteinWinslow PRIVATE Eigen3::Eigen)
+target_link_libraries(Models PRIVATE Eigen3::Eigen)
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
-    target_link_libraries(GreensteinWinslow PRIVATE OpenMP::OpenMP_CXX)
+    target_link_libraries(Models PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 
-install(TARGETS GreensteinWinslow DESTINATION ..)
+install(TARGETS Models DESTINATION ..)
 

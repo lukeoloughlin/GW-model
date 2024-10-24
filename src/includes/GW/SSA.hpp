@@ -1,10 +1,9 @@
 #pragma once
 
-#include "GW_utils.hpp"
-#include "common.hpp"
-//#include "ndarray.hpp"
-
 #include <Eigen/Core>
+
+#include "GW_utils.hpp"
+#include "../common.hpp"
 
 template<typename T>
 using Array2 = Eigen::Array<T,Eigen::Dynamic,4,Eigen::RowMajor>;
@@ -86,6 +85,37 @@ namespace GW {
             Jtr = 0;
         }
     };
+    
+    /* Sample values of state 5 and state 6 of the RyRs if CaSS crosses appropriate threshold. Above this threshold the two states are 
+    treated as equivalent so we do not track them directly. */
+    template <typename PRNG>
+    inline void sample_RyR56(CRUStateThread& state, const int idx, const Parameters& params){
+        int n56 = state.RyR[4+6*idx] + state.RyR[5+6*idx];
+        if (n56 > 0){
+            double p = params.k65 / (params.k65 + params.k56 * square(state.CaSS[idx]));
+            state.RyR[4+6*idx] = sample_binomial<double, PRNG>(p, n56);
+            state.RyR[5+6*idx] = n56 - state.RyR[4+6*idx];
+        }
+        else {
+            state.RyR[4+6*idx] = 0;
+            state.RyR[5+6*idx] = 0;
+        }
+    }
+    /* Sample values of state 3 and state 4 of the RyRs if CaSS crosses appropriate threshold. Above this threshold the two states are 
+    treated as equivalent so we do not track them directly. */
+    template <typename PRNG>
+    inline void sample_RyR34(CRUStateThread& state, const int idx, const Parameters& params){
+        int n34 = state.RyR[2+6*idx] + state.RyR[3+6*idx];
+        if (n34 > 0){
+            double p = params.k43 / (params.k43 + params.k34 * square(state.CaSS[idx]));
+            state.RyR[2+6*idx] = sample_binomial<double, PRNG>(p, n34);
+            state.RyR[3+6*idx] = n34 - state.RyR[2+6*idx];
+        }
+        else {
+            state.RyR[2+6*idx] = 0;
+            state.RyR[3+6*idx] = 0;
+        }
+    }
 
 
     /* Update the flux values (except JLCC and Jrel) of the CRUStateThread object */
@@ -153,9 +183,9 @@ namespace GW {
             dCaSS = dt * (state.JLCC[j] + state.Jrel[j] - state.Jxfer[j] + state.Jiss[j]) * betaSS;
             CaSS_tmp = state.CaSS[j] + dCaSS;
             if (state.CaSS[j] > 1.15e-4 && CaSS_tmp <= 1.15e-4)
-                sample_RyR56<double, PRNG>(state, j, params);
+                sample_RyR56<PRNG>(state, j, params);
             else if (state.CaSS[j] > 0.03685 && CaSS_tmp <= 0.03685)
-                sample_RyR34<double, PRNG>(state, j, params);
+                sample_RyR34<PRNG>(state, j, params);
             state.CaSS[j] = CaSS_tmp;
         }
     }
@@ -166,37 +196,6 @@ namespace GW {
         const double betaJSR = 1.0 / (1 + consts.CSQN_const / square(params.KCSQN + state.CaJSR));
         state.CaJSR += (dt * betaJSR * (state.Jtr - consts.VSS_VJSR * (state.Jrel[0] + state.Jrel[1] + state.Jrel[2] + state.Jrel[3])));
     }
-    /* Sample values of state 5 and state 6 of the RyRs if CaSS crosses appropriate threshold. Above this threshold the two states are 
-    treated as equivalent so we do not track them directly. */
-    template <typename PRNG>
-    inline void sample_RyR56(CRUStateThread& state, const int idx, const Parameters& params){
-        int n56 = state.RyR[4+6*idx] + state.RyR[5+6*idx];
-        if (n56 > 0){
-            double p = params.k65 / (params.k65 + params.k56 * square(state.CaSS[idx]));
-            state.RyR[4+6*idx] = sample_binomial<double, PRNG>(p, n56);
-            state.RyR[5+6*idx] = n56 - state.RyR[4+6*idx];
-        }
-        else {
-            state.RyR[4+6*idx] = 0;
-            state.RyR[5+6*idx] = 0;
-        }
-    }
-    /* Sample values of state 3 and state 4 of the RyRs if CaSS crosses appropriate threshold. Above this threshold the two states are 
-    treated as equivalent so we do not track them directly. */
-    template <typename PRNG>
-    inline void sample_RyR34(CRUStateThread& state, const int idx, const Parameters& params){
-        int n34 = state.RyR[2+6*idx] + state.RyR[3+6*idx];
-        if (n34 > 0){
-            double p = params.k43 / (params.k43 + params.k34 * square(state.CaSS[idx]));
-            state.RyR[2+6*idx] = sample_binomial<double, PRNG>(p, n34);
-            state.RyR[3+6*idx] = n34 - state.RyR[2+6*idx];
-        }
-        else {
-            state.RyR[2+6*idx] = 0;
-            state.RyR[3+6*idx] = 0;
-        }
-    }
-
 
     //template <typename double, typename PRNG>
     template <typename PRNG>
@@ -414,7 +413,7 @@ namespace GW {
 
         double u = urand<double, PRNG>() * subunit_rate;
         if (u < sum_LCC_rates)
-            sample_LCC<double, PRNG>(state, sum_LCC_rates, subunit_idx, consts);
+            sample_LCC<PRNG>(state, sum_LCC_rates, subunit_idx, consts);
         else if (u < (sum_LCC_rates + LCC_inactivation_rate)) {
             state.LCC_inactivation[subunit_idx] = 1 - state.LCC_inactivation[subunit_idx];
             if ((state.LCC[subunit_idx] == 6) || (state.LCC[subunit_idx] == 12)){
@@ -424,7 +423,7 @@ namespace GW {
             
         } 
         else if (u < (sum_LCC_rates + LCC_inactivation_rate + sum_RyR_rates))
-            sample_RyR<double, PRNG>(state, sum_RyR_rates, subunit_idx, params);
+            sample_RyR<PRNG>(state, sum_RyR_rates, subunit_idx, params);
         else 
             state.ClCh[subunit_idx] = 1 - state.ClCh[subunit_idx];
     }
@@ -447,7 +446,7 @@ namespace GW {
                 state.LCC_open_increment[i] = 0; 
             }
             if (t + dt < sim_time){
-                update_integral_increment<double>(state, dt, params);
+                update_integral_increment(state, dt, params);
                 update_CaSS<PRNG>(state, dt, params, consts);
                 update_CaJSR(state, dt, params, consts);
             } 
@@ -458,7 +457,7 @@ namespace GW {
                 update_martingale<PRNG>(state, sim_time-t);
                 break;
             }
-            t += jump_t;
+            t += dt;
             
             subunit_idx = sample_weights<double, int, PRNG>(state.subunit_rates, total_rate, 4);
             sample_new_state<PRNG>(state, subunit_idx, params, consts);

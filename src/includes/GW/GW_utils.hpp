@@ -1,11 +1,9 @@
 #pragma once
 
-#include "common.hpp"
-#include <cstring>
-#include <vector>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <Eigen/Core>
-#include <random>
+
+#include "../common.hpp"
 
 template<typename T>
 using Array1 = Eigen::Array<T,1,Eigen::Dynamic,Eigen::RowMajor>;
@@ -279,23 +277,11 @@ namespace GW {
         CRUState& operator=(CRUState& x) = default;
     };
 
-    inline void initialise_LCC(Array2<int> &LCC);
-    inline void initialise_LCC_i(Array2<int> &LCC_i);
-    inline void initialise_RyR(Array3<int> &RyR);
-    inline void initialise_ClCh(Array2<int> &ClCh);
+    inline void initialise_LCC(Array2<int>& LCC);
+    inline void initialise_LCC_i(Array2<int>& LCC_i);
+    inline void initialise_RyR(Array3<int>& RyR);
+    inline void initialise_ClCh(Array2<int>& ClCh);
 
-
-
-    //template <typename T>
-    inline double ICaL(const Array2<double> &JLCC, const double ICaL_const){
-        return JLCC.sum() * ICaL_const;
-    }
-
-
-    //template <typename T>
-    inline double Ito2(const Array2<int> &ClCh, const double VFRT, const double expmVFRT, const double Cl_cyto, const double Clo, const double Ito2_const){
-        return double(ClCh.sum()) * Ito2_const * VFRT * (Cl_cyto * expmVFRT - Clo) / (expmVFRT - 1.0);
-    }
 
     //template <typename T>
     inline double dTRPNCa(const double TRPNCa, const double Cai, const double TRPNtot, const double kTRPNp, const double kTRPNm){
@@ -360,7 +346,7 @@ namespace GW {
 
 
     //template <typename T>
-    inline void update_LCC_rates(double* const LCC_rates, double* const subunit_rates, const int* const LCC, const double* const CaSS, const int idx, const Parameters& params, const Constants& consts);
+    void update_LCC_rates(double* const LCC_rates, double* const subunit_rates, const int* const LCC, const double* const CaSS, const int idx, const Parameters& params, const Constants& consts);
 
     
     //template <typename T>

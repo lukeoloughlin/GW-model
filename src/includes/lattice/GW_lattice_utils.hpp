@@ -1,9 +1,9 @@
 #pragma once
 
-//#include "GW_utils.hpp"
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <Eigen/Core>
-#include <random>
+
+#include "../common.hpp"
 
 template<typename T>
 using Array1 = Eigen::Array<T,1,Eigen::Dynamic,Eigen::RowMajor>;

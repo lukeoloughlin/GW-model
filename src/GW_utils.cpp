@@ -1,4 +1,7 @@
-#include "GW_utils.hpp"
+#include <random>
+
+#include "includes/GW/GW_utils.hpp"
+#include "includes/common.hpp"
 
 namespace GW {
 
@@ -212,10 +215,10 @@ namespace GW {
                                         LCC_open_int(nCRU,4), LCC_open_martingale(nCRU,4), LCC_open_martingale_normalised(nCRU,4), sigma_LCC(nCRU) {
         CaSS.setConstant(1.45370e-4);
         CaJSR.setConstant(0.908408);
-        initialise_LCC<std::mt19937_64>(LCC);
-        initialise_LCC_i<std::mt19937_64>(LCC_inactivation);
-        initialise_RyR<std::mt19937_64>(RyR);
-        initialise_ClCh<std::mt19937_64>(ClCh);
+        initialise_LCC(LCC);
+        initialise_LCC_i(LCC_inactivation);
+        initialise_RyR(RyR);
+        initialise_ClCh(ClCh);
 
         RyR_open_int.setZero();
         RyR_open_martingale.setZero();

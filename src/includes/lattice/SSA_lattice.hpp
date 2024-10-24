@@ -1,12 +1,13 @@
 #pragma once
 
 #include "GW_lattice_utils.hpp"
-#include "common.hpp"
+#include "../common.hpp"
 #include <Eigen/Core>
 
 namespace GW_lattice { 
     
-    struct CRULatticeStateThread {
+    class CRULatticeStateThread {
+    public:
         int LCC;
         int LCC_inactivation;
         int RyR[6]; // Have to count states here so we include all 6 possible states
@@ -25,7 +26,7 @@ namespace GW_lattice {
 
         double CaSS_prev; // Needed to know whether to sample RyR state accroding to stationary dist
 
-        void copy_from_CRULatticeState(const CRULatticeState& state, const double CaSS_prev_, const int x, const int y, const Parameters& params){
+        inline void copy_from_CRULatticeState(const CRULatticeState& state, const double CaSS_prev_, const int x, const int y, const Parameters& params){
             for (int j = 0; j < 6; ++j)
                 RyR[j] = state.RyR.array(x,y,j);
 
@@ -38,118 +39,120 @@ namespace GW_lattice {
 
             CaSS_prev = CaSS_prev_;
         }
+
+        inline void init_rates(const Parameters& params, const Constants& consts);
         
     };
 
-    void init_rates(CRULatticeStateThread& state, const Parameters& params, const Constants& consts){
-        switch (state.LCC){
+    void CRULatticeStateThread::init_rates(const Parameters& params, const Constants& consts){
+        switch (LCC){
         case 1:
-            state.LCC_rates[0] = 4*consts.alphaLCC;
-            state.LCC_rates[1] = consts.gamma0*state.CaSS;
-            state.LCC_rates[2] = 0;
+            LCC_rates[0] = 4*consts.alphaLCC;
+            LCC_rates[1] = consts.gamma0*CaSS;
+            LCC_rates[2] = 0;
             break;
         case 2:
-            state.LCC_rates[0] = consts.betaLCC;
-            state.LCC_rates[1] = 3*consts.alphaLCC;
-            state.LCC_rates[2] = consts.gamma0a*state.CaSS;
+            LCC_rates[0] = consts.betaLCC;
+            LCC_rates[1] = 3*consts.alphaLCC;
+            LCC_rates[2] = consts.gamma0a*CaSS;
             break;
         case 3:
-            state.LCC_rates[0] = 2*consts.betaLCC;
-            state.LCC_rates[1] = 2*consts.alphaLCC;
-            state.LCC_rates[2] = consts.gamma0a2*state.CaSS;
+            LCC_rates[0] = 2*consts.betaLCC;
+            LCC_rates[1] = 2*consts.alphaLCC;
+            LCC_rates[2] = consts.gamma0a2*CaSS;
             break;
         case 4:
-            state.LCC_rates[0] = 3*consts.betaLCC;
-            state.LCC_rates[1] = consts.alphaLCC;
-            state.LCC_rates[2] = consts.gamma0a3*state.CaSS;
+            LCC_rates[0] = 3*consts.betaLCC;
+            LCC_rates[1] = consts.alphaLCC;
+            LCC_rates[2] = consts.gamma0a3*CaSS;
             break;
         case 5:
-            state.LCC_rates[0] = 4*consts.betaLCC;
-            state.LCC_rates[1] = params.f;
-            state.LCC_rates[2] = consts.gamma0a4*state.CaSS;
+            LCC_rates[0] = 4*consts.betaLCC;
+            LCC_rates[1] = params.f;
+            LCC_rates[2] = consts.gamma0a4*CaSS;
             break;
         case 6:
-            state.LCC_rates[0] = params.g;
-            state.LCC_rates[1] = 0;
-            state.LCC_rates[2] = 0;
+            LCC_rates[0] = params.g;
+            LCC_rates[1] = 0;
+            LCC_rates[2] = 0;
             break;
         case 7:
-            state.LCC_rates[0] = consts.omega;
-            state.LCC_rates[1] = 4*consts.alphaLCC*consts.a;
-            state.LCC_rates[2] = 0;
+            LCC_rates[0] = consts.omega;
+            LCC_rates[1] = 4*consts.alphaLCC*consts.a;
+            LCC_rates[2] = 0;
             break;
         case 8:
-            state.LCC_rates[0] = consts.omega_b;
-            state.LCC_rates[1] = consts.betaLCC*consts.binv;
-            state.LCC_rates[2] = 3*consts.alphaLCC*consts.a;
+            LCC_rates[0] = consts.omega_b;
+            LCC_rates[1] = consts.betaLCC*consts.binv;
+            LCC_rates[2] = 3*consts.alphaLCC*consts.a;
             break;
         case 9:
-            state.LCC_rates[0] = consts.omega_b2;
-            state.LCC_rates[1] = 2*consts.betaLCC*consts.binv;
-            state.LCC_rates[2] = 2*consts.alphaLCC*consts.a;
+            LCC_rates[0] = consts.omega_b2;
+            LCC_rates[1] = 2*consts.betaLCC*consts.binv;
+            LCC_rates[2] = 2*consts.alphaLCC*consts.a;
             break;
         case 10:
-            state.LCC_rates[0] = consts.omega_b3;
-            state.LCC_rates[1] = 3*consts.betaLCC*consts.binv;
-            state.LCC_rates[2] = consts.alphaLCC*consts.a;
+            LCC_rates[0] = consts.omega_b3;
+            LCC_rates[1] = 3*consts.betaLCC*consts.binv;
+            LCC_rates[2] = consts.alphaLCC*consts.a;
             break;
         case 11:
-            state.LCC_rates[0] = consts.omega_b4;
-            state.LCC_rates[1] = 4*consts.betaLCC*consts.binv;
-            state.LCC_rates[2] = params.f1;
+            LCC_rates[0] = consts.omega_b4;
+            LCC_rates[1] = 4*consts.betaLCC*consts.binv;
+            LCC_rates[2] = params.f1;
             break;
         case 12:
-            state.LCC_rates[0] = params.g1;
-            state.LCC_rates[1] = 0;
-            state.LCC_rates[2] = 0;
+            LCC_rates[0] = params.g1;
+            LCC_rates[1] = 0;
+            LCC_rates[2] = 0;
             break;
         default:
             break;
         }    
-        state.LCC_tot_rate = state.LCC_rates[0] + state.LCC_rates[1] + state.LCC_rates[2];
+        LCC_tot_rate = LCC_rates[0] + LCC_rates[1] + LCC_rates[2];
 
-        const double CaSS2 = square(state.CaSS);
+        const double CaSS2 = square(CaSS);
         const double eq56 = params.k65 / (params.k56*CaSS2 + params.k65);
         const double tau34 = 1.0 / (params.k34*CaSS2 + params.k43);
 
         // state 1 -> state 2
-        state.RyR_rates[0] = state.RyR[0]*params.k12*CaSS2;
+        RyR_rates[0] = RyR[0]*params.k12*CaSS2;
         // state 2 -> state 3
-        state.RyR_rates[1] = state.RyR[1]*params.k23*CaSS2;
+        RyR_rates[1] = RyR[1]*params.k23*CaSS2;
         // state 2 -> state 5
-        state.RyR_rates[2] = state.RyR[1]*params.k25*CaSS2;
+        RyR_rates[2] = RyR[1]*params.k25*CaSS2;
         // state 3 -> state 4
-        state.RyR_rates[3] = state.CaSS > 3.685e-2 ? 0 : state.RyR[2]*params.k34*CaSS2;
+        RyR_rates[3] = CaSS > 3.685e-2 ? 0 : RyR[2]*params.k34*CaSS2;
         // state 4 -> state 5
-        state.RyR_rates[4] = state.CaSS > 3.685e-2 ? (state.RyR[2]+state.RyR[3])*params.k45*params.k34*CaSS2*tau34 : state.RyR[3]*params.k45;
+        RyR_rates[4] = CaSS > 3.685e-2 ? (RyR[2]+RyR[3])*params.k45*params.k34*CaSS2*tau34 : RyR[3]*params.k45;
         // state 5 -> state 6
-        state.RyR_rates[5] = state.CaSS > 1.15e-4 ? 0 : state.RyR[4]*params.k56*CaSS2;
+        RyR_rates[5] = CaSS > 1.15e-4 ? 0 : RyR[4]*params.k56*CaSS2;
         // state 2 -> state 1
-        state.RyR_rates[6] = state.RyR[1]*params.k21;
+        RyR_rates[6] = RyR[1]*params.k21;
         // state 3 -> state 2
-        state.RyR_rates[7] = state.CaSS > 3.685e-2 ? (state.RyR[2]+state.RyR[3])*params.k32*params.k43*tau34 : state.RyR[2]*params.k32;
+        RyR_rates[7] = CaSS > 3.685e-2 ? (RyR[2]+RyR[3])*params.k32*params.k43*tau34 : RyR[2]*params.k32;
         // state 4 -> state 3
-        state.RyR_rates[8] = state.CaSS > 3.685e-2 ? 0 : state.RyR[3]*params.k43;
+        RyR_rates[8] = CaSS > 3.685e-2 ? 0 : RyR[3]*params.k43;
         // state 5 -> state 2
-        state.RyR_rates[9] = state.CaSS > 1.15e-4 ? (state.RyR[4]+state.RyR[5])*params.k52*eq56 : state.RyR[4]*params.k52; 
+        RyR_rates[9] = CaSS > 1.15e-4 ? (RyR[4]+RyR[5])*params.k52*eq56 : RyR[4]*params.k52; 
         // state 5 -> state 4
-        state.RyR_rates[10] = state.CaSS > 1.15e-4 ? (state.RyR[4]+state.RyR[5])*params.k54*CaSS2*eq56 : state.RyR[4]*params.k54*CaSS2;
+        RyR_rates[10] = CaSS > 1.15e-4 ? (RyR[4]+RyR[5])*params.k54*CaSS2*eq56 : RyR[4]*params.k54*CaSS2;
         // state 6 -> state 5
-        state.RyR_rates[11] = state.CaSS > 1.15e-4 ? 0 : state.RyR[5]*params.k65; 
+        RyR_rates[11] = CaSS > 1.15e-4 ? 0 : RyR[5]*params.k65; 
         
-        state.RyR_tot_rate = state.RyR_rates[0] + state.RyR_rates[1] + state.RyR_rates[2] + state.RyR_rates[3] + state.RyR_rates[4] + state.RyR_rates[5] + state.RyR_rates[6] + state.RyR_rates[7] + 
-                             state.RyR_rates[8] + state.RyR_rates[9] + state.RyR_rates[10] + state.RyR_rates[11]; 
+        RyR_tot_rate = RyR_rates[0] + RyR_rates[1] + RyR_rates[2] + RyR_rates[3] + RyR_rates[4] + RyR_rates[5] + RyR_rates[6] + RyR_rates[7] + 
+                             RyR_rates[8] + RyR_rates[9] + RyR_rates[10] + RyR_rates[11]; 
 
         
-        if (state.LCC_inactivation == 0)
-            state.LCC_inactivation_rate = consts.yinfLCC / consts.tauLCC;
+        if (LCC_inactivation == 0)
+            LCC_inactivation_rate = consts.yinfLCC / consts.tauLCC;
         else 
-            state.LCC_inactivation_rate = (1.0 - consts.yinfLCC) / consts.tauLCC;
+            LCC_inactivation_rate = (1.0 - consts.yinfLCC) / consts.tauLCC;
             
-        if (state.ClCh == 0)
-            state.ClCh_rate = params.kfClCh * state.CaSS;
+        if (ClCh == 0)
+            ClCh_rate = params.kfClCh * CaSS;
         else 
-            state.ClCh_rate = params.kbClCh;
+            ClCh_rate = params.kbClCh;
         
     }
 
@@ -586,14 +589,12 @@ namespace GW_lattice {
         state.RyR_tot_rate = state.RyR_rates[0] + state.RyR_rates[1] + state.RyR_rates[2] + state.RyR_rates[3] + state.RyR_rates[4] + state.RyR_rates[5] + state.RyR_rates[6] + state.RyR_rates[7] + 
                              state.RyR_rates[8] + state.RyR_rates[9] + state.RyR_rates[10] + state.RyR_rates[11]; 
     }
-
-    inline void update_LCC_rates(CRULatticeStateThread& state, const int new_state, const Constants& consts);
-    
+ 
     template <typename PRNG>
     inline void sample_new_state(CRULatticeStateThread& state, const double total_rate, const Parameters& params, const Constants& consts){
         double u = urand<double, PRNG>() * total_rate;
         if (u < state.LCC_tot_rate)
-            sample_LCC<double, PRNG>(state, consts);
+            sample_LCC<PRNG>(state, consts);
         else if (u < (state.LCC_tot_rate + state.LCC_inactivation_rate)) {
             if (state.LCC_inactivation == 0){
                 state.LCC_inactivation = 1;
@@ -605,7 +606,7 @@ namespace GW_lattice {
             }
         } 
         else if (u < (state.LCC_tot_rate + state.LCC_inactivation_rate + state.RyR_tot_rate))
-            sample_RyR<double, PRNG>(state, params);
+            sample_RyR<PRNG>(state, params);
         else {
             if (state.ClCh == 0){
                 state.ClCh = 1;
@@ -628,7 +629,7 @@ namespace GW_lattice {
         if ((state.CaSS_prev > 36.85e-3 && state.CaSS <= 36.85e-3))
             sample_RyR34<PRNG>(state, params);
         
-        init_rates(state, params, consts);
+        state.init_rates(params, consts);
         while (1){
             total_rate = state.LCC_tot_rate + state.LCC_inactivation_rate + state.RyR_tot_rate + state.ClCh_rate;
             dt = -log(urand<double, PRNG>()) / total_rate;

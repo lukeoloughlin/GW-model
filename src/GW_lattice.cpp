@@ -1,11 +1,52 @@
-#include "GW_lattice.hpp"
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/eigen.h>
+#include <pybind11/eigen/tensor.h>
+#include <pybind11/functional.h>
+
+#include "includes/lattice/GW_lattice.hpp"
+#include "includes/xoshiro.hpp"
+
+namespace py = pybind11;
+using namespace pybind11::literals;
 
 
 namespace GW_lattice {
+    
+    void GW_lattice::init_from_python(PyInitGWLatticeState& py_state){
+        globals.V = py_state.V;
+        globals.Nai = py_state.Nai;
+        globals.Ki = py_state.Ki;
+        globals.m = py_state.m;
+        globals.h = py_state.h;
+        globals.j = py_state.j;
+        globals.xKs = py_state.xKs;
 
-    void GW_lattice::set_initial_value(GlobalState& global_vals, CRULatticeState& cru_vals){
-        globals = global_vals; 
-        CRU_lattice = cru_vals;
+        for (int i = 0; i < 5; ++i)
+            globals.Kr[i] = py_state.XKr(i);
+
+        for (int i = 0; i < 10; ++i){
+            globals.Kv14[i] = py_state.XKv14(i);
+            globals.Kv43[i] = py_state.XKv43(i);
+        }
+
+        CRU_lattice.Cai = py_state.Cai;
+        CRU_lattice.CaNSR = py_state.CaNSR;
+        CRU_lattice.CaLTRPN = py_state.CaLTRPN;
+        CRU_lattice.CaHTRPN = py_state.CaHTRPN;
+        CRU_lattice.CaSS = py_state.CaSS;
+        CRU_lattice.CaJSR = py_state.CaJSR;
+        CRU_lattice.LCC = py_state.LCC;
+        CRU_lattice.LCC_inactivation = py_state.LCC_inactivation;
+        CRU_lattice.ClCh = py_state.ClCh;
+
+        for (int i = 0; i < nCRU_x; ++i){
+            for (int j = 0; j < nCRU_y; ++j){
+                for (int k = 0; k < 6; ++k){
+                    CRU_lattice.RyR.array(i,j,k) = py_state.RyR(i,j,k);
+                }
+            }
+        }
     }
 
 
@@ -190,7 +231,7 @@ namespace GW_lattice {
 
 
 
-    inline void GW_lattice::euler_diffusion_step(const double dt){
+    void GW_lattice::euler_diffusion_step(const double dt){
         #pragma omp parallel for collapse(2)
         for (int i = 0; i < nCRU_x; i++){
             for (int j = 0; j < nCRU_y; j++){
@@ -325,5 +366,220 @@ namespace GW_lattice {
 
     }
 
+    void PyGWLatticeSimulation::record_state(const GW_lattice& model, const int idx, const int nCRU_x, const int nCRU_y, const double t_){
+        t(idx) = t_;
+        V(idx) = model.globals.V;
+        m(idx) = model.globals.m;
+        h(idx) = model.globals.h;
+        j(idx) = model.globals.j;
+        Nai(idx) = model.globals.Nai;
+        Ki(idx) = model.globals.Ki;
+        xKs(idx) = model.globals.xKs;
+        
+        XKr(idx,0) = model.globals.Kr[0];
+        XKr(idx,1) = model.globals.Kr[1];
+        XKr(idx,2) = model.globals.Kr[2];
+        XKr(idx,3) = model.globals.Kr[3];
+        XKr(idx,4) = model.globals.Kr[4];
 
+        for (int j = 0; j < 10; ++j){
+            XKv14(idx,j) = model.globals.Kv14[j];
+            XKv43(idx,j) = model.globals.Kv43[j];
+        }
+
+        for (int j = 0; j < nCRU_x; ++j){
+            for (int k = 0; k < nCRU_y; ++k){
+                Cai(idx,j,k) = model.CRU_lattice.Cai(j,k);
+                CaNSR(idx,j,k) = model.CRU_lattice.CaNSR(j,k);
+                CaLTRPN(idx,j,k) = model.CRU_lattice.CaLTRPN(j,k);
+                CaHTRPN(idx,j,k) = model.CRU_lattice.CaHTRPN(j,k);
+                CaJSR(idx,j,k) = model.CRU_lattice.CaJSR(j,k);
+                CaSS(idx,j,k) = model.CRU_lattice.CaSS(j,k);
+                LCC(idx,j,k) = model.CRU_lattice.LCC(j,k);
+                LCC_inactivation(idx,j,k) = model.CRU_lattice.LCC_inactivation(j,k);
+                RyR(idx,j,k,0) = model.CRU_lattice.RyR.array(j,k,0);
+                RyR(idx,j,k,1) = model.CRU_lattice.RyR.array(j,k,1);
+                RyR(idx,j,k,2) = model.CRU_lattice.RyR.array(j,k,2);
+                RyR(idx,j,k,3) = model.CRU_lattice.RyR.array(j,k,3);
+                RyR(idx,j,k,4) = model.CRU_lattice.RyR.array(j,k,4);
+                RyR(idx,j,k,5) = model.CRU_lattice.RyR.array(j,k,5);
+                ClCh(idx,j,k) = model.CRU_lattice.ClCh(j,k);
+            }
+        }
+    }
+}
+
+void init_GWLattice(py::module& m){
+    py::class_<GW_lattice::Parameters>(m, "GWLatticeParameters")
+        .def(py::init<>())
+        .def_readwrite("T", &GW_lattice::Parameters::T)
+        .def_readwrite("CSA", &GW_lattice::Parameters::CSA)
+        .def_readwrite("Vcyto", &GW_lattice::Parameters::Vcyto)
+        .def_readwrite("VNSR", &GW_lattice::Parameters::VNSR)
+        .def_readwrite("VJSR", &GW_lattice::Parameters::VJSR)
+        .def_readwrite("VSS", &GW_lattice::Parameters::VSS)
+        .def_readwrite("NCaRU", &GW_lattice::Parameters::NCaRU)
+        .def_readwrite("Ko", &GW_lattice::Parameters::Ko)
+        .def_readwrite("Nao", &GW_lattice::Parameters::Nao)
+        .def_readwrite("Cao", &GW_lattice::Parameters::Cao)
+        .def_readwrite("Clo", &GW_lattice::Parameters::Clo)
+        .def_readwrite("Clcyto", &GW_lattice::Parameters::Clcyto)
+        .def_readwrite("f", &GW_lattice::Parameters::f)
+        .def_readwrite("g", &GW_lattice::Parameters::g)
+        .def_readwrite("f1", &GW_lattice::Parameters::f1)
+        .def_readwrite("g1", &GW_lattice::Parameters::g1)
+        .def_readwrite("a", &GW_lattice::Parameters::a)
+        .def_readwrite("b", &GW_lattice::Parameters::b)
+        .def_readwrite("gamma0", &GW_lattice::Parameters::gamma0)
+        .def_readwrite("omega", &GW_lattice::Parameters::omega)
+        .def_readwrite("PCaL", &GW_lattice::Parameters::PCaL)
+        .def_readwrite("kfClCh", &GW_lattice::Parameters::kfClCh)
+        .def_readwrite("kbClCh", &GW_lattice::Parameters::kbClCh)
+        .def_readwrite("Pto2", &GW_lattice::Parameters::Pto2)
+        .def_readwrite("k12", &GW_lattice::Parameters::k12)
+        .def_readwrite("k21", &GW_lattice::Parameters::k21)
+        .def_readwrite("k23", &GW_lattice::Parameters::k23)
+        .def_readwrite("k32", &GW_lattice::Parameters::k32)
+        .def_readwrite("k34", &GW_lattice::Parameters::k34)
+        .def_readwrite("k43", &GW_lattice::Parameters::k43)
+        .def_readwrite("k45", &GW_lattice::Parameters::k45)
+        .def_readwrite("k54", &GW_lattice::Parameters::k54)
+        .def_readwrite("k56", &GW_lattice::Parameters::k56)
+        .def_readwrite("k65", &GW_lattice::Parameters::k65)
+        .def_readwrite("k25", &GW_lattice::Parameters::k25)
+        .def_readwrite("k52", &GW_lattice::Parameters::k52)
+        .def_readwrite("rRyR", &GW_lattice::Parameters::rRyR)
+        .def_readwrite("rxfer", &GW_lattice::Parameters::rxfer)
+        .def_readwrite("rtr", &GW_lattice::Parameters::rtr)
+        .def_readwrite("rcyto", &GW_lattice::Parameters::rcyto)
+        .def_readwrite("rnsr", &GW_lattice::Parameters::rnsr)
+        .def_readwrite("BSRT", &GW_lattice::Parameters::BSRT)
+        .def_readwrite("KBSR", &GW_lattice::Parameters::KBSR)
+        .def_readwrite("BSLT", &GW_lattice::Parameters::BSLT)
+        .def_readwrite("KBSL", &GW_lattice::Parameters::KBSL)
+        .def_readwrite("CSQNT", &GW_lattice::Parameters::CSQNT)
+        .def_readwrite("KCSQN", &GW_lattice::Parameters::KCSQN)
+        .def_readwrite("CMDNT", &GW_lattice::Parameters::CMDNT)
+        .def_readwrite("KCMDN", &GW_lattice::Parameters::KCMDN)
+        .def_readwrite("GNa", &GW_lattice::Parameters::GNa)
+        .def_readwrite("GKr", &GW_lattice::Parameters::GKr)
+        .def_readwrite("Kf", &GW_lattice::Parameters::Kf)
+        .def_readwrite("Kb", &GW_lattice::Parameters::Kb)
+        .def_readwrite("GKs", &GW_lattice::Parameters::GKs)
+        .def_readwrite("GKv43", &GW_lattice::Parameters::GKv43)
+        .def_readwrite("alphaa0Kv43", &GW_lattice::Parameters::alphaa0Kv43)
+        .def_readwrite("aaKv43", &GW_lattice::Parameters::aaKv43)
+        .def_readwrite("betaa0Kv43", &GW_lattice::Parameters::betaa0Kv43)
+        .def_readwrite("baKv43", &GW_lattice::Parameters::baKv43)
+        .def_readwrite("alphai0Kv43", &GW_lattice::Parameters::alphai0Kv43)
+        .def_readwrite("aiKv43", &GW_lattice::Parameters::aiKv43)
+        .def_readwrite("betai0Kv43", &GW_lattice::Parameters::betai0Kv43)
+        .def_readwrite("biKv43", &GW_lattice::Parameters::biKv43)
+        .def_readwrite("f1Kv43", &GW_lattice::Parameters::f1Kv43)
+        .def_readwrite("f2Kv43", &GW_lattice::Parameters::f2Kv43)
+        .def_readwrite("f3Kv43", &GW_lattice::Parameters::f3Kv43)
+        .def_readwrite("f4Kv43", &GW_lattice::Parameters::f4Kv43)
+        .def_readwrite("b1Kv43", &GW_lattice::Parameters::b1Kv43)
+        .def_readwrite("b2Kv43", &GW_lattice::Parameters::b2Kv43)
+        .def_readwrite("b3Kv43", &GW_lattice::Parameters::b3Kv43)
+        .def_readwrite("b4Kv43", &GW_lattice::Parameters::b4Kv43)
+        .def_readwrite("PKv14", &GW_lattice::Parameters::PKv14)
+        .def_readwrite("alphaa0Kv14", &GW_lattice::Parameters::alphaa0Kv14)
+        .def_readwrite("aaKv14", &GW_lattice::Parameters::aaKv14)
+        .def_readwrite("betaa0Kv14", &GW_lattice::Parameters::betaa0Kv14)
+        .def_readwrite("baKv14", &GW_lattice::Parameters::baKv14)
+        .def_readwrite("alphai0Kv14", &GW_lattice::Parameters::alphai0Kv14)
+        .def_readwrite("aiKv14", &GW_lattice::Parameters::aiKv14)
+        .def_readwrite("betai0Kv14", &GW_lattice::Parameters::betai0Kv14)
+        .def_readwrite("biKv14", &GW_lattice::Parameters::biKv14)
+        .def_readwrite("f1Kv14", &GW_lattice::Parameters::f1Kv14)
+        .def_readwrite("f2Kv14", &GW_lattice::Parameters::f2Kv14)
+        .def_readwrite("f3Kv14", &GW_lattice::Parameters::f3Kv14)
+        .def_readwrite("f4Kv14", &GW_lattice::Parameters::f4Kv14)
+        .def_readwrite("b1Kv14", &GW_lattice::Parameters::b1Kv14)
+        .def_readwrite("b2Kv14", &GW_lattice::Parameters::b2Kv14)
+        .def_readwrite("b3Kv14", &GW_lattice::Parameters::b3Kv14)
+        .def_readwrite("b4Kv14", &GW_lattice::Parameters::b4Kv14)
+        .def_readwrite("Csc", &GW_lattice::Parameters::Csc)
+        .def_readwrite("GK1", &GW_lattice::Parameters::GK1)
+        .def_readwrite("KmK1", &GW_lattice::Parameters::KmK1)
+        .def_readwrite("GKp", &GW_lattice::Parameters::GKp)
+        .def_readwrite("kNaCa", &GW_lattice::Parameters::kNaCa)
+        .def_readwrite("KmNa", &GW_lattice::Parameters::KmNa)
+        .def_readwrite("KmCa", &GW_lattice::Parameters::KmCa)
+        .def_readwrite("ksat", &GW_lattice::Parameters::ksat)
+        .def_readwrite("eta", &GW_lattice::Parameters::eta)
+        .def_readwrite("INaKmax", &GW_lattice::Parameters::INaKmax)
+        .def_readwrite("KmNai", &GW_lattice::Parameters::KmNai)
+        .def_readwrite("KmKo", &GW_lattice::Parameters::KmKo)
+        .def_readwrite("IpCamax", &GW_lattice::Parameters::IpCamax)
+        .def_readwrite("KmpCa", &GW_lattice::Parameters::KmpCa)
+        .def_readwrite("GCab", &GW_lattice::Parameters::GCab)
+        .def_readwrite("GNab", &GW_lattice::Parameters::GNab)
+        .def_readwrite("kHTRPNp", &GW_lattice::Parameters::kHTRPNp)
+        .def_readwrite("kHTRPNm", &GW_lattice::Parameters::kHTRPNm)
+        .def_readwrite("kLTRPNp", &GW_lattice::Parameters::kLTRPNp)
+        .def_readwrite("kLTRPNm", &GW_lattice::Parameters::kLTRPNm)
+        .def_readwrite("HTRPNtot", &GW_lattice::Parameters::HTRPNtot)
+        .def_readwrite("LTRPNtot", &GW_lattice::Parameters::LTRPNtot)
+        .def_readwrite("Vmaxf", &GW_lattice::Parameters::Vmaxf)
+        .def_readwrite("Vmaxr", &GW_lattice::Parameters::Vmaxr)
+        .def_readwrite("Kmf", &GW_lattice::Parameters::Kmf)
+        .def_readwrite("Kmr", &GW_lattice::Parameters::Kmr)
+        .def_readwrite("Hf", &GW_lattice::Parameters::Hf)
+        .def_readwrite("Hr", &GW_lattice::Parameters::Hr);
+
+
+    py::class_<GW_lattice::PyGWLatticeSimulation>(m, "GWLatticeSimulation")
+        .def(py::init<int,int,int,double>())
+        .def_readwrite("t", &GW_lattice::PyGWLatticeSimulation::t)
+        .def_readwrite("V", &GW_lattice::PyGWLatticeSimulation::V)
+        .def_readwrite("m", &GW_lattice::PyGWLatticeSimulation::m)
+        .def_readwrite("h", &GW_lattice::PyGWLatticeSimulation::h)
+        .def_readwrite("j", &GW_lattice::PyGWLatticeSimulation::j)
+        .def_readwrite("Nai", &GW_lattice::PyGWLatticeSimulation::Nai)
+        .def_readwrite("Ki", &GW_lattice::PyGWLatticeSimulation::Ki)
+        .def_readwrite("Cai", &GW_lattice::PyGWLatticeSimulation::Cai)
+        .def_readwrite("CaNSR", &GW_lattice::PyGWLatticeSimulation::CaNSR)
+        .def_readwrite("CaLTRPN", &GW_lattice::PyGWLatticeSimulation::CaLTRPN)
+        .def_readwrite("CaHTRPN", &GW_lattice::PyGWLatticeSimulation::CaHTRPN)
+        .def_readwrite("xKs", &GW_lattice::PyGWLatticeSimulation::xKs)
+        .def_readwrite("XKr", &GW_lattice::PyGWLatticeSimulation::XKr)
+        .def_readwrite("XKv14", &GW_lattice::PyGWLatticeSimulation::XKv14)
+        .def_readwrite("XKv43", &GW_lattice::PyGWLatticeSimulation::XKv43)
+        .def_readwrite("CaJSR", &GW_lattice::PyGWLatticeSimulation::CaJSR)
+        .def_readwrite("CaSS", &GW_lattice::PyGWLatticeSimulation::CaSS)
+        .def_readwrite("LCC", &GW_lattice::PyGWLatticeSimulation::LCC)
+        .def_readwrite("LCC_inactivation", &GW_lattice::PyGWLatticeSimulation::LCC_inactivation)
+        .def_readwrite("RyR", &GW_lattice::PyGWLatticeSimulation::RyR)
+        .def_readwrite("ClCh", &GW_lattice::PyGWLatticeSimulation::ClCh);
+    
+    py::class_<GW_lattice::PyInitGWLatticeState>(m, "GWLatticeInitialState")
+        .def(py::init<int,int>())
+        .def_readwrite("V", &GW_lattice::PyInitGWLatticeState::V)
+        .def_readwrite("Nai", &GW_lattice::PyInitGWLatticeState::Nai)
+        .def_readwrite("Ki", &GW_lattice::PyInitGWLatticeState::Ki)
+        .def_readwrite("Cai", &GW_lattice::PyInitGWLatticeState::Cai)
+        .def_readwrite("CaNSR", &GW_lattice::PyInitGWLatticeState::CaNSR)
+        .def_readwrite("CaLTRPN", &GW_lattice::PyInitGWLatticeState::CaLTRPN)
+        .def_readwrite("CaHTRPN", &GW_lattice::PyInitGWLatticeState::CaHTRPN)
+        .def_readwrite("m", &GW_lattice::PyInitGWLatticeState::m)
+        .def_readwrite("h", &GW_lattice::PyInitGWLatticeState::h)
+        .def_readwrite("j", &GW_lattice::PyInitGWLatticeState::j)
+        .def_readwrite("xKs", &GW_lattice::PyInitGWLatticeState::xKs)
+        .def_readwrite("XKr", &GW_lattice::PyInitGWLatticeState::XKr)
+        .def_readwrite("XKv14", &GW_lattice::PyInitGWLatticeState::XKv14)
+        .def_readwrite("XKv43", &GW_lattice::PyInitGWLatticeState::XKv43) 
+        .def_readwrite("CaSS", &GW_lattice::PyInitGWLatticeState::CaSS)
+        .def_readwrite("CaJSR", &GW_lattice::PyInitGWLatticeState::CaJSR)
+        .def_readwrite("LCC", &GW_lattice::PyInitGWLatticeState::LCC)
+        .def_readwrite("LCC_inactivation", &GW_lattice::PyInitGWLatticeState::LCC_inactivation)
+        .def_readwrite("RyR", &GW_lattice::PyInitGWLatticeState::RyR)
+        .def_readwrite("ClCh", &GW_lattice::PyInitGWLatticeState::ClCh);
+
+    py::class_<GW_lattice::GW_lattice>(m, "GWLatticeModel")
+        .def(py::init<int,int>())
+        .def(py::init<GW_lattice::Parameters,int,int>())
+        .def("init_state", &GW_lattice::GW_lattice::init_from_python, "inital_state"_a)
+        .def("run", &GW_lattice::GW_lattice::run_sim<XoshiroCpp::Xoshiro256PlusPlus>, "dt"_a, "num_steps"_a, "Is"_a, "record_every"_a, py::call_guard<py::gil_scoped_release>());
 }

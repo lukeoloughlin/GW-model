@@ -73,7 +73,7 @@ public:
 
     // Set the values of storage to that of other
     void set(Array3Container &other){
-        for (int i; i < storage.size(); ++i) { storage[i] = other.storage[i]; }
+        for (size_t i = 0; i < storage.size(); ++i) { storage[i] = other.storage[i]; }
     }
 
 };

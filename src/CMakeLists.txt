@@ -43,7 +43,7 @@ else()
     find_package(Python 3.11 COMPONENTS Interpreter Development REQUIRED)
 endif()
 find_package(pybind11 CONFIG REQUIRED)
-pybind11_add_module(Models MODULE Pymodels.cpp GW.cpp GW_utils.cpp GW_lattice.cpp GW_lattice_utils.cpp)
+pybind11_add_module(Models MODULE cxx/Pymodels.cpp cxx/GW.cpp cxx/GW_utils.cpp cxx/GW_lattice.cpp cxx/GW_lattice_utils.cpp)
 
 find_package(Eigen3 3.4 REQUIRED)
 if(Eigen3_FOUND)

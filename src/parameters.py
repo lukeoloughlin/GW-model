@@ -1,12 +1,14 @@
+from typing import Any
+
 from .utils import assert_positive, assert_nonnegative, assert_type  # type: ignore
-import build.GreensteinWinslow as gw  # type: ignore
+import build.Models as Models  # type: ignore
 
 
 # NOTE: I couldn't think of a good way to automatically make a python interface to the C++ struct such that domain constraints could be checked and documentation could be added.
 #       So, I used the below helper methods to generate the getters and setters as strings, printed them out, and altered the relevant fields manually (changed NCaRU to int and made some rate
 #        parameters nonnegative)
 
-_GW_NAMES = [
+_GW_ALL = [
     ("T", "p", "Temperature [K]", 310.0),
     ("CSA", "p", "Cell surface area capacitance [pF]", 153.4),
     ("Vcyto", "p", "Cytosolic volume [pL]", 25.84),
@@ -151,9 +153,6 @@ _GW_NAMES = [
         200.0,
     ),
     ("rtr", "p", "Rate of calcium flux between NSR and JSR [ms]^{-1}", 0.333),
-    ("riss", "p", "Intersubspace caclium flux rate [ms]^{-1}", 20.0),
-    ("rcyto", "p", "Scaled diffusion of caclium in cyto [ms]^{-1}", 0.7),
-    ("rnsr", "p", "Scaled diffusion of caclium in NSR [ms]^{-1}", 2.7),
     ("BSRT", "p", "Total subspace SR membrane site concentration [mM]", 0.047),
     ("KBSR", "p", "Calcium half-saturation constant for BSR [mM]", 0.00087),
     ("BSLT", "p", "Total subspace sarcolemma site concentration [mM]", 1.124),
@@ -441,137 +440,33 @@ _GW_NAMES = [
     ("Hr", "p", "Reverse cooperativity constant for calcium ATPase", 0.75),
 ]
 
+_GW_ONLY = [
+    ("riss", "p", "Intersubspace caclium flux rate [ms]^{-1}", 20.0),
+]
+
+_GW_LATTICE_ONLY = [
+    ("rcyto", "p", "Scaled diffusion of caclium in cyto [ms]^{-1}", 0.7),
+    ("rnsr", "p", "Scaled diffusion of caclium in NSR [ms]^{-1}", 2.7),
+]
+
 
 # Run this with _GW_NAMES and print result or write to file to get boiler plate for the below class
 
 
-class GWParameters:
+class _GWParameters:
     """Greenstein and Winslow model parameters."""
 
-    def __init__(
-        self,
-        lattice: bool = False,
-        cxx_struct: None | gw.GWParameters | gw.GWLatticeParameters = None,
-        **kwargs,
-    ):
-        """Construct the GWParameters object. Uses default parameters unless otherwise specified.
-
-        Args:
-            lattice (bool): Whether to use the lattice model parameters
-            cxx_struct (None | gw.GWParameters, optional): C++ Parameters struct for the GW model. Defaults to None.
-            **kwargs: Keyword arguments for any of the model parameters.
-        """
-        self.__lattice = lattice
-        if self.__lattice and cxx_struct is None:
-            self.__cxx_struct = gw.GWLatticeParameters()
-        elif cxx_struct is None:
-            self.__cxx_struct = gw.GWParameters()
-        else:
-            self.__cxx_struct = cxx_struct
-
-        if self.__lattice and "NCaRU_x" in kwargs:
-            self.__NCaRU_x: int = kwargs.pop("NCaRU_x")
-        elif self.__lattice:
-            self.__NCaRU_x = 100
-
-        if self.__lattice and "NCaRU_y" in kwargs:
-            self.__NCaRU_y: int = kwargs.pop("NCaRU_y")
-        elif self.__lattice:
-            self.__NCaRU_y = 100
-
-        if self.__lattice:
-            self.__NCaRU_sim: int = self.__NCaRU_x * self.__NCaRU_y
-
-        if not self.__lattice and "NCaRU_sim" in kwargs:
-            self.__NCaRU_sim = kwargs.pop("NCaRU_sim")
-        elif not self.__lattice:
-            self.__NCaRU_sim = 1250
-
-        for name, value in kwargs.items():
-            if name in dir(self.__cxx_struct):
-                setattr(self, name, value)
-            else:
-                raise ValueError(
-                    f"{name} not a valid argument to GWParameters constructor. Call help(GWParameters) to see a list of acceptable parameter names"
-                )
-
-    @classmethod
-    def from_dict(cls, state_dict: dict):
-        """Recreate object from dict
-
-        Args:
-            state_dict (dict): dictionary of solution state
-        """
-        cxx_struct = gw.GWParameters()
-        for name, _, _, _ in _GW_NAMES:
-            setattr(cxx_struct, name, state_dict[name])
-        return cls(cxx_struct)
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for serialization"""
-        param_dict = {"NCaRU_sim": self.NCaRU_sim}
-        for name, _, _, _ in _GW_NAMES:
-            param_dict[name] = getattr(self, name)
-        return param_dict
+    def __init__(self, cxx_struct: Any):
+        self.__cxx_struct = cxx_struct
 
     @property
-    def lattice(self) -> bool:
-        """Whether Lattice version is being used"""
-        return self.__lattice
-
-    @property
-    def cxx_struct(self) -> gw.GWParameters:
+    def cxx_struct(self) -> Any:
         """The C++ compatible struct.
 
         Returns:
-            gw.GWParameters: Underlying C++ struct.
+            Any: Underlying C++ struct.
         """
         return self.__cxx_struct
-
-    @property
-    def NCaRU_x(self) -> int:
-        """int: Number of calcium release unit subspaces along x axis. Only valid for lattice models"""
-        if self.__lattice:
-            return self.__NCaRU_x
-        else:
-            raise AttributeError("Only valid for lattice model")
-
-    @NCaRU_x.setter
-    def NCaRU_x(self, value: int) -> None:
-        if self.__lattice:
-            assert_type(value, int, "NCaRU_x")
-            assert_positive(value, "NCaRU_x")
-            self.__NCaRU_x = value
-        else:
-            raise AttributeError("Only valid for lattice model")
-
-    @property
-    def NCaRU_y(self) -> int:
-        """int: Number of calcium release unit subspaces along y axis. Only valid for lattice models"""
-        if self.__lattice:
-            return self.__NCaRU_y
-        else:
-            raise AttributeError("Only valid for lattice model")
-
-    @NCaRU_y.setter
-    def NCaRU_y(self, value: int) -> None:
-        if self.__lattice:
-            assert_type(value, int, "NCaRU_y")
-            assert_positive(value, "NCaRU_y")
-            self.__NCaRU_y = value
-        else:
-            raise AttributeError("Only valid for lattice model")
-
-    @property
-    def NCaRU_sim(self) -> int:
-        """int: Number of calcium release units to simulate. Value must be > 0. Defaults to 1250."""
-        return self.__NCaRU_sim
-
-    @NCaRU_sim.setter
-    def NCaRU_sim(self, value: int) -> None:
-        assert_type(value, int, "NCaRU_sim")
-        assert_positive(value, "NCaRU_sim")
-        self.__NCaRU_sim = value
 
     @property
     def T(self) -> float:
@@ -963,32 +858,6 @@ class GWParameters:
     def rtr(self, value: float) -> None:
         assert_positive(value, "rtr")
         self.__cxx_struct.rtr = value
-
-    @property
-    def riss(self) -> float:
-        """float: Intersubspace caclium flux rate [ms]^{-1}. Value must be > 0. Defaults to 20.0."""
-        return self.__cxx_struct.riss
-
-    @riss.setter
-    def riss(self, value: float) -> None:
-        assert_positive(value, "riss")
-        self.__cxx_struct.riss = value
-
-    @property
-    def rijsr(self) -> float:
-        """float: Intersubspace caclium flux rate [ms]^{-1}. Value must be > 0. Defaults to 20.0."""
-        if self.__lattice:
-            return self.__cxx_struct.rijsr
-        else:
-            raise AttributeError("Only valid for GW Lattice model")
-
-    @rijsr.setter
-    def rijsr(self, value: float) -> None:
-        assert_positive(value, "rijsr")
-        if self.__lattice:
-            self.__cxx_struct.rijsr = value
-        else:
-            raise AttributeError("Only valid for GW Lattice model")
 
     @property
     def BSRT(self) -> float:
@@ -1739,3 +1608,174 @@ class GWParameters:
     def Hr(self, value: float) -> None:
         assert_positive(value, "Hr")
         self.__cxx_struct.Hr = value
+
+
+class GWParameters(_GWParameters):
+
+    def __init__(
+        self,
+        cxx_struct: None | Models.GWParameters = None,
+        **kwargs,
+    ):
+        """Construct the GWParameters object. Uses default parameters unless otherwise specified.
+
+        Args:
+            lattice (bool): Whether to use the lattice model parameters
+            cxx_struct (None | gw.GWParameters, optional): C++ Parameters struct for the GW model. Defaults to None.
+            **kwargs: Keyword arguments for any of the model parameters.
+        """
+        if cxx_struct is None:
+            cxx_struct = Models.GWParameters()
+
+        super().__init__(cxx_struct)
+
+        if "NCaRU_sim" in kwargs:
+            self.__NCaRU_sim = kwargs.pop("NCaRU_sim")
+        else:
+            self.__NCaRU_sim = 1250
+
+        for name, value in kwargs.items():
+            if name in dir(self.cxx_struct):
+                setattr(self, name, value)
+            else:
+                raise ValueError(
+                    f"{name} not a valid argument to GWParameters constructor. Call help(GWParameters) to see a list of acceptable parameter names"
+                )
+
+    @property
+    def NCaRU_sim(self) -> int:
+        """int: Number of calcium release units to simulate. Value must be > 0. Defaults to 1250."""
+        return self.__NCaRU_sim
+
+    @NCaRU_sim.setter
+    def NCaRU_sim(self, value: int) -> None:
+        assert_type(value, int, "NCaRU_sim")
+        assert_positive(value, "NCaRU_sim")
+        self.__NCaRU_sim = value
+
+    @property
+    def riss(self) -> float:
+        """float: Intersubspace caclium flux rate [ms]^{-1}. Value must be > 0. Defaults to 20.0."""
+        return self.cxx_struct.riss
+
+    @riss.setter
+    def riss(self, value: float) -> None:
+        assert_positive(value, "riss")
+        self.cxx_struct.riss = value
+
+    @classmethod
+    def from_dict(cls, state_dict):
+        """Recreate object from dict
+
+        Args:
+            state_dict (dict): dictionary of solution state
+        """
+        cxx_struct = Models.GWParameters()
+        for name, _, _, _ in _GW_ALL + _GW_ONLY:
+            setattr(cxx_struct, name, state_dict[name])
+        return cls(cxx_struct)
+
+    def to_dict(self):
+        """Convert to dictionary for serialization"""
+        param_dict = {"NCaRU_sim": self.NCaRU_sim}
+        for name, _, _, _ in _GW_ALL + _GW_ONLY:
+            param_dict[name] = getattr(self, name)
+        return param_dict
+
+
+class GWLatticeParameters(_GWParameters):
+    def __init__(
+        self,
+        cxx_struct: None | Models.GWLatticeParameters = None,
+        **kwargs,
+    ):
+        """Construct the GWParameters object. Uses default parameters unless otherwise specified.
+
+        Args:
+            lattice (bool): Whether to use the lattice model parameters
+            cxx_struct (None | gw.GWParameters, optional): C++ Parameters struct for the GW model. Defaults to None.
+            **kwargs: Keyword arguments for any of the model parameters.
+        """
+        if cxx_struct is None:
+            cxx_struct = Models.GWLatticeParameters()
+
+        super().__init__(cxx_struct)
+
+        if "NCaRU_x" in kwargs:
+            self.__NCaRU_x: int = kwargs.pop("NCaRU_x")
+        else:
+            self.__NCaRU_x = 100
+
+        if "NCaRU_y" in kwargs:
+            self.__NCaRU_y: int = kwargs.pop("NCaRU_y")
+        else:
+            self.__NCaRU_y = 100
+
+        for name, value in kwargs.items():
+            if name in dir(self.cxx_struct):
+                setattr(self, name, value)
+            else:
+                raise ValueError(
+                    f"{name} not a valid argument to GWLatticeParameters constructor. Call help(GWLatticeParameters) to see a list of acceptable parameter names"
+                )
+
+    @property
+    def NCaRU_x(self) -> int:
+        """int: Number of calcium release unit subspaces along x axis. Only valid for lattice models"""
+        return self.__NCaRU_x
+
+    @NCaRU_x.setter
+    def NCaRU_x(self, value: int) -> None:
+        assert_type(value, int, "NCaRU_x")
+        assert_positive(value, "NCaRU_x")
+        self.__NCaRU_x = value
+
+    @property
+    def NCaRU_y(self) -> int:
+        """int: Number of calcium release unit subspaces along y axis. Only valid for lattice models"""
+        return self.__NCaRU_y
+
+    @NCaRU_y.setter
+    def NCaRU_y(self, value: int) -> None:
+        assert_type(value, int, "NCaRU_y")
+        assert_positive(value, "NCaRU_y")
+        self.__NCaRU_y = value
+
+    @property
+    def rcyto(self) -> float:
+        """float: Cytosol caclium flux rate [ms]^{-1}. Value must be > 0. Defaults to 0.7."""
+        return self.cxx_struct.rcyto
+
+    @rcyto.setter
+    def rcyto(self, value: float) -> None:
+        assert_positive(value, "rcyto")
+        self.cxx_struct.rcyto = value
+
+    @property
+    def rnsr(self) -> float:
+        """float: NSR caclium flux rate [ms]^{-1}. Value must be > 0. Defaults to 0.7."""
+        return self.cxx_struct.rnsr
+
+    @rnsr.setter
+    def rnsr(self, value: float) -> None:
+        assert_positive(value, "rnsr")
+        self.cxx_struct.rnsr = value
+
+    @classmethod
+    def from_dict(cls, state_dict):
+        """Recreate object from dict
+
+        Args:
+            state_dict (dict): dictionary of solution state
+        """
+        cxx_struct = Models.GWLatticeParameters()
+        for name, _, _, _ in _GW_ALL + _GW_LATTICE_ONLY:
+            setattr(cxx_struct, name, state_dict[name])
+        return cls(cxx_struct)
+
+    def to_dict(self):
+        """Convert to dictionary for serialization"""
+        param_dict = {"NCaRU_x": self.NCaRU_x, "NCaRU_y": self.NCaRU_y}
+        for name, _, _, _ in _GW_ALL + _GW_LATTICE_ONLY:
+            param_dict[name] = getattr(self, name)
+        return param_dict

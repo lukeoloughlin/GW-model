@@ -89,7 +89,7 @@ namespace GW_lattice {
         npArray2d CaLTRPN;
         npArray2d CaHTRPN;
         npArray2d CaSS;
-        npArray1d CaJSR;
+        npArray2d CaJSR;
         npArray2i LCC;
         npArray2i LCC_inactivation;
         npArray3i RyR;

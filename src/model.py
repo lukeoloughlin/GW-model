@@ -1,33 +1,17 @@
 # pylint: disable=invalid-name,c-extension-no-member,broad-exception-caught,line-too-long
-from typing import Callable, List
-from functools import reduce
-import pickle as pkl
+from typing import Any, Callable
 
 import numpy as np
 import numpy.typing as npt
 
-import build.GreensteinWinslow as gw_cxx  # type: ignore
+import build.Models as Models  # type: ignore
 from .utils import assert_positive, assert_gt_numpy, assert_lt_numpy  # type: ignore
-from .parameters import GWParameters  # type: ignore
+from .parameters import GWParameters, GWLatticeParameters  # type: ignore
 
 
 F = 96.5
 R = 8.314
 F_R = F / R
-
-GWParametersCXX = type[gw_cxx.GWParameters]
-GWVariablesCXX = type[gw_cxx.GWVariables]
-
-__IMPLEMENTED_PRNGS = [
-    "mt19937",
-    "mt19937_64",
-    "xoshiro256+",
-    "xoshiro256++",
-    "xoshiro256**",
-    "xoroshiro128+",
-    "xoroshiro128++",
-    "xoroshiro128**",
-]
 
 
 def __catch_invalid_state(
@@ -434,6 +418,7 @@ def ICaL(
     LCC_inactivation: npt.NDArray[np.integer],
     CaSS: npt.NDArray[np.floating],
     parameters: GWParameters,
+    CaRU_factor: float = 1.0,
 ) -> npt.NDArray[np.floating]:
     """Calculate the L-type calcium channel (LCC) current for the Greenstein and Winslow model with nCRU calcium release units for any nCaRU > 0.
 
@@ -457,7 +442,7 @@ def ICaL(
     VF_RT = V[..., np.newaxis, np.newaxis] * F_R / parameters.T
     exp2VF_RT = np.exp(2 * VF_RT)
     multiplier = (
-        (parameters.NCaRU / parameters.NCaRU_sim)
+        CaRU_factor
         * (parameters.PCaL / parameters.CSA)
         * (4 * F * VF_RT)
         / (exp2VF_RT - 1)
@@ -469,7 +454,10 @@ def ICaL(
 
 
 def Ito2(
-    V: npt.NDArray[np.floating], ClCh: npt.NDArray, parameters: GWParameters
+    V: npt.NDArray[np.floating],
+    ClCh: npt.NDArray,
+    parameters: GWParameters,
+    CaRU_factor: float = 1.0,
 ) -> npt.NDArray[np.floating]:
     """Calculate the calcium activated chloride (ClCh) transient outward current Ito2 for the Greenstein and Winslow model with nCRU calcium release units for any nCaRU > 0.
 
@@ -487,10 +475,7 @@ def Ito2(
     VF_RT = V[..., np.newaxis, np.newaxis] * F_R / parameters.T
     expmVF_RT = np.exp(-VF_RT)
     multiplier = (
-        (parameters.NCaRU / parameters.NCaRU_sim)
-        * (parameters.Pto2 / parameters.CSA)
-        * (F * VF_RT)
-        / (expmVF_RT - 1)
+        CaRU_factor * (parameters.Pto2 / parameters.CSA) * (F * VF_RT) / (expmVF_RT - 1)
     )
     Ito2_individual_channels = (
         multiplier * ClCh * (parameters.Clcyto * expmVF_RT - parameters.Clo)
@@ -566,17 +551,17 @@ def Jup(
     return (parameters.Vmaxf * f - parameters.Vmaxr * r) / (1 + f + r)
 
 
-class GWSolution:
+class _GWSolution:
     """Container class for the results of simulating the Greenstein and Winslow class."""
 
-    def __init__(self, gw_cxx_output: gw_cxx.GWVariables, gw_parameters: GWParameters):
+    def __init__(self, cxx_output: Any, parameters: Any, lattice: bool = False):
         """
         Args:
             gw_cxx_output (gw.GWVariables): C++ struct holding snapshots of the model state across time.
             gw_parameters (GWParameters): Model parameters used to simulate the model realisation. Required for calculating the currents.
         """
-        self.__vars: GWVariablesCXX = gw_cxx_output
-        self.__params: GWParameters = gw_parameters
+        self.__vars: Any = cxx_output
+        self.__params: Any = parameters
         self.__INa: npt.NDArray | None = None
         self.__INab: npt.NDArray | None = None
         self.__INaCa: npt.NDArray | None = None
@@ -585,95 +570,22 @@ class GWSolution:
         self.__IKs: npt.NDArray | None = None
         self.__IKv14: npt.NDArray | None = None
         self.__IKv43: npt.NDArray | None = None
-        self.__Ito2: npt.NDArray | None = None
         self.__IK1: npt.NDArray | None = None
         self.__IKp: npt.NDArray | None = None
-        self.__ICaL: npt.NDArray | None = None
         self.__ICab: npt.NDArray | None = None
         self.__IpCa: npt.NDArray | None = None
         self.__Jup: npt.NDArray | None = None
         self.__Jtr: npt.NDArray | None = None
-        self.__Jxfer: npt.NDArray | None = None
 
-    @classmethod
-    def from_dict(cls, state_dict: dict):
-        """Construct from dict
-
-        Args:
-            state_dict (dict): Dictionary of model variables
-        """
-        _vars = state_dict["vars"]
-        _params = state_dict["params"]
-
-        NCaRU = _params["NCaRU_sim"]
-        t = _vars["t"]
-        cxx_vars = gw_cxx.GWVariables(NCaRU, t.shape[0], t[-1])
-        cxx_vars.t = t
-        cxx_vars.V = _vars["V"]
-        cxx_vars.Nai = _vars["Nai"]
-        cxx_vars.Ki = _vars["Ki"]
-        cxx_vars.Cai = _vars["Cai"]
-        cxx_vars.CaNSR = _vars["CaNSR"]
-        cxx_vars.CaLTRPN = _vars["CaLTRPN"]
-        cxx_vars.CaHTRPN = _vars["CaHTRPN"]
-        cxx_vars.m = _vars["m"]
-        cxx_vars.h = _vars["h"]
-        cxx_vars.j = _vars["j"]
-        cxx_vars.xKs = _vars["xKs"]
-        cxx_vars.XKr = _vars["XKr"]
-        cxx_vars.XKv14 = _vars["XKv14"]
-        cxx_vars.XKv43 = _vars["XKv43"]
-        cxx_vars.CaSS = _vars["CaSS"]
-        cxx_vars.CaJSR = _vars["CaJSR"]
-        cxx_vars.LCC = _vars["LCC"]
-        cxx_vars.LCC_inactivation = _vars["LCC_inactivation"]
-        cxx_vars.RyR = _vars["RyR"]
-        cxx_vars.ClCh = _vars["ClCh"]
-
-        params = GWParameters.from_dict(_params)
-        return cls(cxx_vars, params)
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for serialization"""
-        params_dict = self.__params.to_dict()
-        vars_dict = {
-            "t": self.t,
-            "V": self.V,
-            "Nai": self.Nai,
-            "Ki": self.Ki,
-            "Cai": self.Cai,
-            "CaNSR": self.CaNSR,
-            "CaLTRPN": self.CaLTRPN,
-            "CaHTRPN": self.CaHTRPN,
-            "m": self.m,
-            "h": self.h,
-            "j": self.j,
-            "xKs": self.xKs,
-            "XKr": self.XKr,
-            "XKv14": self.XKv14,
-            "XKv43": self.XKv43,
-            "CaSS": self.CaSS,
-            "CaJSR": self.CaJSR,
-            "LCC": self.LCC,
-            "LCC_inactivation": self.LCC_inactivation,
-            "RyR": self.RyR,
-            "ClCh": self.ClCh,
-        }
-        return {"params": params_dict, "vars": vars_dict}
-
-    def save(self, fname: str) -> None:
-        state_dict = self.to_dict()
-        with open(fname, "wb") as f:
-            pkl.dump(state_dict, f)
-
-    @classmethod
-    def load(cls, fname: str):
-        with open(fname, "rb") as f:
-            state_dict = pkl.load(f)
-        return cls.from_dict(state_dict)
+        self.__lattice: bool = lattice
 
     @property
-    def parameters(self) -> GWParameters:
+    def cxx_solution(self) -> Any:
+        """C++ solution object"""
+        return self.__vars
+
+    @property
+    def parameters(self) -> Any:
         """GWParameters: Model parameters."""
         return self.__params
 
@@ -786,38 +698,6 @@ class GWSolution:
         return self.__vars.ClCh
 
     @property
-    def RyR_open_int(self) -> npt.NDArray[np.floating]:
-        return self.__vars.RyR_open_int
-
-    @property
-    def RyR_open_martingale(self) -> npt.NDArray[np.floating]:
-        return self.__vars.RyR_open_martingale
-
-    @property
-    def RyR_open_martingale_normalised(self) -> npt.NDArray[np.floating]:
-        return self.__vars.RyR_open_martingale_normalised
-
-    @property
-    def sigma_RyR(self) -> npt.NDArray[np.floating]:
-        return self.__vars.sigma_RyR
-
-    @property
-    def LCC_open_int(self) -> npt.NDArray[np.floating]:
-        return self.__vars.LCC_open_int
-
-    @property
-    def LCC_open_martingale(self) -> npt.NDArray[np.floating]:
-        return self.__vars.LCC_open_martingale
-
-    @property
-    def LCC_open_martingale_normalised(self) -> npt.NDArray[np.floating]:
-        return self.__vars.LCC_open_martingale_normalised
-
-    @property
-    def sigma_LCC(self) -> npt.NDArray[np.floating]:
-        return self.__vars.sigma_LCC
-
-    @property
     def INa(self) -> npt.NDArray[np.floating]:
         """npt.NDArray[np.floating]: 1D array of INa recordings [pA][pF]^{-1}."""
         if self.__INa is None:
@@ -840,7 +720,7 @@ class GWSolution:
                 self.Nai,
                 self.Cai,
                 self.parameters,
-                lattice=self.parameters.lattice,
+                lattice=self.__lattice,
             )
         return self.__INaCa
 
@@ -887,13 +767,6 @@ class GWSolution:
         return self.IKv14 + self.IKv43
 
     @property
-    def Ito2(self) -> npt.NDArray[np.floating]:
-        """npt.NDArray[np.floating]: 1D array of Ito2 recordings [pA][pF]^{-1}."""
-        if self.__Ito2 is None:
-            self.__Ito2 = Ito2(self.V, self.ClCh, self.parameters)
-        return self.__Ito2
-
-    @property
     def IK1(self) -> npt.NDArray[np.floating]:
         """npt.NDArray[np.floating]: 1D array of IK1 recordings [pA][pF]^{-1}."""
         if self.__IK1 is None:
@@ -908,20 +781,11 @@ class GWSolution:
         return self.__IKp
 
     @property
-    def ICaL(self) -> npt.NDArray[np.floating]:
-        """npt.NDArray[np.floating]: 1D array of ICaL recordings [pA][pF]^{-1}."""
-        if self.__ICaL is None:
-            self.__ICaL = ICaL(
-                self.V, self.LCC, self.LCC_inactivation, self.CaSS, self.parameters
-            )
-        return self.__ICaL
-
-    @property
     def ICab(self) -> npt.NDArray[np.floating]:
         """npt.NDArray[np.floating]: 1D array of ICab recordings [pA][pF]^{-1}."""
         if self.__ICab is None:
             self.__ICab = ICab(
-                self.V, self.Cai, self.parameters, lattice=self.parameters.lattice
+                self.V, self.Cai, self.parameters, lattice=self.__lattice
             )
         return self.__ICab
 
@@ -943,126 +807,145 @@ class GWSolution:
     def Jtr(self) -> npt.NDArray[np.floating]:
         """npt.NDArray[np.floating]: 1D array of Jtr recordings [mM][ms]^{-1}."""
         if self.__Jtr is None:
-            self.__Jtr = self.parameters.rtr * np.sum(self.CaNSR - self.CaJSR, axis=1)
+            self.__Jtr = self.parameters.rtr * (self.CaNSR - self.CaJSR)
         return self.__Jtr
+
+
+class GWSolution(_GWSolution):
+
+    def __init__(self, cxx_output, parameters):
+        super().__init__(cxx_output, parameters, lattice=False)
+
+        self.__Ito2: npt.NDArray | None = None
+        self.__Jxfer: npt.NDArray | None = None
+        self.__ICaL: npt.NDArray | None = None
+
+    @property
+    def RyR_open_int(self) -> npt.NDArray[np.floating]:
+        return self.cxx_solution.RyR_open_int
+
+    @property
+    def RyR_open_martingale(self) -> npt.NDArray[np.floating]:
+        return self.cxx_solution.RyR_open_martingale
+
+    @property
+    def RyR_open_martingale_normalised(self) -> npt.NDArray[np.floating]:
+        return self.cxx_solution.RyR_open_martingale_normalised
+
+    @property
+    def sigma_RyR(self) -> npt.NDArray[np.floating]:
+        return self.cxx_solution.sigma_RyR
+
+    @property
+    def LCC_open_int(self) -> npt.NDArray[np.floating]:
+        return self.cxx_solution.LCC_open_int
+
+    @property
+    def LCC_open_martingale(self) -> npt.NDArray[np.floating]:
+        return self.cxx_solution.LCC_open_martingale
+
+    @property
+    def LCC_open_martingale_normalised(self) -> npt.NDArray[np.floating]:
+        return self.cxx_solution.LCC_open_martingale_normalised
+
+    @property
+    def sigma_LCC(self) -> npt.NDArray[np.floating]:
+        return self.cxx_solution.sigma_LCC
+
+    @property
+    def Ito2(self) -> npt.NDArray[np.floating]:
+        """npt.NDArray[np.floating]: 1D array of Ito2 recordings [pA][pF]^{-1}."""
+        if self.__Ito2 is None:
+            self.__Ito2 = Ito2(
+                self.V,
+                self.ClCh,
+                self.parameters,
+                CaRU_factor=self.parameters.NCaRU / self.parameters.NCaRU_sim,
+            )
+        return self.__Ito2
+
+    @property
+    def ICaL(self) -> npt.NDArray[np.floating]:
+        """npt.NDArray[np.floating]: 1D array of ICaL recordings [pA][pF]^{-1}."""
+        if self.__ICaL is None:
+            self.__ICaL = ICaL(
+                self.V,
+                self.LCC,
+                self.LCC_inactivation,
+                self.CaSS,
+                self.parameters,
+                CaRU_factor=self.parameters.NCaRU / self.parameters.NCaRU_sim,
+            )
+        return self.__ICaL
 
     @property
     def Jxfer(self) -> npt.NDArray[np.floating]:
         """npt.NDArray[np.floating]: 1D array of Jxfer recordings [mM][ms]^{-1}."""
         if self.__Jxfer is None:
-            self.__Jxfer = self.parameters.rxfer * np.sum(
-                self.CaSS - self.Cai, axis=(1, 2)
-            )
+            self.__Jxfer = self.parameters.rxfer * (self.CaSS - self.Cai)
         return self.__Jxfer
 
-    # @property
-    # def int_QTXt(self) -> npt.NDArray[np.floating]:
-    #    """Integral of f_{open}(Q^T(s)RyR_s), where f_{open} is the linear functional giving the number of open RyRs"""
-    #    return self.__vars.int_QTXt
+
+class GWLatticeSolution(_GWSolution):
+    def __init__(self, cxx_output, parameters):
+        super().__init__(cxx_output, parameters, lattice=True)
+        self.__Ito2: npt.NDArray | None = None
+        self.__ICaL: npt.NDArray | None = None
+
+    @property
+    def Ito2(self) -> npt.NDArray[np.floating]:
+        """npt.NDArray[np.floating]: 1D array of Ito2 recordings [pA][pF]^{-1}."""
+        if self.__Ito2 is None:
+            self.__Ito2 = Ito2(
+                self.V,
+                self.ClCh,
+                self.parameters,
+                CaRU_factor=self.parameters.NCaRU
+                / (self.parameters.NCaRU_x * self.parameters.NCaRU_y),
+            )
+        return self.__Ito2
+
+    @property
+    def ICaL(self) -> npt.NDArray[np.floating]:
+        """npt.NDArray[np.floating]: 1D array of ICaL recordings [pA][pF]^{-1}."""
+        if self.__ICaL is None:
+            self.__ICaL = ICaL(
+                self.V,
+                self.LCC,
+                self.LCC_inactivation,
+                self.CaSS,
+                self.parameters,
+                CaRU_factor=self.parameters.NCaRU
+                / (self.parameters.NCaRU_x * self.parameters.NCaRU_y),
+            )
+        return self.__ICaL
 
 
-class GWModel:
+class _GWModel:
     """Simulates the Greenstein and Winslow model with specified parameters and stimulus."""
 
-    @classmethod
-    def PRNG_options(cls) -> List[str]:
-        """Get the available arguments for PRNG in the simulate method.
+    # @classmethod
+    # def PRNG_options(cls) -> List[str]:
+    #    """Get the available arguments for PRNG in the simulate method.
 
-        Returns:
-            List[str]: Implemented PRNGs for simulating the model.
-        """
-        return __IMPLEMENTED_PRNGS
+    #    Returns:
+    #        List[str]: Implemented PRNGs for simulating the model.
+    #    """
+    #    return __IMPLEMENTED_PRNGS
 
     def __init__(
         self,
-        init_state: None | dict = None,
-        parameters: None | GWParameters = None,
+        parameters: Any,
         stimulus_fn: None | Callable[[float], float] = None,
     ):
-        """
-        Args:
-            parameters (None | GWParameters, optional): Model parameters. Defaults to None, in which case the default parameters are used.
-            stimulus_fn (None | Callable[[float], float], optional): Time dependent external stimulus in pA/pF. Defaults to the zero function.
-        """
-        self.parameters: GWParameters = (
-            parameters if parameters is not None else GWParameters()
-        )
-        """GWParameters: Model parameters."""
+
+        self.parameters = parameters
         self.__stim: Callable[[float], float] = (
             (lambda t: 0) if stimulus_fn is None else stimulus_fn
         )
 
-        if init_state is not None:
-            self.__global_state = _unpack_globals(init_state)
-            self.__cru_state = _unpack_crus(init_state, self.parameters.lattice)
-        elif self.parameters.lattice:
-            self.__global_state = gw_cxx.GWGlobalState()
-            self.__cru_state = gw_cxx.GWCRULatticeState(
-                self.parameters.NCaRU_x, self.parameters.NCaRU_y
-            )
-        else:
-            self.__global_state = gw_cxx.GWGlobalState()
-            self.__cru_state = gw_cxx.GWCRUState(self.parameters.NCaRU_sim)
-
-    def simulate(
-        self,
-        step_size: float,
-        num_steps: int,
-        record_every: int = 1,
-        PRNG: str = "xoshiro256++",
-    ) -> GWSolution:
-        """Simulate the model with a step size of step_size over num_steps steps.
-
-        Args:
-            step_size (float): Size of the integrator time step (ms). Value must be > 0.
-            num_steps (int): Number of steps that the integrator should take. Value must be > 0.
-            record_every (int, optional): Number of steps between recording snapshots of the state. Value must be > 0. Defaults to 1.
-            PRNG (str, optional): PRNG to use within the algorithm. Call GWModel.PRNG_options() to get a list of options. Default is 'xoshiro256++'.
-
-        Returns:
-            GWSolution: Snapshots of state through simulation.
-        """
-        assert_positive(step_size, "step_size")
-        assert_positive(num_steps, "num_steps")
-        assert_positive(record_every, "record_every")
-        try:
-            if self.parameters.lattice:
-                cxx_sol = gw_cxx.run_lattice(
-                    self.parameters.cxx_struct,
-                    self.parameters.NCaRU_x,
-                    self.parameters.NCaRU_y,
-                    step_size,
-                    num_steps,
-                    self.__stim,
-                    record_every,
-                    init_crus=self.__cru_state,
-                    init_globals=self.__global_state,
-                    PRNG=PRNG,
-                )
-            else:
-                cxx_sol = gw_cxx.run(
-                    self.parameters.cxx_struct,
-                    self.parameters.NCaRU_sim,
-                    step_size,
-                    num_steps,
-                    self.__stim,
-                    record_every,
-                    init_crus=self.__cru_state,
-                    init_globals=self.__global_state,
-                    PRNG=PRNG,
-                )
-        except Exception as e:
-            if isinstance(e, ValueError):
-                raise ValueError(
-                    f"{PRNG} is an invalid argument for PRNG.\nAvailable options are: "
-                    + reduce(lambda x, y: x + ", " + y, self.PRNG_options())
-                ) from e
-            else:
-                raise e
-
-        return GWSolution(cxx_sol, self.parameters)
-
-    def stimulus_fn(self, t: float) -> float:
+    @property
+    def stimulus_fn(self) -> Callable[[float], float]:
         """Evaluate the stimulus function Istim.
 
         Args:
@@ -1071,7 +954,7 @@ class GWModel:
         Returns:
             float: Stimulus at time t.
         """
-        return self.__stim(t)
+        return self.__stim
 
     def set_stimulus_fn(self, stimulus_fn: Callable[[float], float]) -> None:
         """Set the stimulus function.
@@ -1082,64 +965,212 @@ class GWModel:
         self.__stim = stimulus_fn
 
 
-def _unpack_globals(state_dict: dict) -> gw_cxx.GWGlobalState:
-    state = gw_cxx.GWGlobalState()
-    state.V = state_dict["V"]
-    state.Nai = state_dict["Nai"]
-    state.Ki = state_dict["Ki"]
-    state.Cai = state_dict["Cai"]
-    state.CaNSR = state_dict["CaNSR"]
-    state.CaLTRPN = state_dict["CaLTRPN"]
-    state.CaHTRPN = state_dict["CaHTRPN"]
+class GWModel(_GWModel):
+    """Simulates the Greenstein and Winslow model with specified parameters and stimulus."""
 
-    state.m = state_dict["m"]
-    state.h = state_dict["h"]
-    state.j = state_dict["j"]
-    state.xKs = state_dict["xKs"]
+    # @classmethod
+    # def PRNG_options(cls) -> List[str]:
+    #    """Get the available arguments for PRNG in the simulate method.
 
-    state.XKr = state_dict["XKr"]
-    state.XKv14 = state_dict["XKv14"]
-    state.XKv43 = state_dict["XKv43"]
+    #    Returns:
+    #        List[str]: Implemented PRNGs for simulating the model.
+    #    """
+    #    return __IMPLEMENTED_PRNGS
 
-    return state
+    def __init__(
+        self,
+        init_state: dict,
+        parameters: None | GWParameters = None,
+        stimulus_fn: None | Callable[[float], float] = None,
+    ):
+        """
+        Args:
+            parameters (None | GWParameters, optional): Model parameters. Defaults to None, in which case the default parameters are used.
+            stimulus_fn (None | Callable[[float], float], optional): Time dependent external stimulus in pA/pF. Defaults to the zero function.
+        """
+        if parameters is not None:
+            assert isinstance(
+                parameters, GWParameters
+            ), "parameters must be an instance of GWParameters"
+        else:
+            parameters = GWParameters()
+
+        self.__NCaRU_sim = init_state["CaSS"].shape[0]
+        parameters.NCaRU_sim = self.__NCaRU_sim
+        self.__init_state_cxx = Models.GWInitialState(self.__NCaRU_sim)
+        self.set_init_state(init_state)
+
+        self.__model = Models.GWModel(parameters.cxx_struct, parameters.NCaRU_sim)
+
+        super().__init__(parameters, stimulus_fn)
+
+    def set_init_state(self, init_state: dict) -> None:
+        NCaRU_sim = self.__NCaRU_sim
+
+        assert init_state["CaSS"].shape == (NCaRU_sim, 4)
+        self.__init_state_cxx.CaSS = init_state["CaSS"]
+        assert init_state["CaJSR"].shape == (NCaRU_sim,)
+        self.__init_state_cxx.CaJSR = init_state["CaJSR"]
+        assert init_state["LCC"].shape == (NCaRU_sim, 4)
+        self.__init_state_cxx.LCC = init_state["LCC"]
+        assert init_state["LCC_inactivation"].shape == (NCaRU_sim, 4)
+        self.__init_state_cxx.LCC_inactivation = init_state["LCC_inactivation"]
+        assert init_state["RyR"].shape == (NCaRU_sim, 4, 6)
+        self.__init_state_cxx.RyR = init_state["RyR"]
+        assert init_state["ClCh"].shape == (NCaRU_sim, 4)
+        self.__init_state_cxx.ClCh = init_state["ClCh"]
+
+        self.__init_state_cxx.V = init_state["V"]
+        self.__init_state_cxx.Nai = init_state["Nai"]
+        self.__init_state_cxx.Cai = init_state["Cai"]
+        self.__init_state_cxx.CaNSR = init_state["CaNSR"]
+        self.__init_state_cxx.CaLTRPN = init_state["CaLTRPN"]
+        self.__init_state_cxx.CaHTRPN = init_state["CaHTRPN"]
+        self.__init_state_cxx.m = init_state["m"]
+        self.__init_state_cxx.h = init_state["h"]
+        self.__init_state_cxx.j = init_state["j"]
+        self.__init_state_cxx.xKs = init_state["xKs"]
+        self.__init_state_cxx.XKr = init_state["XKr"]
+        self.__init_state_cxx.XKv14 = init_state["XKv14"]
+        self.__init_state_cxx.XKv43 = init_state["XKv43"]
+
+    def simulate(
+        self,
+        step_size: float,
+        num_steps: int,
+        record_every: int = 1,
+    ) -> GWSolution:
+        """Simulate the model with a step size of step_size over num_steps steps.
+
+        Args:
+            step_size (float): Size of the integrator time step (ms). Value must be > 0.
+            num_steps (int): Number of steps that the integrator should take. Value must be > 0.
+            record_every (int, optional): Number of steps between recording snapshots of the state. Value must be > 0. Defaults to 1.
+
+        Returns:
+            GWSolution: Snapshots of state through simulation.
+        """
+        assert_positive(step_size, "step_size")
+        assert_positive(num_steps, "num_steps")
+        assert_positive(record_every, "record_every")
+        self.__model.init_state(self.__init_state_cxx)
+        cxx_sol = self.__model.run(
+            step_size,
+            num_steps,
+            self.stimulus_fn,
+            record_every,
+        )
+
+        return GWSolution(cxx_sol, self.parameters)
 
 
-def _unpack_crus(
-    state_dict: dict, lattice: bool
-) -> gw_cxx.GWCRUState | gw_cxx.GWCRULatticeState:
-    if lattice:
-        CaSS_shape = state_dict["CaSS"].shape
-        assert len(CaSS_shape) == 2, "Wrong shape of CaSS"
-        NCaRU_x, NCaRU_y = CaSS_shape
-        state = gw_cxx.GWCRULatticeState(NCaRU_x, NCaRU_y)
-        state.CaSS = state_dict["CaSS"]
-        assert (
-            state_dict["CaJSR"].shape == CaSS_shape
-        ), "CaJSR shape must be the same as CaSS"
-        state.CaJSR = state_dict["CaJSR"]
-        assert (
-            state_dict["LCC"].shape == CaSS_shape
-        ), "LCC shape must be the same as CaSS"
-        state.LCC = state_dict["LCC"]
-        assert (
-            state_dict["LCC_inactivation"].shape == CaSS_shape
-        ), "LCC_inactivation shape must be the same as CaSS"
-        state.LCC_inactivation = state_dict["LCC_inactivation"]
-        assert (
-            state_dict["RyR"].shape[:-1] == CaSS_shape
-        ), "First two axes of RyR must have the same dimensions as CaSS"
-        state.RyR = state_dict["RyR"]
-        assert (
-            state_dict["ClCh"].shape == CaSS_shape
-        ), "ClCh shape must be the same as CaSS"
-        state.ClCh = state_dict["ClCh"]
-    else:
-        NCaRU = state_dict["CaSS"].shape[0]
-        state = gw_cxx.GWCRUState(NCaRU)
-        state.CaSS = state_dict["CaSS"]
-        state.CaJSR = state_dict["CaJSR"]
-        state.LCC = state_dict["LCC"]
-        state.LCC_inactivation = state_dict["LCC_inactivation"]
-        state.RyR = state_dict["RyR"]
-        state.ClCh = state_dict["ClCh"]
-    return state
+class GWLatticeModel(_GWModel):
+    """Simulates the Greenstein and Winslow model with specified parameters and stimulus."""
+
+    # @classmethod
+    # def PRNG_options(cls) -> List[str]:
+    #    """Get the available arguments for PRNG in the simulate method.
+
+    #    Returns:
+    #        List[str]: Implemented PRNGs for simulating the model.
+    #    """
+    #    return __IMPLEMENTED_PRNGS
+
+    def __init__(
+        self,
+        init_state: dict,
+        parameters: None | GWLatticeParameters = None,
+        stimulus_fn: None | Callable[[float], float] = None,
+    ):
+        """
+        Args:
+            parameters (None | GWLatticeParameters, optional): Model parameters. Defaults to None, in which case the default parameters are used.
+            stimulus_fn (None | Callable[[float], float], optional): Time dependent external stimulus in pA/pF. Defaults to the zero function.
+        """
+        if parameters is not None:
+            assert isinstance(
+                parameters, GWLatticeParameters
+            ), "parameters must be an instance of GWParameters"
+        else:
+            parameters = GWLatticeParameters()
+
+        self.__NCaRU_x = init_state["Cai"].shape[0]
+        self.__NCaRU_y = init_state["Cai"].shape[1]
+
+        parameters.NCaRU_x = self.__NCaRU_x
+        parameters.NCaRU_y = self.__NCaRU_y
+
+        self.__init_state_cxx = Models.GWLatticeInitialState(
+            self.__NCaRU_x, self.__NCaRU_y
+        )
+        self.set_init_state(init_state)
+
+        self.__model = Models.GWLatticeModel(
+            parameters.cxx_struct, parameters.NCaRU_x, parameters.NCaRU_y
+        )
+
+        super().__init__(parameters, stimulus_fn)
+
+    def set_init_state(self, init_state: dict) -> None:
+        NCaRU_x = self.__NCaRU_x
+        NCaRU_y = self.__NCaRU_y
+
+        assert init_state["Cai"].shape == (NCaRU_x, NCaRU_y)
+        self.__init_state_cxx.Cai = init_state["Cai"]
+        assert init_state["CaNSR"].shape == (NCaRU_x, NCaRU_y)
+        self.__init_state_cxx.CaNSR = init_state["CaNSR"]
+        assert init_state["CaLTRPN"].shape == (NCaRU_x, NCaRU_y)
+        self.__init_state_cxx.CaLTRPN = init_state["CaLTRPN"]
+        assert init_state["CaHTRPN"].shape == (NCaRU_x, NCaRU_y)
+        self.__init_state_cxx.CaHTRPN = init_state["CaHTRPN"]
+        assert init_state["CaSS"].shape == (NCaRU_x, NCaRU_y)
+        self.__init_state_cxx.CaSS = init_state["CaSS"]
+        assert init_state["CaJSR"].shape == (NCaRU_x, NCaRU_y)
+        self.__init_state_cxx.CaJSR = init_state["CaJSR"]
+        assert init_state["LCC"].shape == (NCaRU_x, NCaRU_y)
+        self.__init_state_cxx.LCC = init_state["LCC"]
+        assert init_state["LCC_inactivation"].shape == (NCaRU_x, NCaRU_y)
+        self.__init_state_cxx.LCC_inactivation = init_state["LCC_inactivation"]
+        assert init_state["RyR"].shape == (NCaRU_x, NCaRU_y, 6)
+        self.__init_state_cxx.RyR = init_state["RyR"]
+        assert init_state["ClCh"].shape == (NCaRU_x, NCaRU_y)
+        self.__init_state_cxx.ClCh = init_state["ClCh"]
+
+        self.__init_state_cxx.V = init_state["V"]
+        self.__init_state_cxx.Nai = init_state["Nai"]
+        self.__init_state_cxx.m = init_state["m"]
+        self.__init_state_cxx.h = init_state["h"]
+        self.__init_state_cxx.j = init_state["j"]
+        self.__init_state_cxx.xKs = init_state["xKs"]
+        self.__init_state_cxx.XKr = init_state["XKr"]
+        self.__init_state_cxx.XKv14 = init_state["XKv14"]
+        self.__init_state_cxx.XKv43 = init_state["XKv43"]
+
+    def simulate(
+        self,
+        step_size: float,
+        num_steps: int,
+        record_every: int = 1,
+    ) -> GWLatticeSolution:
+        """Simulate the model with a step size of step_size over num_steps steps.
+
+        Args:
+            step_size (float): Size of the integrator time step (ms). Value must be > 0.
+            num_steps (int): Number of steps that the integrator should take. Value must be > 0.
+            record_every (int, optional): Number of steps between recording snapshots of the state. Value must be > 0. Defaults to 1.
+
+        Returns:
+            GWLatticeSolution: Snapshots of state through simulation.
+        """
+        assert_positive(step_size, "step_size")
+        assert_positive(num_steps, "num_steps")
+        assert_positive(record_every, "record_every")
+        self.__model.init_state(self.__init_state_cxx)
+        cxx_sol = self.__model.run(
+            step_size,
+            num_steps,
+            self.stimulus_fn,
+            record_every,
+        )
+
+        return GWLatticeSolution(cxx_sol, self.parameters)

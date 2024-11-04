@@ -17,29 +17,6 @@ from numba.cuda.random import xoroshiro128p_uniform_float32, xoroshiro128p_type
 
 
 @cuda.jit(
-    void(
-        f4[:, :, :],
-        i4[:, :],
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        size_t,
-    ),
     device=True,
     inline=True,
 )
@@ -54,6 +31,7 @@ def update_LCC_probs(
     r2,
     s1_,
     cp_bar,
+    cp_tilde,
     k1_,
     k2,
     k2_,
@@ -67,8 +45,8 @@ def update_LCC_probs(
     idx,
 ):
     """Does euler step for Kolmogorov equations. Assumed that the LCCs are stored in a 1d array and the indexing semantics are dealt with elsewhere"""
-    cpbar_cp3 = (cp_bar / cp) * (cp_bar / cp) * (cp_bar / cp)
-    cp_cpbar4 = (cp / cp_bar) / cpbar_cp3
+    cptilde_cp3 = (cp_tilde / cp) * (cp_tilde / cp) * (cp_tilde / cp)
+    cp_cpbar4 = (cp / cp_bar) * (cp / cp_bar) * (cp / cp_bar) * (cp / cp_bar)
     _1pcp_cpbar4 = (
         (float32(1.0) + cp / cp_bar)
         * (float32(1.0) + cp / cp_bar)
@@ -78,10 +56,10 @@ def update_LCC_probs(
     TCa = (float32(78.0329) + float32(0.1) * _1pcp_cpbar4) / (float32(1.0) + cp_cpbar4)
     tauCa = (R - TCa) * Pr + TCa
 
-    s1 = float32(0.02) / (float32(1.0) + cpbar_cp3)
-    k1 = float32(0.03) / (float32(1.0) + cpbar_cp3)
+    s1 = float32(0.02) / (float32(1.0) + cptilde_cp3)
+    k1 = float32(0.03) / (float32(1.0) + cptilde_cp3)
     k5 = (float32(1.0) - Ps) / tauCa
-    k6 = Ps / (tauCa * (float32(1.0) + cpbar_cp3))
+    k6 = Ps / (tauCa * (float32(1.0) + cptilde_cp3))
 
     s2 = s1 * k2 * r1 / (k1 * r2)
     s2_ = s1_ * k2_ * r1 / (k1_ * r2)
@@ -147,9 +125,7 @@ def update_LCC_probs(
             LCC_probs[idx, j, 6] = float32(1) - dt * (r1 + s1 + s1_)
 
 
-@cuda.jit(
-    i4(f4[:, :, :], xoroshiro128p_type[:], size_t, size_t), device=True, inline=True
-)
+@cuda.jit(device=True, inline=True)
 def sample_icdf(LCC_probs, rng_states, i, k):
     u = xoroshiro128p_uniform_float32(rng_states, i)
     cdf = float32(0)
@@ -160,46 +136,7 @@ def sample_icdf(LCC_probs, rng_states, i, k):
     return 7
 
 
-@cuda.jit(f4(f4[:, :], size_t, size_t, size_t), device=True, inline=True)
-def get_boundary_values(arr, height, width, idx):
-    """Convert idx to appropriate 2d index on boundary of arr and return the corresponding value of arr
-    For now I will assume that the values are arranged according to top, bottom, left, right
-    """
-    if idx < width:
-        return arr[0, idx]
-    elif idx < 2 * width:
-        return arr[height - 1, idx - width]
-    elif idx < 2 * width + height - 2:
-        return arr[idx - 2 * width, 0]
-    else:
-        return arr[idx - (2 * width + height - 2), width - 1]
-
-
-@cuda.jit(
-    void(
-        i4[:, :],
-        f4[:, :, :],
-        f4[:, :],
-        xoroshiro128p_type[:],
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-        f4,
-    )
-)
+@cuda.jit
 def LCC_kernel(
     LCC,
     LCC_probs,
@@ -212,6 +149,7 @@ def LCC_kernel(
     r2,
     s1_,
     cp_bar,
+    cp_tilde,
     k1_,
     k2,
     k2_,
@@ -237,6 +175,7 @@ def LCC_kernel(
             r2,
             s1_,
             cp_bar,
+            cp_tilde,
             k1_,
             k2,
             k2_,

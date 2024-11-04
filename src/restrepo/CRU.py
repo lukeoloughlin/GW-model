@@ -2,6 +2,7 @@ import math
 
 import numpy as np
 import numpy.typing as npt
+from numba import float32
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
@@ -11,10 +12,11 @@ from LCC import LCC_kernel
 
 DEFAULT_LCC_PARAMS = {
     "k0p": 3.0,
-    "cp_bar": 3.0,
+    "cp_bar": 1.5,
+    "cp_tilde": 0.5,
     "tau_po": 1.0,
     "r1": 0.3,
-    "r2": 3.0,
+    "r2": 6.0,
     "s1_": 0.00195,
     "k1_": 0.00413,
     "k2": 0.0001,
@@ -93,6 +95,7 @@ def LCC_stationary(
     tau_po: float = DEFAULT_LCC_PARAMS["tau_po"],
     TBa: float = DEFAULT_LCC_PARAMS["TBa"],
     cp_bar: float = DEFAULT_LCC_PARAMS["cp_bar"],
+    cp_tilde: float = DEFAULT_LCC_PARAMS["cp_tilde"],
     k2: float = DEFAULT_LCC_PARAMS["k2"],
     k1_: float = DEFAULT_LCC_PARAMS["k1_"],
     k2_: float = DEFAULT_LCC_PARAMS["k2_"],
@@ -103,10 +106,10 @@ def LCC_stationary(
 
     TCa = (78.0329 + 0.1 * (1 + cp / cp_bar) ** 4) / (1.0 + (cp / cp_bar) ** 4)
 
-    k1 = 0.03 / (1.0 + (cp_bar / cp) ** 3)
+    k1 = 0.03 / (1.0 + (cp_tilde / cp) ** 3)
     tauCa = (R - TCa) * Pr + TCa
     k5 = (1.0 - Ps) / tauCa
-    k6 = Ps / (tauCa * (1.0 + (cp_bar / cp) ** 3))
+    k6 = Ps / (tauCa * (1.0 + (cp_bar / cp_tilde) ** 3))
 
     piC1_un = alpha / beta
     piI2Ca_un = k6 / k5
@@ -115,26 +118,32 @@ def LCC_stationary(
     piI1Ba_un = (k1_ / k2_) * piC1_un
     piO_un = (r1 / r2) * piC1_un
 
-    norm = 1.0 + piC1_un + piI2Ca_un + piI2Ba_un + piI1Ca_un + piI1Ba_un + piO_un
-
-    pi = np.zeros((*cp.shape, 7))
-    pi[..., 0] = piC1_un / norm
-    pi[..., 1] = 1.0 / norm
-    pi[..., 2] = piI1Ca_un / norm
-    pi[..., 3] = piI2Ca_un / norm
-    pi[..., 4] = piI1Ba_un / norm
-    pi[..., 5] = piI2Ba_un / norm
-    pi[..., 6] = piO_un / norm
+    pi_un = np.zeros((*cp.shape, 7))
+    pi_un[..., 0] = piC1_un
+    pi_un[..., 1] = 1.0
+    pi_un[..., 2] = piI1Ca_un
+    pi_un[..., 3] = piI2Ca_un
+    pi_un[..., 4] = piI1Ba_un
+    pi_un[..., 5] = piI2Ba_un
+    pi_un[..., 6] = piO_un
     out = np.zeros((*cp.shape, 4), dtype=np.int32)
 
     ind = [1, 2, 3, 4, 5, 6, 7]
     for i in range(cp.shape[0]):
-        out[0, i, :] = np.random.choice(ind, p=pi[0, i, :], size=(4,))
-        out[-1, i, :] = np.random.choice(ind, p=pi[0, i, :], size=(4,))
+        out[0, i, :] = np.random.choice(
+            ind, p=(pi_un[0, i, :] / pi_un[0, i, :].sum()), size=(4,)
+        )
+        out[-1, i, :] = np.random.choice(
+            ind, p=(pi_un[-1, i, :] / pi_un[-1, i, :].sum()), size=(4,)
+        )
 
     for i in range(1, cp.shape[1] - 1):
-        out[i, 0, :] = np.random.choice(ind, p=pi[i, 0, :], size=(4,))
-        out[i, -1, :] = np.random.choice(ind, p=pi[i, -1, :], size=(4,))
+        out[i, 0, :] = np.random.choice(
+            ind, p=(pi_un[i, 0, :] / pi_un[i, 0, :].sum()), size=(4,)
+        )
+        out[i, -1, :] = np.random.choice(
+            ind, p=(pi_un[i, -1, :] / pi_un[i, -1, :].sum()), size=(4,)
+        )
 
     return out
 
@@ -145,6 +154,7 @@ class CRUs:
 
         self.k0p = np.float32(DEFAULT_LCC_PARAMS["k0p"])
         self.cp_bar = np.float32(DEFAULT_LCC_PARAMS["cp_bar"])
+        self.cp_tilde = np.float32(DEFAULT_LCC_PARAMS["cp_tilde"])
         self.tau_po = np.float32(DEFAULT_LCC_PARAMS["tau_po"])
         self.r1 = np.float32(DEFAULT_LCC_PARAMS["r1"])
         self.r2 = np.float32(DEFAULT_LCC_PARAMS["r2"])
@@ -265,6 +275,7 @@ class CRUs:
                 self.K,
                 self.rng_states,
             )
+
             LCC_kernel.forall(self.d_LCC.shape[0])(
                 self.d_LCC,
                 self.LCC_probs,
@@ -277,6 +288,7 @@ class CRUs:
                 self.r2,
                 self.s1_,
                 self.cp_bar,
+                self.cp_tilde,
                 self.k1_,
                 self.k2,
                 self.k2_,

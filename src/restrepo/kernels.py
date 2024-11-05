@@ -8,14 +8,17 @@ from numba.cuda.random import xoroshiro128p_normal_float32
 
 from RyR import update_RyR_rates, update_RyR_diffusion
 from LCC import update_LCC_probs, sample_icdf
+from utils import square, get_boundary_val
 from currents import (
-    update_diffusive_fluxes,
-    update_ITC,
+    ITCa,
+    Ileak,
+    Iup,
+    Ir,
     update_ICa,
     update_INaCa,
     luminal_buffer,
-    get_ICa,
-    get_INaCa,
+    update_diffusive_fluxes,
+    cp_cs_iter,
 )
 
 
@@ -48,6 +51,7 @@ def currents_and_RyR(
     # CaTs,
     Delta_ci,
     Delta_cnsr,
+    sum_cs_nn,
     # ITCi,
     # ITCs,
     dW,
@@ -68,6 +72,8 @@ def currents_and_RyR(
     tau_iL,
     tau_nsrT,
     tau_nsrL,
+    tau_sL,
+    tau_sT,
 ):
     x, y = cuda.grid(2)
     Nx, Ny = cs.shape
@@ -92,12 +98,22 @@ def currents_and_RyR(
             y,
         )
 
-        # update ITCs
-        # update_ITC(ITCi, ITCs, ci, cs, CaTi, CaTs, kon, koff, BT, x, y)
-
         # Update ci and cnsr diffusions
         update_diffusive_fluxes(
-            Delta_ci, Delta_cnsr, ci, cnsr, tau_iT, tau_iL, tau_nsrT, tau_nsrL, x, y
+            Delta_ci,
+            Delta_cnsr,
+            sum_cs_nn,
+            ci,
+            cnsr,
+            cs,
+            tau_iT,
+            tau_iL,
+            tau_nsrT,
+            tau_nsrL,
+            tau_sL,
+            tau_sT,
+            x,
+            y,
         )
 
         # update dW
@@ -204,6 +220,7 @@ def update_boundary_currents_and_LCC(
             idx,
         )
 
+        # Safe to update LCC here since ICa has already been calculated and stored for later use
         for j in range(4):
             LCC[idx, j] = sample_icdf(LCC_probs, rng_states, idx, j)
 
@@ -218,13 +235,12 @@ def update_RyR_and_euler_step(
     CaTi,
     CaTs,
     RyR,
-    LCC,
-    cs_tmp,
     RyR_sorted,
     ICa,
     INaCa,
     Delta_ci,
     Delta_cnsr,
+    sum_cs_nn,
     RyR_rates,
     dW,
     dt,
@@ -234,22 +250,74 @@ def update_RyR_and_euler_step(
     gleak,
     Kjsr2,
     vup,
+    vp,
+    Jmax,
     Ki,
     Knsr,
     tau_tr,
+    tau_si,
     rho_inf,
     K,
     BCSQN,
     nM,
     nD,
     KC,
+    KCAM,
+    BCAM,
+    KSR,
+    BSR,
+    KMCa,
+    BMCa,
+    KMMg,
+    BMMg,
+    vs,
+    vi,
+    vnsr,
+    vjsr,
+    tau_p,
+    tau_sT,
+    tau_sL,
 ):
     x, y = cuda.grid(2)
     Nx, Ny = cs.shape
 
     if x < Nx and y < Ny:
-        ryr_open = RyR[x, y, 1] + RyR[x, y, 2]  # Hold this value before updating
+        ryr_open = RyR[x, y, 1] + RyR[x, y, 2]
+        ci_ = ci[x, y]
+        cnsr_ = cnsr[x, y]
+        cjsr_ = cjsr[x, y]
+        cs_ = cs[x, y]
+        cp_ = cp[x, y]
+        CaTi_ = CaTi[x, y]
+        CaTs_ = CaTs[x, y]
+        vp_ = vp[x, y]
+        sum_cs_nn_ = sum_cs_nn[x, y]
 
+        ITCi = ITCa(ci_, CaTi_, kon, koff, BT)
+        ITCs = ITCa(cs_, CaTs_, kon, koff, BT)
+        Ileak_ = Ileak(cjsr_, cnsr_, ci_, gleak, Kjsr2)
+        Iup_ = Iup(ci_, cnsr_, Ki, Knsr, vup)
+        Ir_ = Ir(cp_, cjsr_, ryr_open, Jmax, vp)
+        Ici = Delta_ci[x, y]
+        Icnsr = Delta_cnsr[x, y]
+
+        Itr = (cnsr_ - cjsr_) / tau_tr
+        Idsi = (cs_ - ci_) / tau_si
+
+        INaCa = get_boundary_val(ICa, x, y, Nx, Ny)
+        ICa = get_boundary_val(INaCa, x, y, Nx, Ny)
+
+        calmodulin_buf = KCAM * BCAM / square(KCAM + ci_)
+        SR_buf = KSR * BSR / square(KSR + ci_)
+        myosin_Ca_buf = KMCa * BMCa / square(KMCa + ci_)
+        myosin_Mg_buf = KMMg * BMMg / square(KMMg + ci_)
+
+        beta_i = float32(1.0) / (
+            float32(1.0) + calmodulin_buf + SR_buf + myosin_Ca_buf + myosin_Mg_buf
+        )
+        beta_jsr = luminal_buffer(cjsr_, rho_inf, K, BCSQN, nM, nD, KC)
+
+        # Euler-Maruyama step for RyRs
         update_RyR_diffusion(
             RyR,
             RyR_sorted,
@@ -260,33 +328,34 @@ def update_RyR_and_euler_step(
             y,
         )
 
-        ITCi = kon * ci[x, y] * (BT - CaTi[x, y]) - koff * CaTi[x, y]
-        ITCs = kon * cs[x, y] * (BT - CaTs[x, y]) - koff * CaTs[x, y]
-
-        cjsr2 = cjsr[x, y] * cjsr[x, y]
-        Ileak = gleak * cjsr2 / (cjsr2 + Kjsr2) * (cnsr[x, y] - ci[x, y])
-
-        ci_Ki_pow = math.pow(ci[x, y] / Ki, float32(1.787))
-        cnsr_Knsr_pow = math.pow(ci[x, y] / Knsr, float32(1.787))
-
-        Iup = (
-            vup
-            * (ci_Ki_pow - cnsr_Knsr_pow)
-            / (float32(1.0) + ci_Ki_pow + cnsr_Knsr_pow)
+        # Fixed point iteration for rapid equilibrium approximation of cp and cs
+        cp_cs_iter(
+            cp,
+            cs,
+            cp_,
+            cs_,
+            cjsr_,
+            ci_,
+            ryr_open,
+            ICa,
+            INaCa,
+            ITCs,
+            sum_cs_nn_,
+            vp_,
+            vs,
+            tau_p,
+            tau_si,
+            tau_sT,
+            tau_sL,
+            Jmax,
+            x,
+            y,
+            Nx,
+            Ny,
         )
 
-        Itr = (cnsr[x, y] - cjsr[x, y]) / tau_tr
-
-        calmodulin_buf = ...
-        SR_buf = ...
-        myosin_Ca_buf = ...
-        myosin_Mg_buf = ...
-        beta_i = float32(1.0) / (
-            float32(1.0) + calmodulin_buf + SR_buf + myosin_Ca_buf + myosin_Mg_buf
-        )
-        beta_jsr = luminal_buffer(cjsr[x, y], rho_inf, K, BCSQN, nM, nD, KC)
-
-        INaCa = get_INaCa(ICa, x, y, Nx, Ny)
-        ICa = get_ICa(INaCa, x, y, Nx, Ny)
-
-        ### TODO: Finish writing this and figure out if i need to syncthreads
+        ci[x, y] += dt * beta_i * ((vs / vi) * Idsi - Iup_ + Ileak_ - ITCi + Ici)
+        cnsr[x, y] += dt * ((vi / vnsr) * (Iup_ - Ileak_) - (vjsr / vnsr) * Itr + Icnsr)
+        cjsr[x, y] += dt * beta_jsr * (Itr - (vp_ / vjsr) * Ir_)
+        CaTi[x, y] += dt * ITCi
+        CaTs[x, y] += dt * ITCs

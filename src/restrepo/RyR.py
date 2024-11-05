@@ -2,19 +2,13 @@ import math
 
 import numpy as np
 import numpy.typing as npt
-from numba import void, f4, float32, size_t  # f4 = float32
+from numba import float32
 import numba.cuda as cuda
-from numba.cuda.random import (
-    xoroshiro128p_normal_float32,
-    create_xoroshiro128p_states,
-    xoroshiro128p_type,
-)
+
+from utils import square, bubble_sort_ryr, calculate_rho, calculate_Mhat
 
 
-@cuda.jit(
-    device=True,
-    inline=True,
-)
+@cuda.jit(device=True, inline=True)
 def update_RyR_rates(
     RyR_rates,
     RyR,
@@ -32,16 +26,12 @@ def update_RyR_rates(
     y,
 ):
     """Device func to update RyR rates at position x, y"""
-    log_cp_K = math.log(cjsr[x, y]) - math.log(K)
-    hill_fn = rho_inf / (float32(1.0) + math.exp(float32(23.0) * log_cp_K))
-    Mhat = (math.sqrt(float32(1.0) + float32(8.0) * hill_fn * BCSQN) - float32(1.0)) / (
-        float32(4.0) * hill_fn * BCSQN
-    )
+    Mhat = calculate_Mhat(calculate_rho(cjsr[x, y], K, rho_inf), BCSQN)
 
-    k12 = Ku * cp[x, y] * cp[x, y]  # k12
+    k12 = Ku * square(cp[x, y])  # k12
     k23 = Mhat * cp[x, y] / tau_b  # k23
 
-    k43 = Kb * cp[x, y] * cp[x, y]  # k43
+    k43 = Kb * square(cp[x, y])  # k43
     k32 = k12 / (k43 * tau_u)  # k32 = k41 * k12 / k43
 
     RyR_rates[x, y, 0] = k12 * RyR[x, y, 0]  # 1 -> 2
@@ -55,45 +45,20 @@ def update_RyR_rates(
 
 
 @cuda.jit(device=True, inline=True)
-def bubble_sort(RyR, sorted_arr, x, y):
-    sorted_arr[x, y, 0] = RyR[x, y, 0]
-    sorted_arr[x, y, 1] = RyR[x, y, 1]
-    sorted_arr[x, y, 2] = RyR[x, y, 2]
-    sorted_arr[x, y, 3] = RyR[x, y, 3]
-
-    swapped = False
-    tmp = float32(0)
-    for i in range(3):
-        swapped = False
-        for j in range(3 - i):
-            if sorted_arr[x, y, j] > sorted_arr[x, y, j + 1]:
-                tmp = sorted_arr[x, y, j]
-                sorted_arr[x, y, j] = sorted_arr[x, y, j + 1]
-                sorted_arr[x, y, j + 1] = tmp
-                swapped = True
-        # If no two elements were swapped, then break
-        if not swapped:
-            break
-
-
-@cuda.jit(
-    device=True,
-    inline=True,
-)
-def RyR_orth_proj_simplex(RyR, sorted_arr, x, y):
+def RyR_orth_proj_simplex(RyR, RyR_sorted, x, y):
     """Device func to perform orthogonal projection of RyR values onto simplex after Euler Maruyama update"""
     # Copy the RyR values into preallocated array and use bubble sort
 
-    bubble_sort(RyR, sorted_arr, x, y)
+    bubble_sort_ryr(RyR, RyR_sorted, x, y)
 
     lambda_ = float32(0.0)
     sum_ = float32(1.0)
     for i in range(4):
-        if sum_ - (float32(4.0 - i)) * sorted_arr[x, y, i] < float32(1.0):
+        if sum_ - (float32(4.0 - i)) * RyR_sorted[x, y, i] < float32(1.0):
             lambda_ = (sum_ - 1.0) / (float32(4.0 - i))
             break
         else:
-            sum_ -= sorted_arr[x, y, i]
+            sum_ -= RyR_sorted[x, y, i]
 
     RyR[x, y, 0] = max(RyR[x, y, 0] - lambda_, float32(0.0))
     RyR[x, y, 1] = max(RyR[x, y, 1] - lambda_, float32(0.0))
@@ -101,11 +66,8 @@ def RyR_orth_proj_simplex(RyR, sorted_arr, x, y):
     RyR[x, y, 3] = max(RyR[x, y, 3] - lambda_, float32(0.0))
 
 
-@cuda.jit(
-    device=True,
-    inline=True,
-)
-def update_RyR_diffusion(RyR, RyR_tmp, RyR_rates, dW, dt, x, y):
+@cuda.jit(device=True, inline=True)
+def update_RyR_diffusion(RyR, RyR_sorted, RyR_rates, dW, dt, x, y):
     """Euler Maruyama step for RyR model with reflecting boundary conditions."""
     drift1 = (
         RyR_rates[x, y, 1]
@@ -141,60 +103,60 @@ def update_RyR_diffusion(RyR, RyR_tmp, RyR_rates, dW, dt, x, y):
     RyR[x, y, 2] += dt * drift3 - sigma23 * dW[x, y, 1] + sigma34 * dW[x, y, 2]
     RyR[x, y, 3] = float32(1.0) - (RyR[x, y, 0] + RyR[x, y, 1] + RyR[x, y, 2])
 
-    RyR_orth_proj_simplex(RyR, RyR_tmp, x, y)
+    RyR_orth_proj_simplex(RyR, RyR_sorted, x, y)
 
 
-@cuda.jit
-def RyR_kernel(
-    RyR,
-    RyR_rates,
-    RyR_tmp,
-    cp,
-    cjsr,
-    dW,
-    eps,
-    dt,
-    sqrtdt,
-    Ku,
-    Kb,
-    _1_tau_u,
-    _1_tau_b,
-    _1_tau_c,
-    BCSQN,
-    rho_inf,
-    K,
-    rng_states,
-):
-    x, y = cuda.grid(2)
+# @cuda.jit
+# def RyR_kernel(
+#    RyR,
+#    RyR_rates,
+#    RyR_tmp,
+#    cp,
+#    cjsr,
+#    dW,
+#    eps,
+#    dt,
+#    sqrtdt,
+#    Ku,
+#    Kb,
+#    _1_tau_u,
+#    _1_tau_b,
+#    _1_tau_c,
+#    BCSQN,
+#    rho_inf,
+#    K,
+#    rng_states,
+# ):
+#    x, y = cuda.grid(2)
 
-    N1, N2, _ = RyR.shape
+#    N1, N2, _ = RyR.shape
 
-    tid = y * N1 + x
+#    tid = y * N1 + x
 
-    if x < N1 and y < N2:
+#    if x < N1 and y < N2:
 
-        update_RyR_rates(
-            RyR_rates,
-            RyR,
-            cp,
-            cjsr,
-            Ku,
-            Kb,
-            _1_tau_u,
-            _1_tau_b,
-            _1_tau_c,
-            BCSQN,
-            rho_inf,
-            K,
-            x,
-            y,
-        )
+#        update_RyR_rates(
+#            RyR_rates,
+#            RyR,
+#            cp,
+#            cjsr,
+#            Ku,
+#            Kb,
+#            _1_tau_u,
+#            _1_tau_b,
+#            _1_tau_c,
+#            BCSQN,
+#            rho_inf,
+#            K,
+#            x,
+#            y,
+#        )
 
-        # update normals
-        for i in range(4):
-            dW[x, y, i] = sqrtdt * xoroshiro128p_normal_float32(rng_states, tid)
+# update normals
+#        for i in range(4):
+#            dW[x, y, i] = sqrtdt * xoroshiro128p_normal_float32(rng_states, tid)
 
-        update_RyR_diffusion(RyR, RyR_tmp, RyR_rates, dW, eps, dt, x, y)
+#        update_RyR_diffusion(RyR, RyR_tmp, RyR_rates, dW, eps, dt, x, y)
 
 
 def test_RyR_cpu(

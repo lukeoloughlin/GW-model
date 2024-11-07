@@ -6,9 +6,9 @@ from numba import float32
 from numba import cuda
 from numba.cuda.random import xoroshiro128p_normal_float32
 
+from params import RestrepoParams
 from RyR import update_RyR_rates, update_RyR_diffusion
 from LCC import update_LCC_probs, sample_icdf
-from utils import square, get_boundary_val
 from currents import (
     ITCa,
     Ileak,
@@ -20,60 +20,25 @@ from currents import (
     update_diffusive_fluxes,
     cp_cs_iter,
 )
-
-
-@cuda.jit(device=True, inline=True)
-def get_boundary_values(arr, height, width, idx):
-    """Convert idx to appropriate 2d index on boundary of arr and return the corresponding value of arr
-    For now I will assume that the values are arranged according to top, bottom, left, right
-    """
-    if idx < width:
-        return arr[0, idx]
-    elif idx < 2 * width:
-        return arr[height - 1, idx - width]
-    elif idx < 2 * width + height - 2:
-        return arr[idx - 2 * width, 0]
-    else:
-        return arr[idx - (2 * width + height - 2), width - 1]
+from utils import square, boundary_from_flattened, flattened_from_boundary
 
 
 @cuda.jit
 def currents_and_RyR(
-    RyR,
-    RyR_rates,
-    # RyR_sorted,
-    ci,
-    cs,
-    cjsr,
-    cnsr,
-    cp,
-    # CaTi,
-    # CaTs,
-    Delta_ci,
-    Delta_cnsr,
-    sum_cs_nn,
-    # ITCi,
-    # ITCs,
-    dW,
-    rng_states,
-    sqrtdt,
-    Ku,
-    Kb,
-    tau_u,
-    tau_b,
-    tau_c,
-    BCSQN,
-    rho_inf,
-    K,
-    # kon,
-    # koff,
-    # BT,
-    tau_iT,
-    tau_iL,
-    tau_nsrT,
-    tau_nsrL,
-    tau_sL,
-    tau_sT,
+    RyR: npt.NDArray,
+    RyR_rates: npt.NDArray,
+    ci: npt.NDArray,
+    cs: npt.NDArray,
+    cjsr: npt.NDArray,
+    cnsr: npt.NDArray,
+    cp: npt.NDArray,
+    Delta_ci: npt.NDArray,
+    Delta_cnsr: npt.NDArray,
+    sum_cs_nn: npt.NDArray,
+    dW: npt.NDArray,
+    rng_states: npt.NDArray,
+    sqrtdt: float,
+    params: RestrepoParams,
 ):
     x, y = cuda.grid(2)
     Nx, Ny = cs.shape
@@ -86,14 +51,7 @@ def currents_and_RyR(
             RyR,
             cp,
             cjsr,
-            Ku,
-            Kb,
-            tau_u,
-            tau_b,
-            tau_c,
-            BCSQN,
-            rho_inf,
-            K,
+            params,
             x,
             y,
         )
@@ -106,12 +64,7 @@ def currents_and_RyR(
             ci,
             cnsr,
             cs,
-            tau_iT,
-            tau_iL,
-            tau_nsrT,
-            tau_nsrL,
-            tau_sL,
-            tau_sT,
+            params,
             x,
             y,
         )
@@ -123,45 +76,26 @@ def currents_and_RyR(
 
 @cuda.jit
 def update_boundary_currents_and_LCC(
-    LCC,
-    LCC_probs,
-    cp,
-    cs,
-    ICa,
-    INaCa,
-    rng_states,
-    alpha,
-    beta,
-    r1,
-    r2,
-    s1_,
-    cp_bar,
-    cp_tilde,
-    k1_,
-    k2,
-    k2_,
-    k3,
-    k3_,
-    k5_,
-    k6_,
-    Pr,
-    Ps,
-    R,
-    PCa,
-    z,
-    gamma,
-    Cao,
-    vNaCa,
-    eta,
-    Nai3,
-    Nao3,
-    ksat,
-    KmNao3,
-    KmCao,
-    KmCai,
-    Kda,
-    t1,
-    dt,
+    LCC: npt.NDArray,
+    LCC_probs: npt.NDArray,
+    cp: npt.NDArray,
+    cs: npt.NDArray,
+    ICa: npt.NDArray,
+    INaCa: npt.NDArray,
+    rng_states: npt.NDArray,
+    Nai3: float,
+    alpha: float,
+    beta: float,
+    k3: float,
+    k3_: float,
+    k5_: float,
+    k6_: float,
+    Pr: float,
+    Ps: float,
+    R: float,
+    z: float,
+    dt: float,
+    params: RestrepoParams,
 ):
 
     idx = cuda.grid(1)
@@ -169,8 +103,8 @@ def update_boundary_currents_and_LCC(
 
     if idx < ICa.shape[0]:
         # Get cs ans cp values from the corresponding boundary element
-        cs_ = get_boundary_values(cs, Nx, Ny, idx)
-        cp_ = get_boundary_values(cp, Nx, Ny, idx)
+        cs_ = flattened_from_boundary(cs, Nx, Ny, idx)
+        cp_ = flattened_from_boundary(cp, Nx, Ny, idx)
 
         # Update LCC dist
         update_LCC_probs(
@@ -180,14 +114,6 @@ def update_boundary_currents_and_LCC(
             dt,
             alpha,
             beta,
-            r1,
-            r2,
-            s1_,
-            cp_bar,
-            cp_tilde,
-            k1_,
-            k2,
-            k2_,
             k3,
             k3_,
             k5_,
@@ -195,28 +121,20 @@ def update_boundary_currents_and_LCC(
             Pr,
             Ps,
             R,
+            params,
             idx,
         )
 
         # Update ICa
-        update_ICa(ICa, LCC, cp_, PCa, z, gamma, Cao, idx)
+        update_ICa(ICa, LCC, cp_, params.PCa, z, params.gamma, params.Cao, idx)
 
         # Update INaCa
         update_INaCa(
             INaCa,
             cs_,
-            vNaCa,
             z,
-            eta,
             Nai3,
-            Cao,
-            Nao3,
-            ksat,
-            KmNao3,
-            KmCao,
-            KmCai,
-            Kda,
-            t1,
+            params,
             idx,
         )
 
@@ -227,56 +145,25 @@ def update_boundary_currents_and_LCC(
 
 @cuda.jit
 def update_RyR_and_euler_step(
-    ci,
-    cs,
-    cp,
-    cnsr,
-    cjsr,
-    CaTi,
-    CaTs,
-    RyR,
-    RyR_sorted,
-    ICa,
-    INaCa,
-    Delta_ci,
-    Delta_cnsr,
-    sum_cs_nn,
-    RyR_rates,
-    dW,
-    dt,
-    kon,
-    koff,
-    BT,
-    gleak,
-    Kjsr2,
-    vup,
-    vp,
-    Jmax,
-    Ki,
-    Knsr,
-    tau_tr,
-    tau_si,
-    rho_inf,
-    K,
-    BCSQN,
-    nM,
-    nD,
-    KC,
-    KCAM,
-    BCAM,
-    KSR,
-    BSR,
-    KMCa,
-    BMCa,
-    KMMg,
-    BMMg,
-    vs,
-    vi,
-    vnsr,
-    vjsr,
-    tau_p,
-    tau_sT,
-    tau_sL,
+    ci: npt.NDArray,
+    cs: npt.NDArray,
+    cp: npt.NDArray,
+    cnsr: npt.NDArray,
+    cjsr: npt.NDArray,
+    CaTi: npt.NDArray,
+    CaTs: npt.NDArray,
+    RyR: npt.NDArray,
+    RyR_sorted: npt.NDArray,
+    ICa: npt.NDArray,
+    INaCa: npt.NDArray,
+    Delta_ci: npt.NDArray,
+    Delta_cnsr: npt.NDArray,
+    sum_cs_nn: npt.NDArray,
+    RyR_rates: npt.NDArray,
+    dW: npt.NDArray,
+    # vp: npt.NDArray -- Need to add when variable proximal subspace is used
+    dt: float,
+    params: RestrepoParams,
 ):
     x, y = cuda.grid(2)
     Nx, Ny = cs.shape
@@ -290,32 +177,40 @@ def update_RyR_and_euler_step(
         cp_ = cp[x, y]
         CaTi_ = CaTi[x, y]
         CaTs_ = CaTs[x, y]
-        vp_ = vp[x, y]
+        # vp_ = vp[x, y]
         sum_cs_nn_ = sum_cs_nn[x, y]
 
-        ITCi = ITCa(ci_, CaTi_, kon, koff, BT)
-        ITCs = ITCa(cs_, CaTs_, kon, koff, BT)
-        Ileak_ = Ileak(cjsr_, cnsr_, ci_, gleak, Kjsr2)
-        Iup_ = Iup(ci_, cnsr_, Ki, Knsr, vup)
-        Ir_ = Ir(cp_, cjsr_, ryr_open, Jmax, vp)
+        ITCi = ITCa(ci_, CaTi_, params.kon, params.koff, params.BT)
+        ITCs = ITCa(cs_, CaTs_, params.kon, params.koff, params.BT)
+        Ileak_ = Ileak(cjsr_, cnsr_, ci_, params.gleak, square(params.Kjsr))
+        Iup_ = Iup(ci_, cnsr_, params.Ki, params.Knsr, params.vup)
+        Ir_ = Ir(cp_, cjsr_, ryr_open, params.Jmax, params.vp)
         Ici = Delta_ci[x, y]
         Icnsr = Delta_cnsr[x, y]
 
-        Itr = (cnsr_ - cjsr_) / tau_tr
-        Idsi = (cs_ - ci_) / tau_si
+        Itr = (cnsr_ - cjsr_) / params.tau_tr
+        Idsi = (cs_ - ci_) / params.tau_si
 
-        INaCa = get_boundary_val(ICa, x, y, Nx, Ny)
-        ICa = get_boundary_val(INaCa, x, y, Nx, Ny)
+        INaCa_ = boundary_from_flattened(INaCa, x, y, Nx, Ny)
+        ICa_ = boundary_from_flattened(ICa, x, y, Nx, Ny)
 
-        calmodulin_buf = KCAM * BCAM / square(KCAM + ci_)
-        SR_buf = KSR * BSR / square(KSR + ci_)
-        myosin_Ca_buf = KMCa * BMCa / square(KMCa + ci_)
-        myosin_Mg_buf = KMMg * BMMg / square(KMMg + ci_)
+        calmodulin_buf = params.KCAM * params.BCAM / square(params.KCAM + ci_)
+        SR_buf = params.KSR * params.BSR / square(params.KSR + ci_)
+        myosin_Ca_buf = params.KMCa * params.BMCa / square(params.KMCa + ci_)
+        myosin_Mg_buf = params.KMMg * params.BMMg / square(params.KMMg + ci_)
 
         beta_i = float32(1.0) / (
             float32(1.0) + calmodulin_buf + SR_buf + myosin_Ca_buf + myosin_Mg_buf
         )
-        beta_jsr = luminal_buffer(cjsr_, rho_inf, K, BCSQN, nM, nD, KC)
+        beta_jsr = luminal_buffer(
+            cjsr_,
+            params.rho_inf,
+            params.K,
+            params.BCSQN,
+            params.nM,
+            params.nD,
+            params.KC,
+        )
 
         # Euler-Maruyama step for RyRs
         update_RyR_diffusion(
@@ -337,25 +232,31 @@ def update_RyR_and_euler_step(
             cjsr_,
             ci_,
             ryr_open,
-            ICa,
-            INaCa,
+            ICa_,
+            INaCa_,
             ITCs,
             sum_cs_nn_,
-            vp_,
-            vs,
-            tau_p,
-            tau_si,
-            tau_sT,
-            tau_sL,
-            Jmax,
+            params.vp,
+            params.vs,
+            params.tau_ps,
+            params.tau_si,
+            params.tau_sT,
+            params.tau_sL,
+            params.Jmax,
             x,
             y,
             Nx,
             Ny,
         )
 
-        ci[x, y] += dt * beta_i * ((vs / vi) * Idsi - Iup_ + Ileak_ - ITCi + Ici)
-        cnsr[x, y] += dt * ((vi / vnsr) * (Iup_ - Ileak_) - (vjsr / vnsr) * Itr + Icnsr)
-        cjsr[x, y] += dt * beta_jsr * (Itr - (vp_ / vjsr) * Ir_)
+        ci[x, y] += (
+            dt * beta_i * ((params.vs / params.vi) * Idsi - Iup_ + Ileak_ - ITCi + Ici)
+        )
+        cnsr[x, y] += dt * (
+            (params.vi / params.vnsr) * (Iup_ - Ileak_)
+            - (params.vjsr / params.vnsr) * Itr
+            + Icnsr
+        )
+        cjsr[x, y] += dt * beta_jsr * (Itr - (params.vp / params.vjsr) * Ir_)
         CaTi[x, y] += dt * ITCi
         CaTs[x, y] += dt * ITCs

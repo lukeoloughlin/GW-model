@@ -40,7 +40,7 @@ def calculate_Mhat(rho: float, BCSQN: float) -> float:
 
 
 @cuda.jit(device=True, inline=True)
-def get_boundary_val(arr: npt.NDArray, x: int, y: int, Nx: int, Ny: int):
+def boundary_from_flattened(arr: npt.NDArray, x: int, y: int, Nx: int, Ny: int):
     """Get values on boundaries from flattened array arr. Assumes arr is organised in the order top, bottom, left, right"""
     if x == 0:
         return arr[y]
@@ -52,6 +52,21 @@ def get_boundary_val(arr: npt.NDArray, x: int, y: int, Nx: int, Ny: int):
         return arr[2 * Ny + Nx + x - 3]
     else:
         return float32(0.0)
+
+
+@cuda.jit(device=True, inline=True)
+def flattened_from_boundary(arr, height, width, idx):
+    """Convert idx to appropriate 2d index on boundary of arr and return the corresponding value of arr
+    For now I will assume that the values are arranged according to top, bottom, left, right
+    """
+    if idx < width:
+        return arr[0, idx]
+    elif idx < 2 * width:
+        return arr[height - 1, idx - width]
+    elif idx < 2 * width + height - 2:
+        return arr[idx - 2 * width, 0]
+    else:
+        return arr[idx - (2 * width + height - 2), width - 1]
 
 
 @cuda.jit(device=True, inline=True)

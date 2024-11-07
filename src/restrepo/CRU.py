@@ -6,45 +6,23 @@ from numba import float32
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
-from RyR import RyR_kernel
-from LCC import LCC_kernel
+from params import RestrepoParams
+from kernels import (
+    currents_and_RyR,
+    update_boundary_currents_and_LCC,
+    update_RyR_and_euler_step,
+)
 
 
-DEFAULT_LCC_PARAMS = {
-    "k0p": 3.0,
-    "cp_bar": 1.5,
-    "cp_tilde": 0.5,
-    "tau_po": 1.0,
-    "r1": 0.3,
-    "r2": 6.0,
-    "s1_": 0.00195,
-    "k1_": 0.00413,
-    "k2": 0.0001,
-    "k2_": 0.00224,
-    "TBa": 450.0,
-}
-
-DEFAULT_RYR_PARMS = {
-    "Ku": 3.8e-4,
-    "Kb": 5e-5,
-    "tau_u": 125.0,
-    "tau_b": 5.0,
-    "tau_c": 1.0,
-    "BCSQN": 400.0,
-    "rho_inf": 5000.0,
-    "K": 850.0,
-}
-
-
-def _calculate_V_dep_LCC_params(V: float, tau_po: float, TBa: float):
+def _calculate_V_dep_LCC_params(V: float, params: RestrepoParams):
     po_inf = 1.0 / (1.0 + np.exp(-V / 8))
     Pr = 1.0 / (1.0 + np.exp(-(V + 40.0) / 4.0))
     Ps = 1.0 / (1.0 + np.exp(-(V + 40.0) / 11.32))
     R = 10.0 + 4954.0 * np.exp(V / 15.6)
-    tauBa = (R - TBa) * Pr + TBa
+    tauBa = (R - params.TBa) * Pr + params.TBa
 
-    alpha = po_inf / tau_po
-    beta = (1.0 - po_inf) / tau_po
+    alpha = po_inf / params.tau_po
+    beta = (1.0 - po_inf) / params.tau_po
     k3 = np.exp(-(V + 40.0) / 3.0) / (3.0 * (1.0 + np.exp(-(V + 40.0) / 3.0)))
     k5_ = (1.0 - Ps) / tauBa
     k6_ = Ps / tauBa
@@ -54,25 +32,20 @@ def _calculate_V_dep_LCC_params(V: float, tau_po: float, TBa: float):
 
 def RyR_stationary(
     cp: npt.NDArray,
-    K=DEFAULT_RYR_PARMS["K"],
-    rho_inf=DEFAULT_RYR_PARMS["rho_inf"],
-    BCSQN=DEFAULT_RYR_PARMS["BCSQN"],
-    Ku=DEFAULT_RYR_PARMS["Ku"],
-    Kb=DEFAULT_RYR_PARMS["Kb"],
-    tau_b=DEFAULT_RYR_PARMS["tau_b"],
-    tau_u=DEFAULT_RYR_PARMS["tau_u"],
-    tau_c=DEFAULT_RYR_PARMS["tau_c"],
+    params: RestrepoParams,
 ):
-    log_cp_K = np.log(cp) - np.log(K)
-    hill_fn = rho_inf / (1.0 + np.exp(23.0 * log_cp_K))
-    Mhat = (np.sqrt(1.0 + 8.0 * hill_fn * BCSQN) - 1.0) / (4.0 * hill_fn * BCSQN)
+    log_cp_K = np.log(cp) - np.log(params.K)
+    hill_fn = params.rho_inf / (1.0 + np.exp(23.0 * log_cp_K))
+    Mhat = (np.sqrt(1.0 + 8.0 * hill_fn * params.BCSQN) - 1.0) / (
+        4.0 * hill_fn * params.BCSQN
+    )
 
-    k12 = Ku * cp**2  # k12
-    k21 = 1 / tau_c
-    k23 = Mhat / tau_b  # k23
-    k34 = 1 / tau_c
-    k43 = Kb * cp**2  # k43
-    k32 = k12 / (tau_u * k43)  # k32 = k41 * k12 / k43
+    k12 = params.Ku * cp**2  # k12
+    k21 = 1 / params.tau_c
+    k23 = Mhat / params.tau_b  # k23
+    k34 = 1 / params.tau_c
+    k43 = params.Kb * cp**2  # k43
+    k32 = k12 / (params.tau_u * k43)  # k32 = k41 * k12 / k43
 
     pi2_un = k12 / k21
     pi3_un = (k23 / k32) * pi2_un
@@ -92,31 +65,25 @@ def RyR_stationary(
 def LCC_stationary(
     cp: npt.NDArray,
     V: float,
-    tau_po: float = DEFAULT_LCC_PARAMS["tau_po"],
-    TBa: float = DEFAULT_LCC_PARAMS["TBa"],
-    cp_bar: float = DEFAULT_LCC_PARAMS["cp_bar"],
-    cp_tilde: float = DEFAULT_LCC_PARAMS["cp_tilde"],
-    k2: float = DEFAULT_LCC_PARAMS["k2"],
-    k1_: float = DEFAULT_LCC_PARAMS["k1_"],
-    k2_: float = DEFAULT_LCC_PARAMS["k2_"],
-    r1: float = DEFAULT_LCC_PARAMS["r1"],
-    r2: float = DEFAULT_LCC_PARAMS["r2"],
+    params: RestrepoParams,
 ):
-    alpha, beta, k3, k5_, k6_, Pr, Ps, R = _calculate_V_dep_LCC_params(V, tau_po, TBa)
+    alpha, beta, k3, k5_, k6_, Pr, Ps, R = _calculate_V_dep_LCC_params(V, params)
 
-    TCa = (78.0329 + 0.1 * (1 + cp / cp_bar) ** 4) / (1.0 + (cp / cp_bar) ** 4)
+    TCa = (78.0329 + 0.1 * (1 + cp / params.cp_bar) ** 4) / (
+        1.0 + (cp / params.cp_bar) ** 4
+    )
 
-    k1 = 0.03 / (1.0 + (cp_tilde / cp) ** 3)
+    k1 = 0.03 / (1.0 + (params.cp_tilde / cp) ** 3)
     tauCa = (R - TCa) * Pr + TCa
     k5 = (1.0 - Ps) / tauCa
-    k6 = Ps / (tauCa * (1.0 + (cp_bar / cp_tilde) ** 3))
+    k6 = Ps / (tauCa * (1.0 + (params.cp_bar / params.cp_tilde) ** 3))
 
     piC1_un = alpha / beta
     piI2Ca_un = k6 / k5
     piI2Ba_un = k6_ / k5_
-    piI1Ca_un = (k1 / k2) * piC1_un
-    piI1Ba_un = (k1_ / k2_) * piC1_un
-    piO_un = (r1 / r2) * piC1_un
+    piI1Ca_un = (k1 / params.k2) * piC1_un
+    piI1Ba_un = (params.k1_ / params.k2_) * piC1_un
+    piO_un = (params.r1 / params.r2) * piC1_un
 
     pi_un = np.zeros((*cp.shape, 7))
     pi_un[..., 0] = piC1_un
@@ -150,45 +117,52 @@ def LCC_stationary(
 
 class CRUs:
 
-    def __init__(self, RyR_init, LCC_init, cp_init):
+    def __init__(
+        self,
+        RyR_init: npt.NDArray,
+        LCC_init: npt.NDArray,
+        ci_init: npt.NDArray,
+        cnsr_init: npt.NDArray,
+        cjsr_init: npt.NDArray,
+        cs_init: npt.NDArray,
+        cp_init: npt.NDArray,
+        CaTi_init: npt.NDArray,
+        CaTs_init: npt.NDArray,
+        params: RestrepoParams = RestrepoParams(),
+    ):
 
-        self.k0p = np.float32(DEFAULT_LCC_PARAMS["k0p"])
-        self.cp_bar = np.float32(DEFAULT_LCC_PARAMS["cp_bar"])
-        self.cp_tilde = np.float32(DEFAULT_LCC_PARAMS["cp_tilde"])
-        self.tau_po = np.float32(DEFAULT_LCC_PARAMS["tau_po"])
-        self.r1 = np.float32(DEFAULT_LCC_PARAMS["r1"])
-        self.r2 = np.float32(DEFAULT_LCC_PARAMS["r2"])
-        self.s1_ = np.float32(DEFAULT_LCC_PARAMS["s1_"])
-        self.k1_ = np.float32(DEFAULT_LCC_PARAMS["k1_"])
-        self.k2 = np.float32(DEFAULT_LCC_PARAMS["k2"])
-        self.k2_ = np.float32(DEFAULT_LCC_PARAMS["k2_"])
-        self.TBa = np.float32(DEFAULT_LCC_PARAMS["TBa"])
-
-        self.Ku = np.float32(DEFAULT_RYR_PARMS["Ku"])
-        self.Kb = np.float32(DEFAULT_RYR_PARMS["Kb"])
-        self.tau_u = np.float32(DEFAULT_RYR_PARMS["tau_u"])
-        self.tau_b = np.float32(DEFAULT_RYR_PARMS["tau_b"])
-        self.tau_c = np.float32(DEFAULT_RYR_PARMS["tau_c"])
-        self.BCSQN = np.float32(DEFAULT_RYR_PARMS["BCSQN"])
-        self.rho_inf = np.float32(DEFAULT_RYR_PARMS["rho_inf"])
-        self.K = np.float32(DEFAULT_RYR_PARMS["K"])
-
-        self._1_tau_u = 1 / self.tau_u
-        self._1_tau_b = 1 / self.tau_b
-        self._1_tau_c = 1 / self.tau_c
+        self.params = params
 
         self.RyR = RyR_init.astype(np.float32)
         self.LCC = LCC_init.astype(np.int32)
+        self.ci = ci_init.astype(np.float32)
+        self.cnsr = cnsr_init.astype(np.float32)
+        self.cjsr = cjsr_init.astype(np.float32)
+        self.cs = cs_init.astype(np.float32)
         self.cp = cp_init.astype(np.float32)
+        self.CaTi = CaTi_init.astype(np.float32)
+        self.CaTs = CaTs_init.astype(np.float32)
 
         self.d_RyR = None
         self.d_LCC = None
+        self.d_ci = None
+        self.d_cnsr = None
+        self.d_cjsr = None
+        self.d_cs = None
         self.d_cp = None
+        self.d_CaTi = None
+        self.d_CaTs = None
+
         self.rng_states = None
         self.dW = None
         self.RyR_rates = None
         self.RyR_sorted = None
         self.LCC_probs = None
+        self.ICa = None
+        self.INaCa = None
+        self.Delta_ci = None
+        self.Delta_cnsr = None
+        self.sum_cs_nn = None
 
         self._memory_initialised = False
         self._deallocated = False
@@ -219,7 +193,13 @@ class CRUs:
     def init_memory(self, seed):
         self.d_RyR = cuda.to_device(self.RyR)
         self.d_LCC = cuda.to_device(self._mangle_LCC(self.LCC))
+        self.d_ci = cuda.to_device(self.ci)
+        self.d_cnsr = cuda.to_device(self.cnsr)
+        self.d_cjsr = cuda.to_device(self.cjsr)
+        self.d_cs = cuda.to_device(self.cs)
         self.d_cp = cuda.to_device(self.cp)
+        self.d_CaTi = cuda.to_device(self.CaTi)
+        self.d_CaTs = cuda.to_device(self.CaTs)
 
         self.dW = cuda.device_array(
             (self.RyR.shape[0], self.RyR.shape[1], 4), dtype=np.float32
@@ -232,13 +212,19 @@ class CRUs:
             (self.d_LCC.shape[0], 4, 7), dtype=np.float32
         )
 
+        self.ICa = cuda.device_array((self.d_LCC.shape[0],), dtype=np.float32)
+        self.INaCa = cuda.device_array_like(self.ICa)
+        self.Delta_ci = cuda.device_array_like(self.ci)
+        self.Delta_cnsr = cuda.device_array_like(self.cnsr)
+        self.sum_cs_nn = cuda.device_array_like(self.cs)
+
         self.rng_states = create_xoroshiro128p_states(
             self.RyR.shape[0] * self.RyR.shape[1], seed=seed
         )
 
         self._memory_initialised = True
 
-    def forward(self, V: float, dt: float, nstep=1, seed=0, tpb_RyR=16):
+    def forward(self, V: float, Nai: float, dt: float, nstep=1, seed=0, tpb=16):
         if not self._memory_initialised:
             self.init_memory(seed)
 
@@ -246,61 +232,87 @@ class CRUs:
             self._reallocate()
 
         alpha, beta, k3, k5_, k6_, Pr, Ps, R = _calculate_V_dep_LCC_params(
-            V, self.tau_po, self.TBa
+            V, self.params
         )
 
         sqrtdt = np.sqrt(dt, dtype=np.float32)
 
-        bpg_RyR = (
-            math.ceil(self.RyR.shape[0] / tpb_RyR),
-            math.ceil(self.RyR.shape[1] / tpb_RyR),
+        bpg = (
+            math.ceil(self.RyR.shape[0] / tpb),
+            math.ceil(self.RyR.shape[1] / tpb),
         )
+        Nai3 = np.float32(Nai**3)
+        z = np.float32(V * 96.5 / (8.314 * 308.0))
         for _ in range(nstep):
-            RyR_kernel[bpg_RyR, (tpb_RyR, tpb_RyR)](
+            currents_and_RyR[bpg, (tpb, tpb)](
                 self.d_RyR,
                 self.RyR_rates,
-                self.RyR_sorted,
+                self.d_ci,
+                self.d_cs,
+                self.d_cjsr,
+                self.d_cnsr,
                 self.d_cp,
+                self.Delta_ci,
+                self.Delta_cnsr,
+                self.sum_cs_nn,
                 self.dW,
-                np.float32(0.1),
-                np.float32(dt),
-                sqrtdt,
-                self.Ku,
-                self.Kb,
-                self._1_tau_u,
-                self._1_tau_b,
-                self._1_tau_c,
-                self.BCSQN,
-                self.rho_inf,
-                self.K,
                 self.rng_states,
+                sqrtdt,
+                self.params,  # to device?
             )
-
-            LCC_kernel.forall(self.d_LCC.shape[0])(
+            update_boundary_currents_and_LCC.forall(self.d_LCC.shape[0])(
                 self.d_LCC,
                 self.LCC_probs,
                 self.d_cp,
+                self.d_cs,
+                self.ICa,
+                self.INaCa,
                 self.rng_states,
-                np.float32(dt),
+                Nai3,
                 alpha,
                 beta,
-                self.r1,
-                self.r2,
-                self.s1_,
-                self.cp_bar,
-                self.cp_tilde,
-                self.k1_,
-                self.k2,
-                self.k2_,
                 k3,
-                k3,  # k3_ = k3
+                k3,
                 k5_,
                 k6_,
                 Pr,
                 Ps,
                 R,
+                z,
+                dt,
+                self.params,
             )
+            cuda.synchronize()  # sync all threads before applying any updates
+            update_RyR_and_euler_step[bpg, (tpb, tpb)](
+                self.d_ci,
+                self.d_cs,
+                self.d_cp,
+                self.d_cnsr,
+                self.d_cjsr,
+                self.d_CaTi,
+                self.d_CaTs,
+                self.d_RyR,
+                self.RyR_sorted,
+                self.ICa,
+                self.INaCa,
+                self.Delta_ci,
+                self.Delta_cnsr,
+                self.sum_cs_nn,
+                self.RyR_rates,
+                self.dW,
+                dt,
+                self.params,
+            )
+
         cuda.synchronize()
+
+        self.d_ci.copy_to_host(self.ci)
+        self.d_cnsr.copy_to_host(self.cnsr)
+        self.d_cjsr.copy_to_host(self.cjsr)
+        self.d_cs.copy_to_host(self.cs)
+        self.d_cp.copy_to_host(self.cp)
+        self.d_CaTi.copy_to_host(self.CaTi)
+        self.d_CaTs.copy_to_host(self.CaTs)
 
         self.d_RyR.copy_to_host(self.RyR)
         mangled_lcc = self.d_LCC.copy_to_host()

@@ -5,42 +5,46 @@ import numpy.typing as npt
 from numba import float32
 import numba.cuda as cuda
 
+from params import RestrepoParams
 from utils import square, bubble_sort_ryr, calculate_rho, calculate_Mhat
 
 
 @cuda.jit(device=True, inline=True)
 def update_RyR_rates(
-    RyR_rates,
-    RyR,
-    cp,
-    cjsr,
-    Ku,
-    Kb,
-    tau_u,
-    tau_b,
-    tau_c,
-    BCSQN,
-    rho_inf,
-    K,
-    x,
-    y,
+    RyR_rates: npt.NDArray,
+    RyR: npt.NDArray,
+    cp: npt.NDArray,
+    cjsr: npt.NDArray,
+    params: RestrepoParams,
+    # Ku,
+    # Kb,
+    # tau_u,
+    # tau_b,
+    # tau_c,
+    # BCSQN,
+    # rho_inf,
+    # K,
+    x: int,
+    y: int,
 ):
     """Device func to update RyR rates at position x, y"""
-    Mhat = calculate_Mhat(calculate_rho(cjsr[x, y], K, rho_inf), BCSQN)
+    Mhat = calculate_Mhat(
+        calculate_rho(cjsr[x, y], params.K, params.rho_inf), params.BCSQN
+    )
 
-    k12 = Ku * square(cp[x, y])  # k12
-    k23 = Mhat * cp[x, y] / tau_b  # k23
+    k12 = params.Ku * square(cp[x, y])  # k12
+    k23 = Mhat * cp[x, y] / params.tau_b  # k23
 
-    k43 = Kb * square(cp[x, y])  # k43
-    k32 = k12 / (k43 * tau_u)  # k32 = k41 * k12 / k43
+    k43 = params.Kb * square(cp[x, y])  # k43
+    k32 = k12 / (k43 * params.tau_u)  # k32 = k41 * k12 / k43
 
     RyR_rates[x, y, 0] = k12 * RyR[x, y, 0]  # 1 -> 2
-    RyR_rates[x, y, 1] = RyR[x, y, 1] / tau_c  # 2 -> 1; k21 = _1_tau_c
+    RyR_rates[x, y, 1] = RyR[x, y, 1] / params.tau_c  # 2 -> 1; k21 = _1_tau_c
     RyR_rates[x, y, 2] = k23 * RyR[x, y, 1]  # 2 -> 3
     RyR_rates[x, y, 3] = k32 * RyR[x, y, 2]  # 3 -> 2
-    RyR_rates[x, y, 4] = RyR[x, y, 2] / tau_c  # 3 -> 4; k34 = _1_tau_c
+    RyR_rates[x, y, 4] = RyR[x, y, 2] / params.tau_c  # 3 -> 4; k34 = _1_tau_c
     RyR_rates[x, y, 5] = k43 * RyR[x, y, 3]  # 4 -> 3
-    RyR_rates[x, y, 6] = RyR[x, y, 3] / tau_u  # 4 -> 1; k41 = _1_tau_u
+    RyR_rates[x, y, 6] = RyR[x, y, 3] / params.tau_u  # 4 -> 1; k41 = _1_tau_u
     RyR_rates[x, y, 7] = k23 * RyR[x, y, 0]  # 1-> 4; k14 = k23
 
 

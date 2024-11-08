@@ -7,6 +7,7 @@ from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
 from params import RestrepoParams
+from utils import constants_struct_array
 from kernels import (
     currents_and_RyR,
     update_boundary_currents_and_LCC,
@@ -119,6 +120,7 @@ class CRUs:
 
     def __init__(
         self,
+        params: RestrepoParams,
         RyR_init: npt.NDArray,
         LCC_init: npt.NDArray,
         ci_init: npt.NDArray,
@@ -128,7 +130,6 @@ class CRUs:
         cp_init: npt.NDArray,
         CaTi_init: npt.NDArray,
         CaTs_init: npt.NDArray,
-        params: RestrepoParams = RestrepoParams(),
     ):
 
         self.params = params
@@ -143,6 +144,8 @@ class CRUs:
         self.CaTi = CaTi_init.astype(np.float32)
         self.CaTs = CaTs_init.astype(np.float32)
 
+        self.d_params = None
+        self.d_consts = None
         self.d_RyR = None
         self.d_LCC = None
         self.d_ci = None
@@ -170,27 +173,41 @@ class CRUs:
     @staticmethod
     def _mangle_LCC(LCC):
         """Get the boundary elements of the LCC array"""
-        out = np.zeros((2 * LCC.shape[0] + 2 * (LCC.shape[1] - 2), 4), dtype=np.int32)
-        out[: LCC.shape[0]] = LCC[0, ...]  # Top row
-        out[LCC.shape[0] : 2 * LCC.shape[0]] = LCC[-1, ...]  # bottom row
-        out[2 * LCC.shape[0] : (2 * LCC.shape[0] + LCC.shape[1] - 2)] = LCC[
-            0, 1:-1, :
-        ]  # left column without corners
-        out[(2 * LCC.shape[0] + LCC.shape[1] - 2) :] = LCC[
-            -1, 1:-1, :
-        ]  # right column without corners
+        Nx, Ny, _ = LCC.shape
+        out = np.zeros((2 * Nx + 2 * (Ny - 2), 4), dtype=np.int32)
+        out[:Ny] = LCC[0, ...]  # Top row
+        out[Ny : 2 * Ny] = LCC[-1, ...]  # bottom row
+        out[2 * Ny : (2 * Ny + Nx - 2)] = LCC[1:-1, 0, :]  # left column without corners
+        out[(2 * Ny + Nx - 2) :] = LCC[1:-1, -1, :]  # right column without corners
         return out
 
     @staticmethod
     def _demangle_LCC(LCC, mLCC):
-        LCC[0, ...] = mLCC[: LCC.shape[0]]
-        LCC[-1, ...] = mLCC[LCC.shape[0] : 2 * LCC.shape[0]]
-        LCC[-1, 1:-1, :] = mLCC[
-            2 * LCC.shape[0] : (2 * LCC.shape[0] + LCC.shape[1] - 2)
-        ]
-        LCC[-1, 1:-1, :] = mLCC[(2 * LCC.shape[0] + LCC.shape[1] - 2) :]
+        Nx, Ny, _ = LCC.shape
+        LCC[0, ...] = mLCC[:Ny]
+        LCC[-1, ...] = mLCC[Ny : 2 * Ny]
+        LCC[1:-1, 0, :] = mLCC[2 * Ny : (2 * Ny + Nx - 2)]
+        LCC[1:-1, -1, :] = mLCC[(2 * Ny + Nx - 2) :]
 
     def init_memory(self, seed):
+        # Convert namedtuple to numpy record array and allocate on device to avoid copying
+        # Do this shit to make the array aligned in memory
+        offsets = 4 * np.arange(len(self.params))
+        dtype = np.dtype(
+            (
+                np.record,
+                dict(
+                    names=self.params._fields,
+                    formats=[np.dtype("float32")] * len(self.params),
+                    offsets=offsets,
+                    itemsize=offsets[-1] + 4,
+                ),
+            ),
+            align=True,
+        )
+        params_array = np.rec.array(tuple(self.params), dtype=dtype, aligned=True)[None]
+        self.d_params = cuda.to_device(params_array)
+
         self.d_RyR = cuda.to_device(self.RyR)
         self.d_LCC = cuda.to_device(self._mangle_LCC(self.LCC))
         self.d_ci = cuda.to_device(self.ci)
@@ -224,7 +241,7 @@ class CRUs:
 
         self._memory_initialised = True
 
-    def forward(self, V: float, Nai: float, dt: float, nstep=1, seed=0, tpb=16):
+    def forward(self, V: float, Nai: float, dt: float, nstep=1, seed=0, tpb_=16):
         if not self._memory_initialised:
             self.init_memory(seed)
 
@@ -236,15 +253,22 @@ class CRUs:
         )
 
         sqrtdt = np.sqrt(dt, dtype=np.float32)
+        self.d_consts = cuda.to_device(constants_struct_array(np.float32(dt), sqrtdt))
 
-        bpg = (
-            math.ceil(self.RyR.shape[0] / tpb),
-            math.ceil(self.RyR.shape[1] / tpb),
+        bpg_2d = (
+            math.ceil(self.ci.shape[0] / tpb_),
+            math.ceil(self.ci.shape[1] / tpb_),
         )
+        tpb_2d = (tpb_, tpb_)
+
+        bpg_1d = math.ceil(self.d_LCC.shape[0] / tpb_)
+        tpb_1d = tpb_
+
         Nai3 = np.float32(Nai**3)
         z = np.float32(V * 96.5 / (8.314 * 308.0))
         for _ in range(nstep):
-            currents_and_RyR[bpg, (tpb, tpb)](
+            cuda.synchronize()
+            currents_and_RyR[bpg_2d, tpb_2d](
                 self.d_RyR,
                 self.RyR_rates,
                 self.d_ci,
@@ -257,10 +281,10 @@ class CRUs:
                 self.sum_cs_nn,
                 self.dW,
                 self.rng_states,
-                sqrtdt,
-                self.params,  # to device?
+                self.d_consts,
+                self.d_params,  # to device?
             )
-            update_boundary_currents_and_LCC.forall(self.d_LCC.shape[0])(
+            update_boundary_currents_and_LCC[bpg_1d, tpb_1d](
                 self.d_LCC,
                 self.LCC_probs,
                 self.d_cp,
@@ -279,11 +303,11 @@ class CRUs:
                 Ps,
                 R,
                 z,
-                dt,
-                self.params,
+                self.d_consts,
+                self.d_params,
             )
             cuda.synchronize()  # sync all threads before applying any updates
-            update_RyR_and_euler_step[bpg, (tpb, tpb)](
+            update_RyR_and_euler_step[bpg_2d, tpb_2d](
                 self.d_ci,
                 self.d_cs,
                 self.d_cp,
@@ -300,9 +324,10 @@ class CRUs:
                 self.sum_cs_nn,
                 self.RyR_rates,
                 self.dW,
-                dt,
-                self.params,
+                self.d_consts,
+                self.d_params,
             )
+            cuda.synchronize()
 
         cuda.synchronize()
 

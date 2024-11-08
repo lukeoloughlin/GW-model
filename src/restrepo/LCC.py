@@ -36,21 +36,13 @@ def update_LCC_probs(
     Ps: f32,
     R: f32,
     params: RestrepoParams,
-    # r1,
-    # r2,
-    # s1_,
-    # cp_bar,
-    # cp_tilde,
-    # k1_,
-    # k2,
-    # k2_,
     idx: int,
 ):
     """Does euler step for Kolmogorov equations. Assumed that the LCCs are stored in a 1d array and the indexing semantics are dealt with elsewhere"""
-    cptilde_cp3 = cube(params.cp_tilde / cp)
+    cptilde_cp3 = cube(params.cp_tilde[0] / cp)
     TCa = (
-        float32(78.0329) + float32(0.1) * pow4(float32(1.0) + cp / params.cp_bar)
-    ) / (float32(1.0) + pow4(cp / params.cp_bar))
+        float32(78.0329) + float32(0.1) * pow4(float32(1.0) + cp / params.cp_bar[0])
+    ) / (float32(1.0) + pow4(cp / params.cp_bar[0]))
     tauCa = (R - TCa) * Pr + TCa
 
     s1 = float32(0.02) / (float32(1.0) + cptilde_cp3)
@@ -58,22 +50,22 @@ def update_LCC_probs(
     k5 = (float32(1.0) - Ps) / tauCa
     k6 = Ps / (tauCa * (float32(1.0) + cptilde_cp3))
 
-    s2 = s1 * params.k2 * params.r1 / (k1 * params.r2)
-    s2_ = params.s1_ * params.k2_ * params.r1 / (params.k1_ * params.r2)
-    k4 = k3 * (alpha / beta) * (k1 / params.k2) * (k5 / k6)
-    k4_ = k3_ * (alpha / beta) * (params.k1_ / params.k2_) * (k5_ / k6_)
+    s2 = s1 * params.k2[0] * params.r1[0] / (k1 * params.r2[0])
+    s2_ = params.s1_[0] * params.k2_[0] * params.r1[0] / (params.k1_[0] * params.r2[0])
+    k4 = k3 * (alpha / beta) * (k1 / params.k2[0]) * (k5 / k6)
+    k4_ = k3_ * (alpha / beta) * (params.k1_[0] / params.k2_[0]) * (k5_ / k6_)
 
     for j in range(4):
         if LCC[idx, j] == 1:
             LCC_probs[idx, j, 0] = float32(1.0) - dt * (
-                params.r1 + beta + k1 + params.k1_
+                params.r1[0] + beta + k1 + params.k1_[0]
             )
             LCC_probs[idx, j, 1] = dt * beta
             LCC_probs[idx, j, 2] = dt * k1
             LCC_probs[idx, j, 3] = float32(0.0)
-            LCC_probs[idx, j, 4] = dt * params.k1_
+            LCC_probs[idx, j, 4] = dt * params.k1_[0]
             LCC_probs[idx, j, 5] = float32(0.0)
-            LCC_probs[idx, j, 6] = dt * params.r1
+            LCC_probs[idx, j, 6] = dt * params.r1[0]
         elif LCC[idx, j] == 2:
             LCC_probs[idx, j, 0] = dt * alpha
             LCC_probs[idx, j, 1] = float32(1.0) - dt * (k6 + k6_ + alpha)
@@ -83,9 +75,9 @@ def update_LCC_probs(
             LCC_probs[idx, j, 5] = dt * k6_
             LCC_probs[idx, j, 6] = float32(0.0)
         elif LCC[idx, j] == 3:
-            LCC_probs[idx, j, 0] = dt * params.k2
+            LCC_probs[idx, j, 0] = dt * params.k2[0]
             LCC_probs[idx, j, 1] = float32(0.0)
-            LCC_probs[idx, j, 2] = float32(1.0) - dt * (params.k2 + k3 + s2)
+            LCC_probs[idx, j, 2] = float32(1.0) - dt * (params.k2[0] + k3 + s2)
             LCC_probs[idx, j, 3] = dt * k3
             LCC_probs[idx, j, 4] = float32(0.0)
             LCC_probs[idx, j, 5] = float32(0.0)
@@ -99,11 +91,11 @@ def update_LCC_probs(
             LCC_probs[idx, j, 5] = float32(0.0)
             LCC_probs[idx, j, 6] = float32(0.0)
         elif LCC[idx, j] == 5:
-            LCC_probs[idx, j, 0] = dt * params.k2_
+            LCC_probs[idx, j, 0] = dt * params.k2_[0]
             LCC_probs[idx, j, 1] = float32(0.0)
             LCC_probs[idx, j, 2] = float32(0.0)
             LCC_probs[idx, j, 3] = float32(0.0)
-            LCC_probs[idx, j, 4] = float32(1.0) - dt * (params.k2_ + k3_ + s2_)
+            LCC_probs[idx, j, 4] = float32(1.0) - dt * (params.k2_[0] + k3_ + s2_)
             LCC_probs[idx, j, 5] = dt * k3_
             LCC_probs[idx, j, 6] = dt * s2_
         elif LCC[idx, j] == 6:
@@ -115,19 +107,21 @@ def update_LCC_probs(
             LCC_probs[idx, j, 5] = float32(1.0) - dt * (k4_ + k5_)
             LCC_probs[idx, j, 6] = float32(0.0)
         else:
-            LCC_probs[idx, j, 0] = dt * params.r2
+            LCC_probs[idx, j, 0] = dt * params.r2[0]
             LCC_probs[idx, j, 1] = float32(0.0)
             LCC_probs[idx, j, 2] = dt * s1
             LCC_probs[idx, j, 3] = float32(0.0)
-            LCC_probs[idx, j, 4] = dt * params.s1_
+            LCC_probs[idx, j, 4] = dt * params.s1_[0]
             LCC_probs[idx, j, 5] = float32(0.0)
-            LCC_probs[idx, j, 6] = float32(1.0) - dt * (params.r1 + s1 + params.s1_)
+            LCC_probs[idx, j, 6] = float32(1.0) - dt * (
+                params.r1[0] + s1 + params.s1_[0]
+            )
 
 
 @cuda.jit(device=True, inline=True)
 def sample_icdf(LCC_probs, rng_states, i, k):
     u = xoroshiro128p_uniform_float32(rng_states, i)
-    cdf = float32(0)
+    cdf = float32(0.0)
     for j in range(7):
         cdf += LCC_probs[i, j, k]
         if u < cdf:

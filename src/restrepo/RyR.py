@@ -29,22 +29,22 @@ def update_RyR_rates(
 ):
     """Device func to update RyR rates at position x, y"""
     Mhat = calculate_Mhat(
-        calculate_rho(cjsr[x, y], params.K, params.rho_inf), params.BCSQN
+        calculate_rho(cjsr[x, y], params.K[0], params.rho_inf[0]), params.BCSQN[0]
     )
 
-    k12 = params.Ku * square(cp[x, y])  # k12
-    k23 = Mhat * cp[x, y] / params.tau_b  # k23
+    k12 = params.Ku[0] * square(cp[x, y])  # k12
+    k23 = Mhat * cp[x, y] / params.tau_b[0]  # k23
 
-    k43 = params.Kb * square(cp[x, y])  # k43
-    k32 = k12 / (k43 * params.tau_u)  # k32 = k41 * k12 / k43
+    k43 = params.Kb[0] * square(cp[x, y])  # k43
+    k32 = k12 / (k43 * params.tau_u[0])  # k32 = k41 * k12 / k43
 
     RyR_rates[x, y, 0] = k12 * RyR[x, y, 0]  # 1 -> 2
-    RyR_rates[x, y, 1] = RyR[x, y, 1] / params.tau_c  # 2 -> 1; k21 = _1_tau_c
+    RyR_rates[x, y, 1] = RyR[x, y, 1] / params.tau_c[0]  # 2 -> 1; k21 = _1_tau_c
     RyR_rates[x, y, 2] = k23 * RyR[x, y, 1]  # 2 -> 3
     RyR_rates[x, y, 3] = k32 * RyR[x, y, 2]  # 3 -> 2
-    RyR_rates[x, y, 4] = RyR[x, y, 2] / params.tau_c  # 3 -> 4; k34 = _1_tau_c
+    RyR_rates[x, y, 4] = RyR[x, y, 2] / params.tau_c[0]  # 3 -> 4; k34 = _1_tau_c
     RyR_rates[x, y, 5] = k43 * RyR[x, y, 3]  # 4 -> 3
-    RyR_rates[x, y, 6] = RyR[x, y, 3] / params.tau_u  # 4 -> 1; k41 = _1_tau_u
+    RyR_rates[x, y, 6] = RyR[x, y, 3] / params.tau_u[0]  # 4 -> 1; k41 = _1_tau_u
     RyR_rates[x, y, 7] = k23 * RyR[x, y, 0]  # 1-> 4; k14 = k23
 
 

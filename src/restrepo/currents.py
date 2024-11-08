@@ -101,36 +101,26 @@ def update_INaCa(
     z: float,
     Nai3: float,
     params: RestrepoParams,
-    # vNaCa: float,
-    # eta: float,
-    # Nai3: float,
-    # Cao: float,
-    # Nao3: float,
-    # ksat: float,
-    # KmNao3: float,  # KmNao^3
-    # KmCao: float,
-    # KmCai: float,
-    # Kda: float,
-    # t1: float,
     idx: int,
 ):
-    Nao3 = cube(params.Nao)
-    KmNao3 = cube(params.KmNao)
-    KmNai3 = cube(params.KmNai)
+    Nao3 = cube(params.Nao[0])
+    KmNao3 = cube(params.KmNao[0])
+    KmNai3 = cube(params.KmNai[0])
     Ka = float32(1.0) / (
-        float32(1.0) + (params.Kda / cs) * (params.Kda / cs) * (params.Kda / cs)
+        float32(1.0)
+        + (params.Kda[0] / cs) * (params.Kda[0] / cs) * (params.Kda[0] / cs)
     )
-    t1 = params.KmCai * Nao3 * (float32(1.0) + Nai3 / KmNai3)
-    t2 = KmNao3 * cs * (float32(1.0) + (cs / params.KmCai))
-    t3 = params.KmCao * Nai3 + Nai3 * params.Cao + Nao3 * cs
-    exp_etaz = math.exp(params.eta * z)
-    exp_etam1z = math.exp((params.eta - float32(1.0)) * z)
+    t1 = params.KmCai[0] * Nao3 * (float32(1.0) + Nai3 / KmNai3)
+    t2 = KmNao3 * cs * (float32(1.0) + (cs / params.KmCai[0]))
+    t3 = params.KmCao[0] * Nai3 + Nai3 * params.Cao[0] + Nao3 * cs
+    exp_etaz = math.exp(params.eta[0] * z)
+    exp_etam1z = math.exp((params.eta[0] - float32(1.0)) * z)
 
     INaCa[idx] = (
         Ka
-        * params.vNaCa
-        * (exp_etaz * Nai3 * params.Cao - exp_etam1z * Nao3 * cs)
-        / ((t1 + t2 + t3) * (float32(1.0) + params.ksat * exp_etam1z))
+        * params.vNaCa[0]
+        * (exp_etaz * Nai3 * params.Cao[0] - exp_etam1z * Nao3 * cs)
+        / ((t1 + t2 + t3) * (float32(1.0) + params.ksat[0] * exp_etam1z))
     )
 
 
@@ -143,101 +133,109 @@ def update_diffusive_fluxes(
     cnsr: npt.NDArray,
     cs: npt.NDArray,
     params: RestrepoParams,
-    # tau_iT: float,
-    # tau_iL: float,
-    # tau_nsrT: float,
-    # tau_nsrL: float,
-    # tau_sL: float,
-    # tau_sT: float,
     x: int,
     y: int,
 ) -> None:
     if x == 0 and y == 0:
-        Delta_ci[x, y] = (ci[x + 1, y] - ci[x, y]) / params.tau_iL + (
-            ci[x, y + 1] - ci[x, y] / params.tau_iT
-        )
-        Delta_cnsr[x, y] = (cnsr[x + 1, y] - cnsr[x, y]) / params.tau_nsrL + (
-            cnsr[x, y + 1] - cnsr[x, y] / params.tau_nsrT
-        )
-        sum_cs_nn[x, y] = cs[x + 1, y] / params.tau_sL + cs[x, y + 1] / params.tau_sT
-    elif x == 0 and y == (ci.shape[1] - 1):
-        Delta_ci[x, y] = (ci[x + 1, y] - ci[x, y]) / params.tau_iL + (
-            ci[x, y - 1] - ci[x, y]
-        ) / params.tau_iT
-        Delta_cnsr[x, y] = (cnsr[x + 1, y] - cnsr[x, y]) / params.tau_nsrL + (
-            cnsr[x, y - 1] - cnsr[x, y]
-        ) / params.tau_iT
-        sum_cs_nn[x, y] = cs[x + 1, y] / params.tau_sL + cs[x, y - 1] / params.tau_sT
-    elif x == (ci.shape[0] - 1) and y == 0:
-        Delta_ci[x, y] = (ci[x - 1, y] - ci[x, y]) / params.tau_iL + (
+        Delta_ci[x, y] = (ci[x + 1, y] - ci[x, y]) / params.tau_iL[0] + (
             ci[x, y + 1] - ci[x, y]
-        ) / params.tau_iT
-        Delta_cnsr[x, y] = (cnsr[x - 1, y] - cnsr[x, y]) / params.tau_nsrL + (
+        ) / params.tau_iT[0]
+        Delta_cnsr[x, y] = (cnsr[x + 1, y] - cnsr[x, y]) / params.tau_nsrL[0] + (
             cnsr[x, y + 1] - cnsr[x, y]
-        ) / params.tau_nsrT
-        sum_cs_nn[x, y] = cs[x - 1, y] / params.tau_sL + cs[x, y + 1] / params.tau_sT
-    elif x == (ci.shape[0] - 1) and y == (ci.shape[1] - 1):
-        Delta_ci[x, y] = (ci[x - 1, y] - ci[x, y]) / params.tau_iL + (
-            ci[x, y - 1] - ci[x, y]
-        ) / params.tau_iT
-        Delta_cnsr[x, y] = (cnsr[x - 1, y] - cnsr[x, y]) / params.tau_nsrL + (
-            cnsr[x, y - 1] - cnsr[x, y]
-        ) / params.tau_nsrT
-        sum_cs_nn[x, y] = cs[x - 1, y] / params.tau_sL + cs[x, y - 1] / params.tau_sT
-    elif x == 0:
-        Delta_ci[x, y] = (ci[x + 1, y] - ci[x, y]) / params.tau_iL + (
-            ci[x, y - 1] + ci[x, y + 1] - float32(2.0) * ci[x, y]
-        ) / params.tau_iT
-        Delta_cnsr[x, y] = (cnsr[x + 1, y] - cnsr[x, y]) / params.tau_nsrL + (
-            cnsr[x, y - 1] + cnsr[x, y + 1] - float32(2.0) * cnsr[x, y]
-        ) / params.tau_nsrT
+        ) / params.tau_nsrT[0]
         sum_cs_nn[x, y] = (
-            cs[x + 1, y] / params.tau_sL + (cs[x, y - 1] + cs[x, y + 1]) / params.tau_sT
+            cs[x + 1, y] / params.tau_sL[0] + cs[x, y + 1] / params.tau_sT[0]
+        )
+    elif x == 0 and y == (ci.shape[1] - 1):
+        Delta_ci[x, y] = (ci[x + 1, y] - ci[x, y]) / params.tau_iL[0] + (
+            ci[x, y - 1] - ci[x, y]
+        ) / params.tau_iT[0]
+        Delta_cnsr[x, y] = (cnsr[x + 1, y] - cnsr[x, y]) / params.tau_nsrL[0] + (
+            cnsr[x, y - 1] - cnsr[x, y]
+        ) / params.tau_nsrT[0]
+        sum_cs_nn[x, y] = (
+            cs[x + 1, y] / params.tau_sL[0] + cs[x, y - 1] / params.tau_sT[0]
+        )
+    elif x == (ci.shape[0] - 1) and y == 0:
+        Delta_ci[x, y] = (ci[x - 1, y] - ci[x, y]) / params.tau_iL[0] + (
+            ci[x, y + 1] - ci[x, y]
+        ) / params.tau_iT[0]
+        Delta_cnsr[x, y] = (cnsr[x - 1, y] - cnsr[x, y]) / params.tau_nsrL[0] + (
+            cnsr[x, y + 1] - cnsr[x, y]
+        ) / params.tau_nsrT[0]
+        sum_cs_nn[x, y] = (
+            cs[x - 1, y] / params.tau_sL[0] + cs[x, y + 1] / params.tau_sT[0]
+        )
+    elif x == (ci.shape[0] - 1) and y == (ci.shape[1] - 1):
+        Delta_ci[x, y] = (ci[x - 1, y] - ci[x, y]) / params.tau_iL[0] + (
+            ci[x, y - 1] - ci[x, y]
+        ) / params.tau_iT[0]
+        Delta_cnsr[x, y] = (cnsr[x - 1, y] - cnsr[x, y]) / params.tau_nsrL[0] + (
+            cnsr[x, y - 1] - cnsr[x, y]
+        ) / params.tau_nsrT[0]
+        sum_cs_nn[x, y] = (
+            cs[x - 1, y] / params.tau_sL[0] + cs[x, y - 1] / params.tau_sT[0]
+        )
+    elif x == 0:
+        Delta_ci[x, y] = (ci[x + 1, y] - ci[x, y]) / params.tau_iL[0] + (
+            ci[x, y - 1] + ci[x, y + 1] - float32(2.0) * ci[x, y]
+        ) / params.tau_iT[0]
+        Delta_cnsr[x, y] = (cnsr[x + 1, y] - cnsr[x, y]) / params.tau_nsrL[0] + (
+            cnsr[x, y - 1] + cnsr[x, y + 1] - float32(2.0) * cnsr[x, y]
+        ) / params.tau_nsrT[0]
+        sum_cs_nn[x, y] = (
+            cs[x + 1, y] / params.tau_sL[0]
+            + (cs[x, y - 1] + cs[x, y + 1]) / params.tau_sT[0]
         )
     elif x == (ci.shape[0] - 1):
-        Delta_ci[x, y] = (ci[x - 1, y] - ci[x, y]) / params.tau_iL + (
+        Delta_ci[x, y] = (ci[x - 1, y] - ci[x, y]) / params.tau_iL[0] + (
             ci[x, y - 1] + ci[x, y + 1] - float32(2.0) * ci[x, y]
-        ) / params.tau_iT
-        Delta_cnsr[x, y] = (cnsr[x - 1, y] - cnsr[x, y]) / params.tau_nsrL + (
+        ) / params.tau_iT[0]
+        Delta_cnsr[x, y] = (cnsr[x - 1, y] - cnsr[x, y]) / params.tau_nsrL[0] + (
             cnsr[x, y - 1] + cnsr[x, y + 1] - float32(2.0) * cnsr[x, y]
-        ) / params.tau_nsrT
+        ) / params.tau_nsrT[0]
         sum_cs_nn[x, y] = (
-            cs[x - 1, y] / params.tau_sL + (cs[x, y - 1] + cs[x, y + 1]) / params.tau_sT
+            cs[x - 1, y] / params.tau_sL[0]
+            + (cs[x, y - 1] + cs[x, y + 1]) / params.tau_sT[0]
         )
     elif y == 0:
         Delta_ci[x, y] = (
             ci[x - 1, y] + ci[x + 1, y] - float32(2.0) * ci[x, y]
-        ) / params.tau_iL + (ci[x, y + 1] - ci[x, y]) / params.tau_iT
+        ) / params.tau_iL[0] + (ci[x, y + 1] - ci[x, y]) / params.tau_iT[0]
         Delta_cnsr[x, y] = (
             cnsr[x - 1, y] + cnsr[x + 1, y] - float32(2.0) * cnsr[x, y]
-        ) / params.tau_nsrL + (cnsr[x, y + 1] - cnsr[x, y]) / params.tau_nsrT
-        sum_cs_nn[x, y] = (cs[x - 1, y] + cs[x + 1, y]) / params.tau_sL + cs[
+        ) / params.tau_nsrL[0] + (cnsr[x, y + 1] - cnsr[x, y]) / params.tau_nsrT[0]
+        sum_cs_nn[x, y] = (cs[x - 1, y] + cs[x + 1, y]) / params.tau_sL[0] + cs[
             x, y + 1
-        ] / params.tau_sT
+        ] / params.tau_sT[0]
     elif y == (ci.shape[1] - 1):
         Delta_ci[x, y] = (
             ci[x - 1, y] + ci[x + 1, y] - float32(2.0) * ci[x, y]
-        ) / params.tau_iL + (ci[x, y - 1] - ci[x, y]) / params.tau_iT
+        ) / params.tau_iL[0] + (ci[x, y - 1] - ci[x, y]) / params.tau_iT[0]
         Delta_cnsr[x, y] = (
             cnsr[x - 1, y] + cnsr[x + 1, y] - float32(2.0) * cnsr[x, y]
-        ) / params.tau_nsrL + (cnsr[x, y - 1] - cnsr[x, y]) / params.tau_nsrT
-        sum_cs_nn[x, y] = (cs[x - 1, y] + cs[x + 1, y]) / params.tau_sL + cs[
+        ) / params.tau_nsrL[0] + (cnsr[x, y - 1] - cnsr[x, y]) / params.tau_nsrT[0]
+        sum_cs_nn[x, y] = (cs[x - 1, y] + cs[x + 1, y]) / params.tau_sL[0] + cs[
             x, y - 1
-        ] / params.tau_sT
+        ] / params.tau_sT[0]
     else:
         Delta_ci[x, y] = (
             ci[x - 1, y] + ci[x + 1, y] - float32(2.0) * ci[x, y]
-        ) / params.tau_iL + (
+        ) / params.tau_iL[0] + (
             ci[x, y + 1] + ci[x, y - 1] - float32(2.0) * ci[x, y]
-        ) / params.tau_iT
+        ) / params.tau_iT[
+            0
+        ]
         Delta_cnsr[x, y] = (
             cnsr[x - 1, y] + cnsr[x + 1, y] - float32(2.0) * cnsr[x, y]
-        ) / params.tau_nsrL + (
+        ) / params.tau_nsrL[0] + (
             cnsr[x, y + 1] + cnsr[x, y - 1] - float32(2.0) * cnsr[x, y]
-        ) / params.tau_nsrT
-        sum_cs_nn[x, y] = (cs[x - 1, y] + cs[x + 1, y]) / params.tau_sL + (
+        ) / params.tau_nsrT[
+            0
+        ]
+        sum_cs_nn[x, y] = (cs[x - 1, y] + cs[x + 1, y]) / params.tau_sL[0] + (
             cs[x, y + 1] + cs[x, y - 1]
-        ) / params.tau_sT
+        ) / params.tau_sT[0]
 
 
 @cuda.jit(device=True, inline=True)

@@ -1,6 +1,5 @@
-import math
+from typing import Any
 
-import numpy as np
 import numpy.typing as npt
 from numba import float32
 from numba import cuda
@@ -37,12 +36,14 @@ def currents_and_RyR(
     sum_cs_nn: npt.NDArray,
     dW: npt.NDArray,
     rng_states: npt.NDArray,
-    sqrtdt: float,
+    consts: Any,
     params: RestrepoParams,
 ):
     x, y = cuda.grid(2)
     Nx, Ny = cs.shape
     tid = y * Nx + x
+
+    sqrtdt = consts.sqrtdt[0]
 
     if x < Nx and y < Ny:
         # update RyR rates
@@ -94,12 +95,14 @@ def update_boundary_currents_and_LCC(
     Ps: float,
     R: float,
     z: float,
-    dt: float,
+    consts: Any,
     params: RestrepoParams,
 ):
 
     idx = cuda.grid(1)
     Nx, Ny = cs.shape
+
+    dt = consts.dt[0]
 
     if idx < ICa.shape[0]:
         # Get cs ans cp values from the corresponding boundary element
@@ -126,7 +129,7 @@ def update_boundary_currents_and_LCC(
         )
 
         # Update ICa
-        update_ICa(ICa, LCC, cp_, params.PCa, z, params.gamma, params.Cao, idx)
+        update_ICa(ICa, LCC, cp_, params.PCa[0], z, params.gamma[0], params.Cao[0], idx)
 
         # Update INaCa
         update_INaCa(
@@ -162,11 +165,13 @@ def update_RyR_and_euler_step(
     RyR_rates: npt.NDArray,
     dW: npt.NDArray,
     # vp: npt.NDArray -- Need to add when variable proximal subspace is used
-    dt: float,
+    consts: Any,
     params: RestrepoParams,
 ):
     x, y = cuda.grid(2)
     Nx, Ny = cs.shape
+
+    dt = consts.dt[0]
 
     if x < Nx and y < Ny:
         ryr_open = RyR[x, y, 1] + RyR[x, y, 2]
@@ -180,36 +185,36 @@ def update_RyR_and_euler_step(
         # vp_ = vp[x, y]
         sum_cs_nn_ = sum_cs_nn[x, y]
 
-        ITCi = ITCa(ci_, CaTi_, params.kon, params.koff, params.BT)
-        ITCs = ITCa(cs_, CaTs_, params.kon, params.koff, params.BT)
-        Ileak_ = Ileak(cjsr_, cnsr_, ci_, params.gleak, square(params.Kjsr))
-        Iup_ = Iup(ci_, cnsr_, params.Ki, params.Knsr, params.vup)
-        Ir_ = Ir(cp_, cjsr_, ryr_open, params.Jmax, params.vp)
+        ITCi = ITCa(ci_, CaTi_, params.kon[0], params.koff[0], params.BT[0])
+        ITCs = ITCa(cs_, CaTs_, params.kon[0], params.koff[0], params.BT[0])
+        Ileak_ = Ileak(cjsr_, cnsr_, ci_, params.gleak[0], square(params.Kjsr[0]))
+        Iup_ = Iup(ci_, cnsr_, params.Ki[0], params.Knsr[0], params.vup[0])
+        Ir_ = Ir(cp_, cjsr_, ryr_open, params.Jmax[0], params.vp[0])
         Ici = Delta_ci[x, y]
         Icnsr = Delta_cnsr[x, y]
 
-        Itr = (cnsr_ - cjsr_) / params.tau_tr
-        Idsi = (cs_ - ci_) / params.tau_si
+        Itr = (cnsr_ - cjsr_) / params.tau_tr[0]
+        Idsi = (cs_ - ci_) / params.tau_si[0]
 
         INaCa_ = boundary_from_flattened(INaCa, x, y, Nx, Ny)
         ICa_ = boundary_from_flattened(ICa, x, y, Nx, Ny)
 
-        calmodulin_buf = params.KCAM * params.BCAM / square(params.KCAM + ci_)
-        SR_buf = params.KSR * params.BSR / square(params.KSR + ci_)
-        myosin_Ca_buf = params.KMCa * params.BMCa / square(params.KMCa + ci_)
-        myosin_Mg_buf = params.KMMg * params.BMMg / square(params.KMMg + ci_)
+        calmodulin_buf = params.KCAM[0] * params.BCAM[0] / square(params.KCAM[0] + ci_)
+        SR_buf = params.KSR[0] * params.BSR[0] / square(params.KSR[0] + ci_)
+        myosin_Ca_buf = params.KMCa[0] * params.BMCa[0] / square(params.KMCa[0] + ci_)
+        myosin_Mg_buf = params.KMMg[0] * params.BMMg[0] / square(params.KMMg[0] + ci_)
 
         beta_i = float32(1.0) / (
             float32(1.0) + calmodulin_buf + SR_buf + myosin_Ca_buf + myosin_Mg_buf
         )
         beta_jsr = luminal_buffer(
             cjsr_,
-            params.rho_inf,
-            params.K,
-            params.BCSQN,
-            params.nM,
-            params.nD,
-            params.KC,
+            params.rho_inf[0],
+            params.K[0],
+            params.BCSQN[0],
+            params.nM[0],
+            params.nD[0],
+            params.KC[0],
         )
 
         # Euler-Maruyama step for RyRs
@@ -236,13 +241,13 @@ def update_RyR_and_euler_step(
             INaCa_,
             ITCs,
             sum_cs_nn_,
-            params.vp,
-            params.vs,
-            params.tau_ps,
-            params.tau_si,
-            params.tau_sT,
-            params.tau_sL,
-            params.Jmax,
+            params.vp[0],
+            params.vs[0],
+            params.tau_ps[0],
+            params.tau_si[0],
+            params.tau_sT[0],
+            params.tau_sL[0],
+            params.Jmax[0],
             x,
             y,
             Nx,
@@ -250,13 +255,15 @@ def update_RyR_and_euler_step(
         )
 
         ci[x, y] += (
-            dt * beta_i * ((params.vs / params.vi) * Idsi - Iup_ + Ileak_ - ITCi + Ici)
+            dt
+            * beta_i
+            * ((params.vs[0] / params.vi[0]) * Idsi - Iup_ + Ileak_ - ITCi + Ici)
         )
         cnsr[x, y] += dt * (
-            (params.vi / params.vnsr) * (Iup_ - Ileak_)
-            - (params.vjsr / params.vnsr) * Itr
+            (params.vi[0] / params.vnsr[0]) * (Iup_ - Ileak_)
+            - (params.vjsr[0] / params.vnsr[0]) * Itr
             + Icnsr
         )
-        cjsr[x, y] += dt * beta_jsr * (Itr - (params.vp / params.vjsr) * Ir_)
+        cjsr[x, y] += dt * beta_jsr * (Itr - (params.vp[0] / params.vjsr[0]) * Ir_)
         CaTi[x, y] += dt * ITCi
         CaTs[x, y] += dt * ITCs

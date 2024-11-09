@@ -280,10 +280,8 @@ def cp_cs_iter(
     else:
         nn_rate = float32(2.0) / tau_sL + float32(2.0) / tau_sT
 
-    kr = Jmax / vp
-    cp[x, y] = (cs_prev + tau_p * (kr * cjsr - ICa)) / (
-        float32(1.0) + tau_p * kr * ryr_open
-    )
+    kr = (Jmax / vp) * ryr_open
+    cp[x, y] = (cs_prev + tau_p * (kr * cjsr - ICa)) / (float32(1.0) + tau_p * kr)
 
     kp = vp / (vs * tau_p)
 

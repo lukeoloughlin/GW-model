@@ -18,6 +18,8 @@ class RestrepoParams(NamedTuple):
     BMCa: f32 = f32(140.0)
     KMMg: f32 = f32(3.64)
     BMMg: f32 = f32(140.0)
+    KSLH: f32 = f32(0.3)
+    BSLH: f32 = f32(13.4)
     BT: f32 = f32(70.0)
     kon: f32 = f32(0.0327)
     koff: f32 = f32(0.0196)

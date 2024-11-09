@@ -238,10 +238,12 @@ class CRUs:
         self.rng_states = create_xoroshiro128p_states(
             self.RyR.shape[0] * self.RyR.shape[1], seed=seed
         )
-
+        cuda.synchronize()
         self._memory_initialised = True
 
-    def forward(self, V: float, Nai: float, dt: float, nstep=1, seed=0, tpb_=16):
+    def forward(
+        self, V: float, Nai: float, dt: float, nstep=1, seed=0, _tpb2d=16, _tpb1d=64
+    ):
         if not self._memory_initialised:
             self.init_memory(seed)
 
@@ -256,19 +258,20 @@ class CRUs:
         self.d_consts = cuda.to_device(constants_struct_array(np.float32(dt), sqrtdt))
 
         bpg_2d = (
-            math.ceil(self.ci.shape[0] / tpb_),
-            math.ceil(self.ci.shape[1] / tpb_),
+            math.ceil(self.ci.shape[0] / _tpb2d),
+            math.ceil(self.ci.shape[1] / _tpb2d),
         )
-        tpb_2d = (tpb_, tpb_)
+        tpb_2d = (_tpb2d, _tpb2d)
 
-        bpg_1d = math.ceil(self.d_LCC.shape[0] / tpb_)
-        tpb_1d = tpb_
+        bpg_1d = math.ceil(self.d_LCC.shape[0] / _tpb1d)
+        tpb_1d = _tpb1d
 
         Nai3 = np.float32(Nai**3)
         z = np.float32(V * 96.5 / (8.314 * 308.0))
+        stream = cuda.stream()
         for _ in range(nstep):
-            cuda.synchronize()
-            currents_and_RyR[bpg_2d, tpb_2d](
+            stream.synchronize()
+            currents_and_RyR[bpg_2d, tpb_2d, stream](
                 self.d_RyR,
                 self.RyR_rates,
                 self.d_ci,
@@ -282,9 +285,9 @@ class CRUs:
                 self.dW,
                 self.rng_states,
                 self.d_consts,
-                self.d_params,  # to device?
+                self.d_params,
             )
-            update_boundary_currents_and_LCC[bpg_1d, tpb_1d](
+            update_boundary_currents_and_LCC[bpg_1d, tpb_1d, stream](
                 self.d_LCC,
                 self.LCC_probs,
                 self.d_cp,
@@ -306,8 +309,8 @@ class CRUs:
                 self.d_consts,
                 self.d_params,
             )
-            cuda.synchronize()  # sync all threads before applying any updates
-            update_RyR_and_euler_step[bpg_2d, tpb_2d](
+            stream.synchronize()  # sync all threads before applying any updates
+            update_RyR_and_euler_step[bpg_2d, tpb_2d, stream](
                 self.d_ci,
                 self.d_cs,
                 self.d_cp,
@@ -327,7 +330,6 @@ class CRUs:
                 self.d_consts,
                 self.d_params,
             )
-            cuda.synchronize()
 
         cuda.synchronize()
 

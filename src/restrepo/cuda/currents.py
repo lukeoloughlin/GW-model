@@ -6,7 +6,7 @@ from numba import float32
 from numba import cuda
 
 from params import RestrepoParams
-from utils import square, cube, calculate_rho, calculate_Mhat
+from src.restrepo.cuda.utils import square, cube, calculate_rho, calculate_Mhat
 
 
 @cuda.jit(device=True, inline=True)

@@ -1,3 +1,10 @@
+import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
+from typing import Tuple
+
 import numpy as np
 import numpy.typing as npt
 import numba
@@ -6,14 +13,14 @@ from params import RestrepoParams
 
 
 @numba.njit
-def calculate_rho(cjsr: float, params: RestrepoParams) -> float:
+def _rho(cjsr: float, params: RestrepoParams) -> float:
     """Calculate rho(cjsr)"""
     cjsr_K_h = (cjsr / params.K) ** params.h
     return params.rho_inf / (1.0 + cjsr_K_h)
 
 
 @numba.njit
-def calculate_Mhat(rho: float, BCSQN: float) -> float:
+def _Mhat(rho: float, BCSQN: float) -> float:
     """Calculate Mhat from rho"""
     return (np.sqrt(1.0 + 8.0 * rho * BCSQN) - 1.0) / (4.0 * rho * BCSQN)
 
@@ -27,7 +34,6 @@ def update_LCC_probs_cpu(
     dt: float,
     params: RestrepoParams,
 ):
-
     po_inf = 1.0 / (1.0 + np.exp(-V / 8))
     Pr = 1.0 / (1.0 + np.exp(-(V + 40.0) / 4.0))
     Ps = 1.0 / (1.0 + np.exp(-(V + 40.0) / 11.32))
@@ -116,7 +122,7 @@ def update_LCC_probs_cpu(
 
 
 @numba.njit
-def sample_icdf_cpu(LCC: npt.NDArray, LCC_probs: npt.NDArray) -> None:
+def sample_lcc_cpu(LCC: npt.NDArray, LCC_probs: npt.NDArray) -> None:
     for i in range(4):
         u = np.random.rand()
         cdf = 0.0
@@ -124,6 +130,7 @@ def sample_icdf_cpu(LCC: npt.NDArray, LCC_probs: npt.NDArray) -> None:
             cdf += LCC_probs[i, j]
             if u < cdf:
                 LCC[i] = j + 1  # state starts at 1 so increment
+                break
 
 
 @numba.njit
@@ -135,7 +142,7 @@ def update_RyR_rates_cpu(
     params: RestrepoParams,
 ):
     """Device func to update RyR rates at position x, y"""
-    Mhat = calculate_Mhat(calculate_rho(cjsr, params), params.BCSQN)
+    Mhat = _Mhat(_rho(cjsr, params), params.BCSQN)
 
     k12 = params.Ku * cp**2  # k12
     k23 = Mhat * cp / params.tau_b  # k23
@@ -155,15 +162,12 @@ def update_RyR_rates_cpu(
 
 @numba.njit
 def RyR_orth_proj_simplex_cpu(RyR: npt.NDArray, RyR_sorted: npt.NDArray) -> None:
-    """Device func to perform orthogonal projection of RyR values onto simplex after Euler Maruyama update"""
-    # Copy the RyR values into preallocated array and use bubble sort
-
     RyR_sorted[:] = np.sort(RyR)
 
     lambda_ = 0.0
     sum_ = 1.0
     for i in range(4):
-        if sum_ - (4.0 - i) * RyR_sorted[i] < 1.0:
+        if sum_ - (4 - i) * RyR_sorted[i] < 1.0:
             lambda_ = (sum_ - 1.0) / (4.0 - i)
             break
         else:
@@ -238,8 +242,8 @@ def Ir(cp: float, cjsr: float, RyR_open: float, params: RestrepoParams) -> float
 def luminal_buffer(cjsr: float, params: RestrepoParams) -> float:
     """Calculate the luminal buffering term"""
 
-    rho = calculate_rho(cjsr, params)
-    Mhat = calculate_Mhat(rho, params.BCSQN)
+    rho = _rho(cjsr, params)
+    Mhat = _Mhat(rho, params.BCSQN)
 
     ncjsr = Mhat * params.nM + (1.0 - Mhat) * params.nD
 
@@ -264,16 +268,12 @@ def luminal_buffer(cjsr: float, params: RestrepoParams) -> float:
 
 
 @numba.njit
-def ICa(LCC: npt.NDArray, cp: float, z: float, params: RestrepoParams) -> None:
+def ICa(lcc_open: float, cp: float, z: float, params: RestrepoParams) -> None:
     """Update array of ICa values. This is only calclated along the boundaries in a flattened 1d array"""
     F = 96.5
     exp2z = np.exp(2.0 * z)
-    NLCC = 0.0
-    for i in range(4):
-        if LCC[i] == 7:
-            NLCC += 1.0
     return (
-        NLCC
+        lcc_open
         * 4.0
         * params.PCa
         * z
@@ -322,204 +322,46 @@ def beta_s(cs: float, params: RestrepoParams) -> float:
 
 
 @numba.njit
-def CRU_step_non_boundary(
-    ci: float,
-    cs: float,
-    cp: float,
-    cnsr: float,
-    cjsr: float,
-    CaTi: float,
-    CaTs: float,
-    RyR: npt.NDArray,
-    RyR_sorted: npt.NDArray,
-    RyR_rates: npt.NDArray,
-    ci_neighbours: float,
-    cs_neighbours: float,
-    cnsr_neighbours: float,
-    dt: float,
-    params: RestrepoParams,
-):
-    update_RyR_rates_cpu(RyR_rates, RyR, cp, cjsr, params)
+def time_renormalisation_map(
+    arr: npt.NDArray, t: npt.NDArray, window_length: int = 2
+) -> Tuple[npt.NDArray, npt.NDArray]:
+    """Renormalise the values of arr over specified window length. Also return the new time values after renormalisation.
 
-    Idsi = (cs - ci) / params.tau_si
-    Iup_ = Iup(ci, cnsr, params)
-    Ileak_ = Ileak(cjsr, cnsr, ci, params)
-    ITCi = ITCa(ci, CaTi, params)
-    ICi = (ci_neighbours - ci) * (2 / params.tau_iL + 2 / params.tau_iT)
+    Args:
+        arr (npt.NDArray): Array of values to renormalise
+        t (npt.NDArray): Times that values were recorded
+        window_length (int, optional): Renormalisation window length. Defaults to 2.
 
-    Idps = (cp - cs) / params.tau_ps
-    # INCX = INaCa(cs, z, Nai**3, params)
-    ITCs = ITCa(cs, CaTs, params)
-    ICs = (cs_neighbours - cs) * (2 / params.tau_sL + 2 / params.tau_sT)
-
-    Ir_ = Ir(cp, cjsr, RyR[1] + RyR[2], params)
-
-    Itr = (cnsr - cjsr) / params.tau_tr
-    ICnsr = (cnsr_neighbours - cnsr) * (2 / params.tau_nsrL + 2 / params.tau_nsrT)
-
-    beta_i_ = beta_i(ci, params)
-    beta_s_ = beta_s(cs, params)
-    beta_jsr = luminal_buffer(cjsr, params)
-
-    kr = (params.Jmax / params.vp) * (RyR[1] + RyR[2])
-    cp_out = (cs + params.tau_ps * (kr * cjsr)) / (1.0 + params.tau_ps * kr)
-
-    ci += dt * beta_i_ * (Idsi * (params.vs / params.vi) - Iup_ + Ileak_ - ITCi + ICi)
-    cs += dt * beta_s_ * (Idps * (params.vp / params.vs) - Idsi - ITCs + ICs)
-    cnsr += dt * (
-        (Iup_ - Ileak_) * (params.vi / params.vnsr)
-        - Itr * (params.vjsr / params.vnsr)
-        + ICnsr
-    )
-    cjsr += dt * beta_jsr * (Itr - Ir_ * (params.vp / params.vjsr))
-    CaTi += dt * ITCi
-    CaTs += dt * ITCs
-
-    update_RyR_diffusion_cpu(RyR, RyR_sorted, RyR_rates, dt)
-
-    return ci, cs, cp_out, cnsr, cjsr, CaTi, CaTs
+    Returns:
+        Tuple[npt.NDArray, npt.NDArray]: The renormlaised values and renormalised times
+    """
+    rn_len = arr.shape[0] // window_length
+    arr_out = np.zeros(rn_len)
+    t_out = np.zeros(rn_len)
+    for i in range(rn_len):
+        arr_out[i] = arr[i * window_length : (i + 1) * window_length].mean()
+        t_out[i] = t[i * window_length : (i + 1) * window_length].mean()
+    return t_out, arr_out
 
 
-@numba.njit
-def CRU_fwd_non_boundary(
-    ci: float,
-    cs: float,
-    cp: float,
-    cnsr: float,
-    cjsr: float,
-    CaTi: float,
-    CaTs: float,
-    RyR: npt.NDArray,
-    RyR_sorted: npt.NDArray,
-    RyR_rates: npt.NDArray,
-    ci_neighbours: float,
-    cs_neighbours: float,
-    cnsr_neighbours: float,
-    dt: float,
-    params: RestrepoParams,
-    nstep: int,
-):
-    for _ in range(nstep):
-        ci, cs, cp, cnsr, cjsr, CaTi, CaTs = CRU_step_non_boundary(
-            ci,
-            cs,
-            cp,
-            cnsr,
-            cjsr,
-            CaTi,
-            CaTs,
-            RyR,
-            RyR_sorted,
-            RyR_rates,
-            ci_neighbours,
-            cs_neighbours,
-            cnsr_neighbours,
-            dt,
-            params,
+def time_renormalisation(
+    arr: npt.NDArray, t: npt.NDArray, niter: int, window_length: int = 2
+) -> Tuple[npt.NDArray, npt.NDArray]:
+    """Apply renormalisation map to arr niter times.
+
+    Args:
+        arr (npt.NDArray): Array of values to renormalise
+        t (npt.NDArray): Times that values were recorded
+        niter (int): Number of renormalisation iterations
+        window_length (int, optional): Renormalisation window length. Defaults to 2.
+
+    Returns:
+        Tuple[npt.NDArray, npt.NDArray]: The renormlaised values and renormalised times
+    """
+    t_out = np.copy(t)
+    arr_out = np.copy(arr)
+    for _ in range(niter):
+        t_out, arr_out = time_renormalisation_map(
+            arr_out, t_out, window_length=window_length
         )
-    return ci, cs, cp, cnsr, cjsr, CaTi, CaTs
-
-
-class RestrepoCPU:
-
-    def __init__(
-        self,
-        ci: float = 0.1,
-        cs: float = 0.1,
-        cp: float = 0.1,
-        cnsr: float = 750.0,
-        cjsr: float = 750.0,
-        CaTi: float = 20.0,
-        CaTs: float = 20.0,
-        RyR: npt.NDArray = np.array([0.3, 0.0, 0.0, 0.7]),
-        LCC: npt.NDArray = np.array([2, 2, 2, 2], dtype=int),
-        params: RestrepoParams = RestrepoParams(),
-        boundary=False,
-    ):
-        # Initial values stored privately
-        self._ci = ci
-        self._cs = cs
-        self._cp = cp
-        self._cnsr = cnsr
-        self._cjsr = cjsr
-        self._CaTi = CaTi
-        self._CaTs = CaTs
-        self._RyR = RyR
-        self._LCC = LCC
-
-        self.t: npt.NDArray | None = None
-        self.ci: npt.NDArray | None = None
-        self.cs: npt.NDArray | None = None
-        self.cp: npt.NDArray | None = None
-        self.cnsr: npt.NDArray | None = None
-        self.cjsr: npt.NDArray | None = None
-        self.CaTi: npt.NDArray | None = None
-        self.CaTs: npt.NDArray | None = None
-        self.RyR: npt.NDArray | None = None
-        self.LCC: npt.NDArray | None = None
-
-        self.params = params
-
-        self._RyR_sorted = np.zeros_like(RyR)
-        self._RyR_rates = np.zeros(8)
-        self._LCC_probs = np.zeros_like(LCC)
-
-        self.boundary = boundary
-
-    def forward(self, dt: float, nstep: int, collect_every: int):
-        if self.boundary:
-            pass
-        else:
-            self._forward_non_boundary(dt, nstep, collect_every)
-
-    def _forward_non_boundary(self, dt: float, nstep: int, collect_every: int):
-        ncollect = nstep // collect_every + 1
-        self.t = np.zeros(ncollect)
-        self.ci = np.zeros(ncollect)
-        self.cs = np.zeros(ncollect)
-        self.cp = np.zeros(ncollect)
-        self.cnsr = np.zeros(ncollect)
-        self.cjsr = np.zeros(ncollect)
-        self.CaTi = np.zeros(ncollect)
-        self.CaTs = np.zeros(ncollect)
-        self.RyR = np.zeros((ncollect, 4))
-
-        self.ci[0] = ci = self._ci
-        self.cs[0] = cs = self._cs
-        self.cp[0] = cp = self._cp
-        self.cnsr[0] = cnsr = self._cnsr
-        self.cjsr[0] = cjsr = self._cjsr
-        self.CaTi[0] = CaTi = self._CaTi
-        self.CaTs[0] = CaTs = self._CaTs
-        self.RyR[0, :] = np.copy(self._RyR)
-        ryr = np.copy(self._RyR)
-
-        for i in range(ncollect - 1):
-            ci, cs, cp, cnsr, cjsr, CaTi, CaTs = CRU_fwd_non_boundary(
-                ci,
-                cs,
-                cp,
-                cnsr,
-                cjsr,
-                CaTi,
-                CaTs,
-                ryr,
-                self._RyR_sorted,
-                self._RyR_rates,
-                0.0,
-                0.0,
-                self._cnsr,
-                dt,
-                self.params,
-                collect_every,
-            )
-
-            self.t[i + 1] = self.t[i] + dt * collect_every
-            self.ci[i + 1] = ci
-            self.cs[i + 1] = cs
-            self.cp[i + 1] = cp
-            self.cnsr[i + 1] = cnsr
-            self.cjsr[i + 1] = cjsr
-            self.CaTi[i + 1] = CaTi
-            self.CaTs[i + 1] = CaTs
-            self.RyR[i + 1, :] = ryr
+    return t_out, arr_out

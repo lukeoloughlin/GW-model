@@ -145,7 +145,8 @@ def update_RyR_rates_cpu(
     Mhat = _Mhat(_rho(cjsr, params), params.BCSQN)
 
     k12 = params.Ku * cp**2  # k12
-    k23 = Mhat * cp / params.tau_b  # k23
+    # k23 = Mhat * cp / params.tau_b  # k23
+    k23 = Mhat / params.tau_b  # k23
 
     k43 = params.Kb * cp**2  # k43
     k32 = k12 / (k43 * params.tau_u)  # k32 = k41 * k12 / k43

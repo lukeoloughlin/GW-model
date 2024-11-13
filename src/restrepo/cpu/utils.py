@@ -223,7 +223,7 @@ def ITCa(c: float, CaT: float, params: RestrepoParams) -> float:
 def Ileak(cjsr: float, cnsr: float, ci: float, params: RestrepoParams) -> float:
     cjsr2 = cjsr**2
     Kjsr2 = params.Kjsr**2
-    return params.gleak * cjsr2 / (cjsr2 + Kjsr2) * (cnsr - ci)
+    return (params.gleak * cjsr2 / (cjsr2 + Kjsr2)) * (cnsr - ci)
 
 
 @numba.njit
@@ -248,17 +248,11 @@ def luminal_buffer(cjsr: float, params: RestrepoParams) -> float:
 
     ncjsr = Mhat * params.nM + (1.0 - Mhat) * params.nD
 
-    dlog_rho = 23.0 * (1.0 - rho / params.rho_inf) / cjsr
+    # dn / dc_jsr. Calculate by implicitly differentiating Mhat, see pg. 6 of Restrepo et al 2008
+    drho = (params.h * rho / cjsr) * (1.0 - rho / params.rho_inf)
     dMhat = (
-        -(0.25 / params.BCSQN)
-        * dlog_rho
-        * (
-            1.0
-            + (1.0 + 4.0 * rho * params.BCSQN) / np.sqrt(1.0 + 8.0 * rho * params.BCSQN)
-        )
-        / rho
-    )
-
+        (-2.0 * params.BCSQN * Mhat**2) / (1.0 + 4.0 * Mhat * rho * params.BCSQN)
+    ) * drho
     dn = dMhat * (params.nM - params.nD)
 
     return 1.0 / (

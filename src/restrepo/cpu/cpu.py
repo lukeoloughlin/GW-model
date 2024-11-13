@@ -29,6 +29,7 @@ def CRU_step_non_boundary(
     cnsr_neighbours: float,
     dt: float,
     params: RestrepoParams,
+    clamp: bool,
 ):
     ryr_open = RyR[1] + RyR[2]
     utils.update_RyR_rates_cpu(RyR_rates, RyR, cp, cjsr, params)
@@ -55,13 +56,23 @@ def CRU_step_non_boundary(
     kr = (params.Jmax / params.vp) * ryr_open
     cp_out = (cs + params.tau_ps * (kr * cjsr)) / (1.0 + params.tau_ps * kr)
 
-    ci += dt * beta_i_ * (Idsi * (params.vs / params.vi) - Iup_ + Ileak_ - ITCi + ICi)
-    cs += dt * beta_s_ * (Idps * (params.vp / params.vs) - Idsi - ITCs + ICs)
-    cnsr += dt * (
-        (Iup_ - Ileak_) * (params.vi / params.vnsr)
-        - Itr * (params.vjsr / params.vnsr)
-        + ICnsr
-    )
+    if clamp:
+        ci += (
+            dt * beta_i_ * (Idsi * (params.vs / params.vi) - Iup_ + Ileak_ - ITCi + ICi)
+        )
+        cs += dt * beta_s_ * (Idps * (params.vp / params.vs) - Idsi - ITCs + ICs)
+        cnsr += dt * (
+            (Iup_ - Ileak_) * (params.vi / params.vnsr)
+            - Itr * (params.vjsr / params.vnsr)
+            + ICnsr
+        )
+    else:
+        ci += dt * beta_i_ * (Idsi * (params.vs / params.vi) - Iup_ + Ileak_ - ITCi)
+        cs += dt * beta_s_ * (Idps * (params.vp / params.vs) - Idsi - ITCs)
+        cnsr += dt * (
+            (Iup_ - Ileak_) * (params.vi / params.vnsr)
+            - Itr * (params.vjsr / params.vnsr)
+        )
     cjsr += dt * beta_jsr * (Itr - Ir_ * (params.vp / params.vjsr))
     CaTi += dt * ITCi
     CaTs += dt * ITCs
@@ -92,6 +103,7 @@ def CRU_step_boundary(
     Nai: float,
     dt: float,
     params: RestrepoParams,
+    clamp: bool = True,
 ):
     z = V * 96.5 / (8.314 * 308.0)
     ryr_open = RyR[1] + RyR[2]
@@ -123,13 +135,24 @@ def CRU_step_boundary(
     kr = (params.Jmax / params.vp) * ryr_open
     cp_out = (cs + params.tau_ps * (kr * cjsr - ICa_)) / (1.0 + params.tau_ps * kr)
 
-    ci += dt * beta_i_ * (Idsi * (params.vs / params.vi) - Iup_ + Ileak_ - ITCi + ICi)
-    cs += dt * beta_s_ * (Idps * (params.vp / params.vs) + INCX - Idsi - ITCs + ICs)
-    cnsr += dt * (
-        (Iup_ - Ileak_) * (params.vi / params.vnsr)
-        - Itr * (params.vjsr / params.vnsr)
-        + ICnsr
-    )
+    if clamp:
+        ci += (
+            dt * beta_i_ * (Idsi * (params.vs / params.vi) - Iup_ + Ileak_ - ITCi + ICi)
+        )
+        cs += dt * beta_s_ * (Idps * (params.vp / params.vs) + INCX - Idsi - ITCs + ICs)
+        cnsr += dt * (
+            (Iup_ - Ileak_) * (params.vi / params.vnsr)
+            - Itr * (params.vjsr / params.vnsr)
+            + ICnsr
+        )
+    else:
+        ci += dt * beta_i_ * (Idsi * (params.vs / params.vi) - Iup_ + Ileak_ - ITCi)
+        cs += dt * beta_s_ * (Idps * (params.vp / params.vs) + INCX - Idsi - ITCs)
+        cnsr += dt * (
+            (Iup_ - Ileak_) * (params.vi / params.vnsr)
+            - Itr * (params.vjsr / params.vnsr)
+        )
+
     cjsr += dt * beta_jsr * (Itr - Ir_ * (params.vp / params.vjsr))
     CaTi += dt * ITCi
     CaTs += dt * ITCs
@@ -157,6 +180,7 @@ def CRU_fwd_non_boundary(
     params: RestrepoParams,
     nstep: int,
     collect_every: int,
+    clamp: bool,
 ):
     ncollect = nstep // collect_every + 1
     t = np.zeros(ncollect)
@@ -197,6 +221,7 @@ def CRU_fwd_non_boundary(
                 cnsr_neighbours,
                 dt,
                 params,
+                clamp,
             )
         t[i + 1] = t[i] + dt * collect_every
         ci_out[i + 1] = ci
@@ -230,6 +255,7 @@ def CRU_fwd_boundary(
     params: RestrepoParams,
     nstep: int,
     collect_every: int,
+    clamp: bool,
 ):
     ncollect = nstep // collect_every + 1
     t = np.zeros(ncollect)
@@ -277,6 +303,7 @@ def CRU_fwd_boundary(
                 Nai,
                 dt,
                 params,
+                clamp,
             )
         t[i + 1] = t[i] + dt * collect_every
         ci_out[i + 1] = ci
@@ -313,7 +340,7 @@ class RestrepoCPU:
         cjsr: float = 750.0,
         CaTi: float = 20.0,
         CaTs: float = 20.0,
-        RyR: npt.NDArray = np.array([0.3, 0.0, 0.0, 0.7]),
+        RyR: npt.NDArray = np.array([1.0, 0.0, 0.0, 0.0]),
         LCC: npt.NDArray = np.array([2, 2, 2, 2], dtype=int),
         params: RestrepoParams = RestrepoParams(),
         boundary=False,
@@ -348,17 +375,45 @@ class RestrepoCPU:
         dt: float,
         nstep: int,
         collect_every: int = 1,
+        clamp: bool = True,
         V: float | None = None,
         Nai: float | None = None,
-    ):  # , collect_every: int):
+        ci_clamp: float | None = None,
+        cs_clamp: float | None = None,
+        cnsr_clamp: float | None = None,
+    ):
+        ci_clamp = self._ci if ci_clamp is None else ci_clamp
+        cs_clamp = self._cs if cs_clamp is None else cs_clamp
+        cnsr_clamp = self._cnsr if cnsr_clamp is None else cnsr_clamp
         if self.boundary:
             assert V is not None, "Must pass V for boundary CRUs"
             assert Nai is not None, "Must pass Nai for boundary CRUs"
-            self._forward_boundary(V, Nai, dt, nstep, collect_every)
+            self._forward_boundary(
+                V,
+                Nai,
+                dt,
+                nstep,
+                collect_every,
+                clamp,
+                ci_clamp,
+                cs_clamp,
+                cnsr_clamp,
+            )
         else:
-            self._forward_non_boundary(dt, nstep, collect_every)
+            self._forward_non_boundary(
+                dt, nstep, collect_every, clamp, ci_clamp, cs_clamp, cnsr_clamp
+            )
 
-    def _forward_non_boundary(self, dt: float, nstep: int, collect_every: int):
+    def _forward_non_boundary(
+        self,
+        dt: float,
+        nstep: int,
+        collect_every: int,
+        clamp: bool,
+        ci_clamp: float,
+        cs_clamp: float,
+        cnsr_clamp: float,
+    ):
         ryr = np.copy(self._RyR)
         t, ci, cs, cp, cnsr, cjsr, CaTi, CaTs, RyR = CRU_fwd_non_boundary(
             self._ci,
@@ -369,13 +424,14 @@ class RestrepoCPU:
             self._CaTi,
             self._CaTs,
             ryr,
-            self._ci,
-            self._cs,
-            self._cnsr,
+            ci_clamp,
+            cs_clamp,
+            cnsr_clamp,
             dt,
             self.params,
             nstep,
             collect_every,
+            clamp,
         )
 
         self.t = t
@@ -389,7 +445,16 @@ class RestrepoCPU:
         self.CaTs = CaTs
 
     def _forward_boundary(
-        self, V: float, Nai: float, dt: float, nstep: int, collect_every: int
+        self,
+        V: float,
+        Nai: float,
+        dt: float,
+        nstep: int,
+        collect_every: int,
+        clamp: bool,
+        ci_clamp: float,
+        cs_clamp: float,
+        cnsr_clamp: float,
     ):
         ryr = np.copy(self._RyR)
         lcc = np.copy(self._LCC)
@@ -403,15 +468,16 @@ class RestrepoCPU:
             self._CaTs,
             lcc,
             ryr,
-            self._ci,
-            self._cs,
-            self._cnsr,
+            ci_clamp,
+            cs_clamp,
+            cnsr_clamp,
             V,
             Nai,
             dt,
             self.params,
             nstep,
             collect_every,
+            clamp,
         )
 
         self.t = t
@@ -424,3 +490,23 @@ class RestrepoCPU:
         self.CaTs = CaTs
         self.RyR = RyR
         self.LCC = LCC
+
+    def reset_initial_conditions(self):
+        if self.ci is not None:
+            self._ci = self.ci[-1]
+        if self.cs is not None:
+            self._cs = self.cs[-1]
+        if self.cp is not None:
+            self._cp = self.cp[-1]
+        if self.cnsr is not None:
+            self._cnsr = self.cnsr[-1]
+        if self.cjsr is not None:
+            self._cjsr = self.cjsr[-1]
+        if self.CaTi is not None:
+            self._CaTi = self.CaTi[-1]
+        if self.CaTs is not None:
+            self._CaTs = self.CaTs[-1]
+        if self.RyR is not None:
+            self._RyR[:] = self.RyR[-1, :]
+        if self.LCC is not None:
+            self._LCC[:] = self.LCC[-1, :]

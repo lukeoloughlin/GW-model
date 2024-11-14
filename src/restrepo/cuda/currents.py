@@ -6,7 +6,7 @@ from numba import float32
 from numba import cuda
 
 from params import RestrepoParams
-from src.restrepo.cuda.utils import square, cube, calculate_rho, calculate_Mhat
+from cuda.utils import square, cube, calculate_rho, calculate_Mhat
 
 
 @cuda.jit(device=True, inline=True)
@@ -15,9 +15,9 @@ def ITCa(c: float, CaT: float, kon: float, koff: float, BT: float) -> float:
 
 
 @cuda.jit(device=True, inline=True)
-def Ileak(cjsr: float, cnsr: float, ci: float, gleak: float, Kjsr2: float) -> float:
-    cjsr2 = square(cjsr)
-    return gleak * cjsr2 / (cjsr2 + Kjsr2) * (cnsr - ci)
+def Ileak(cnsr: float, ci: float, gleak: float, Knsr2: float) -> float:
+    cnsr2 = square(cnsr)
+    return gleak * cnsr2 / (cnsr2 + Knsr2) * (cnsr - ci)
 
 
 @cuda.jit(device=True, inline=True)
@@ -35,32 +35,32 @@ def Ir(cp: float, cjsr: float, RyR_open: float, Jmax: float, vp: float) -> float
 
 @cuda.jit(device=True, inline=True)
 def luminal_buffer(
-    cjsr: float, rho_inf: float, K: float, BCSQN: float, nM: float, nD: float, KC: float
+    cjsr: float,
+    rho_inf: float,
+    K: float,
+    BCSQN: float,
+    nM: float,
+    nD: float,
+    KC: float,
+    h: float,
 ):
     """Calculate the luminal buffering term"""
 
-    rho = calculate_rho(cjsr, K, rho_inf)
+    rho = calculate_rho(cjsr, K, rho_inf, h)
     Mhat = calculate_Mhat(rho, BCSQN)
 
     ncjsr = Mhat * nM + (float32(1.0) - Mhat) * nD
 
-    dlog_rho = float32(23.0) * (float32(1.0) - rho / rho_inf) / cjsr
+    drho = (h * rho / cjsr) * (float32(1.0) - rho / rho_inf)
     dMhat = (
-        -(float32(0.25) / BCSQN)
-        * dlog_rho
-        * (
-            float32(1.0)
-            + (float32(1.0) + float32(4.0) * rho * BCSQN)
-            / math.sqrt(float32(1.0) + float32(8.0) * rho * BCSQN)
-        )
-        / rho
-    )
-
+        (-float32(2.0) * BCSQN * square(Mhat))
+        / (float32(1.0) + float32(4.0) * Mhat * rho * BCSQN)
+    ) * drho
     dn = dMhat * (nM - nD)
 
     return float32(1.0) / (
         float32(1.0)
-        + (KC * BCSQN * ncjsr + dn * (cjsr * KC + square(cjsr))) / (square(KC + cjsr))
+        + BCSQN * (KC * ncjsr + dn * (cjsr * KC + square(cjsr))) / (square(KC + cjsr))
     )
 
 

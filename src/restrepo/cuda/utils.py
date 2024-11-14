@@ -45,17 +45,21 @@ def pow4(val: float) -> float:
 
 
 @cuda.jit(device=True, inline=True)
-def calculate_rho(cjsr: float, K: float, rho_inf: float) -> float:
+def calculate_rho(cjsr: float, K: float, rho_inf: float, h: float) -> float:
     """Calculate rho(cjsr)"""
-    log_cjsr_K = math.log(cjsr) - math.log(K)
-    return rho_inf / (float32(1.0) + math.exp(float32(23.0) * log_cjsr_K))
+    K_cjsr_h = math.pow(K / cjsr, h)
+    return rho_inf / (float32(1.0) + K_cjsr_h)
 
 
 @cuda.jit(device=True, inline=True)
 def calculate_Mhat(rho: float, BCSQN: float) -> float:
     """Calculate Mhat from rho"""
-    return (math.sqrt(float32(1.0) + float32(8.0) * rho * BCSQN) - float32(1.0)) / (
-        float32(4.0) * rho * BCSQN
+    rhoBCSQN = rho * BCSQN
+    if rhoBCSQN < float32(1e-10):
+        # Use a first order Taylor approximation for small rho, otherwise numerical instability becomes an issue
+        return float32(1.0) - float32(2.0) * rhoBCSQN
+    return (math.sqrt(float32(1.0) + float32(8.0) * rhoBCSQN) - float32(1.0)) / (
+        float32(4.0) * rhoBCSQN
     )
 
 

@@ -7,8 +7,8 @@ from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
 from params import RestrepoParams
-from src.restrepo.cuda.utils import constants_struct_array
-from src.restrepo.cuda.kernels import (
+from cuda.utils import constants_struct_array
+from cuda.kernels import (
     currents_and_RyR,
     update_boundary_currents_and_LCC,
     update_RyR_and_euler_step,

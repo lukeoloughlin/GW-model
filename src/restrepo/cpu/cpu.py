@@ -36,7 +36,7 @@ def CRU_step_non_boundary(
 
     Idsi = (cs - ci) / params.tau_si
     Iup_ = utils.Iup(ci, cnsr, params)
-    Ileak_ = utils.Ileak(cjsr, cnsr, ci, params)
+    Ileak_ = utils.Ileak(cnsr, ci, params)
     ITCi = utils.ITCa(ci, CaTi, params)
     ICi = (ci_neighbours - ci) * (2 / params.tau_iL + 2 / params.tau_iT)
 
@@ -113,7 +113,7 @@ def CRU_step_boundary(
 
     Idsi = (cs - ci) / params.tau_si
     Iup_ = utils.Iup(ci, cnsr, params)
-    Ileak_ = utils.Ileak(cjsr, cnsr, ci, params)
+    Ileak_ = utils.Ileak(cnsr, ci, params)
     ITCi = utils.ITCa(ci, CaTi, params)
     ICi = (ci_neighbours - ci) * (2 / params.tau_iL + 2 / params.tau_iT)
 

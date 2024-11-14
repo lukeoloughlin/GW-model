@@ -15,14 +15,19 @@ from params import RestrepoParams
 @numba.njit
 def _rho(cjsr: float, params: RestrepoParams) -> float:
     """Calculate rho(cjsr)"""
-    cjsr_K_h = (cjsr / params.K) ** params.h
-    return params.rho_inf / (1.0 + cjsr_K_h)
+    K_cjsr_h = (params.K / cjsr) ** params.h
+    return params.rho_inf / (1.0 + K_cjsr_h)
 
 
 @numba.njit
 def _Mhat(rho: float, BCSQN: float) -> float:
     """Calculate Mhat from rho"""
-    return (np.sqrt(1.0 + 8.0 * rho * BCSQN) - 1.0) / (4.0 * rho * BCSQN)
+    rhoBCSQN = rho * BCSQN
+    if rhoBCSQN < 1e-10:
+        # Use a first order Taylor approximation for small rho, otherwise numerical instability becomes an issue
+        return 1.0 - 2 * rhoBCSQN
+    else:
+        return (np.sqrt(1.0 + 8.0 * rhoBCSQN) - 1.0) / (4.0 * rhoBCSQN)
 
 
 @numba.njit
@@ -118,7 +123,7 @@ def update_LCC_probs_cpu(
             LCC_probs[j, 3] = 0.0
             LCC_probs[j, 4] = dt * params.s1_
             LCC_probs[j, 5] = 0.0
-            LCC_probs[j, 6] = 1.0 - dt * (params.r1 + s1 + params.s1_)
+            LCC_probs[j, 6] = 1.0 - dt * (params.r2 + s1 + params.s1_)
 
 
 @numba.njit
@@ -220,10 +225,10 @@ def ITCa(c: float, CaT: float, params: RestrepoParams) -> float:
 
 
 @numba.njit
-def Ileak(cjsr: float, cnsr: float, ci: float, params: RestrepoParams) -> float:
-    cjsr2 = cjsr**2
-    Kjsr2 = params.Kjsr**2
-    return (params.gleak * cjsr2 / (cjsr2 + Kjsr2)) * (cnsr - ci)
+def Ileak(cnsr: float, ci: float, params: RestrepoParams) -> float:
+    cnsr2 = cnsr**2
+    Knsr2 = params.Knsr**2
+    return (params.gleak * cnsr2 / (cnsr2 + Knsr2)) * (cnsr - ci)
 
 
 @numba.njit
@@ -257,7 +262,10 @@ def luminal_buffer(cjsr: float, params: RestrepoParams) -> float:
 
     return 1.0 / (
         1.0
-        + (params.KC * params.BCSQN * ncjsr + dn * (cjsr * params.KC + cjsr**2))
+        + (
+            params.KC * params.BCSQN * ncjsr
+            + dn * params.BCSQN * (cjsr * params.KC + cjsr**2)
+        )
         / ((params.KC + cjsr) ** 2)
     )
 

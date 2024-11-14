@@ -7,7 +7,7 @@ import numba.cuda as cuda
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
 from params import RestrepoParams
-from src.restrepo.cuda.utils import cube, pow4
+from cuda.utils import cube, pow4
 
 # This does the LCC stuff. This should be called in a separate kernel because it only needs to work on the boundary of the domain
 
@@ -114,18 +114,18 @@ def update_LCC_probs(
             LCC_probs[idx, j, 4] = dt * params.s1_[0]
             LCC_probs[idx, j, 5] = float32(0.0)
             LCC_probs[idx, j, 6] = float32(1.0) - dt * (
-                params.r1[0] + s1 + params.s1_[0]
+                params.r2[0] + s1 + params.s1_[0]
             )
 
 
 @cuda.jit(device=True, inline=True)
-def sample_icdf(LCC_probs, rng_states, i, k):
+def sample_icdf(LCC_probs, rng_states, i, j):
     u = xoroshiro128p_uniform_float32(rng_states, i)
     cdf = float32(0.0)
-    for j in range(7):
+    for k in range(7):
         cdf += LCC_probs[i, j, k]
         if u < cdf:
-            return j + 1  # state starts at 1 so increment
+            return k + 1  # state starts at 1 so increment
     return 7
 
 

@@ -6,7 +6,7 @@ from numba import float32
 import numba.cuda as cuda
 
 from params import RestrepoParams
-from src.restrepo.cuda.utils import (
+from cuda.utils import (
     square,
     bubble_sort_ryr,
     calculate_rho,
@@ -21,20 +21,13 @@ def update_RyR_rates(
     cp: npt.NDArray,
     cjsr: npt.NDArray,
     params: RestrepoParams,
-    # Ku,
-    # Kb,
-    # tau_u,
-    # tau_b,
-    # tau_c,
-    # BCSQN,
-    # rho_inf,
-    # K,
     x: int,
     y: int,
 ):
     """Device func to update RyR rates at position x, y"""
     Mhat = calculate_Mhat(
-        calculate_rho(cjsr[x, y], params.K[0], params.rho_inf[0]), params.BCSQN[0]
+        calculate_rho(cjsr[x, y], params.K[0], params.rho_inf[0], params.h[0]),
+        params.BCSQN[0],
     )
 
     k12 = params.Ku[0] * square(cp[x, y])  # k12

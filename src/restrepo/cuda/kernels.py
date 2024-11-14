@@ -6,9 +6,9 @@ from numba import cuda
 from numba.cuda.random import xoroshiro128p_normal_float32
 
 from params import RestrepoParams
-from src.restrepo.cuda.RyR import update_RyR_rates, update_RyR_diffusion
-from src.restrepo.cuda.LCC import update_LCC_probs, sample_icdf
-from src.restrepo.cuda.currents import (
+from cuda.RyR import update_RyR_rates, update_RyR_diffusion
+from cuda.LCC import update_LCC_probs, sample_icdf
+from cuda.currents import (
     ITCa,
     Ileak,
     Iup,
@@ -19,7 +19,7 @@ from src.restrepo.cuda.currents import (
     update_diffusive_fluxes,
     cp_cs_iter,
 )
-from src.restrepo.cuda.utils import (
+from cuda.utils import (
     square,
     boundary_from_flattened,
     flattened_from_boundary,
@@ -191,7 +191,7 @@ def update_RyR_and_euler_step(
 
         ITCi = ITCa(ci_, CaTi_, params.kon[0], params.koff[0], params.BT[0])
         ITCs = ITCa(cs_, CaTs_, params.kon[0], params.koff[0], params.BT[0])
-        Ileak_ = Ileak(cjsr_, cnsr_, ci_, params.gleak[0], square(params.Kjsr[0]))
+        Ileak_ = Ileak(cnsr_, ci_, params.gleak[0], square(params.Knsr[0]))
         Iup_ = Iup(ci_, cnsr_, params.Ki[0], params.Knsr[0], params.vup[0])
         Ir_ = Ir(cp_, cjsr_, ryr_open, params.Jmax[0], params.vp[0])
         Ici = Delta_ci[x, y]
@@ -219,6 +219,7 @@ def update_RyR_and_euler_step(
             params.nM[0],
             params.nD[0],
             params.KC[0],
+            params.h[0],
         )
 
         # Euler-Maruyama step for RyRs

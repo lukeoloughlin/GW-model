@@ -7,8 +7,8 @@ from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
 from params import RestrepoParams
-from cuda.utils import constants_struct_array
-from cuda.kernels import (
+from .utils import constants_struct_array
+from .kernels import (
     currents_and_RyR,
     update_boundary_currents_and_LCC,
     update_RyR_and_euler_step,
@@ -167,6 +167,7 @@ class CRUs:
         self.Delta_cnsr = None
         self.sum_cs_nn = None
 
+        self._t: float = np.float32(0.0)
         self._memory_initialised = False
         self._deallocated = False
 
@@ -189,7 +190,7 @@ class CRUs:
         LCC[1:-1, 0, :] = mLCC[2 * Ny : (2 * Ny + Nx - 2)]
         LCC[1:-1, -1, :] = mLCC[(2 * Ny + Nx - 2) :]
 
-    def init_memory(self, seed):
+    def init_memory(self, seed1, seed2):
         # Convert namedtuple to numpy record array and allocate on device to avoid copying
         # Do this shit to make the array aligned in memory
         offsets = 4 * np.arange(len(self.params))
@@ -235,27 +236,190 @@ class CRUs:
         self.Delta_cnsr = cuda.device_array_like(self.cnsr)
         self.sum_cs_nn = cuda.device_array_like(self.cs)
 
-        self.rng_states = create_xoroshiro128p_states(
-            self.RyR.shape[0] * self.RyR.shape[1], seed=seed
+        self.rng_states_dW = create_xoroshiro128p_states(
+            self.RyR.shape[0] * self.RyR.shape[1], seed=seed1
+        )
+        self.rng_states_LCC = create_xoroshiro128p_states(
+            self.d_LCC.shape[0], seed=seed2
         )
         cuda.synchronize()
         self._memory_initialised = True
 
+        # create streams
+        self.stream_ci = cuda.stream()
+        self.stream_cs = cuda.stream()
+        self.stream_cp = cuda.stream()
+        self.stream_cnsr = cuda.stream()
+        self.stream_cjsr = cuda.stream()
+        self.stream_CaTi = cuda.stream()
+        self.stream_CaTs = cuda.stream()
+        self.stream_RyR = cuda.stream()
+        self.stream_LCC = cuda.stream()
+
+        self.stream_kern1 = cuda.stream()
+        self.stream_kern2 = cuda.stream()
+
+    def _calc_V(self, Vmin: float, Vmax: float, T: float, xT: float) -> float:
+        t_mod_T = self._t % T
+        return (
+            np.float32(Vmin + (Vmax - Vmin) * np.sqrt(1.0 - (t_mod_T / xT) ** 2))
+            if t_mod_T < xT
+            else np.float32(Vmin)
+        )
+
+    def _init_results(self, nstep: int):
+        # Initialise result arrays
+        self.t = np.zeros(nstep + 1)
+        self.ci_result = np.zeros((nstep + 1, *self.ci.shape), dtype=self.ci.dtype)
+        self.cs_result = np.zeros((nstep + 1, *self.cs.shape), dtype=self.cs.dtype)
+        self.cp_result = np.zeros((nstep + 1, *self.cp.shape), dtype=self.cp.dtype)
+        self.cnsr_result = np.zeros(
+            (nstep + 1, *self.cnsr.shape), dtype=self.cnsr.dtype
+        )
+        self.cjsr_result = np.zeros(
+            (nstep + 1, *self.cjsr.shape), dtype=self.cjsr.dtype
+        )
+        self.CaTi_result = np.zeros(
+            (nstep + 1, *self.CaTi.shape), dtype=self.CaTi.dtype
+        )
+        self.CaTs_result = np.zeros(
+            (nstep + 1, *self.CaTs.shape), dtype=self.CaTs.dtype
+        )
+        self.RyR_result = np.zeros((nstep + 1, *self.RyR.shape), dtype=self.RyR.dtype)
+        self.LCC_result = np.zeros((nstep + 1, *self.LCC.shape), dtype=self.LCC.dtype)
+
+        self.t[0] = self._t
+        self.ci_result[0, ...] = self.ci
+        self.cs_result[0, ...] = self.cs
+        self.cp_result[0, ...] = self.cp
+        self.cnsr_result[0, ...] = self.cnsr
+        self.cjsr_result[0, ...] = self.cjsr
+        self.CaTi_result[0, ...] = self.CaTi
+        self.CaTs_result[0, ...] = self.CaTs
+        self.RyR_result[0, ...] = self.RyR
+        self.LCC_result[0, ...] = self.LCC
+
+    def _copy_state(self, i: int):
+        self.t[i] = self._t
+        self.ci_result[i, ...] = self.d_ci.copy_to_host(stream=self.stream_ci)
+        self.cs_result[i, ...] = self.d_cs.copy_to_host(stream=self.stream_cs)
+        self.cp_result[i, ...] = self.d_cp.copy_to_host(stream=self.stream_cp)
+        self.cnsr_result[i, ...] = self.d_cnsr.copy_to_host(stream=self.stream_cnsr)
+        self.cjsr_result[i, ...] = self.d_cjsr.copy_to_host(stream=self.stream_cjsr)
+        self.CaTi_result[i, ...] = self.d_CaTi.copy_to_host(stream=self.stream_CaTi)
+        self.CaTs_result[i, ...] = self.d_CaTs.copy_to_host(stream=self.stream_CaTs)
+        self.RyR_result[i, ...] = self.d_RyR.copy_to_host(stream=self.stream_RyR)
+        self._demangle_LCC(
+            self.LCC_result[i, ...],
+            self.d_LCC.copy_to_host(stream=self.stream_LCC),
+        )
+
+    def _call_kernels(
+        self,
+        Vmin: float,
+        Vmax: float,
+        T: float,
+        xT: float,
+        bpg_2d,
+        tpb_2d,
+        bpg_1d,
+        tpb_1d,
+        sync_LCC_stream: bool,
+    ):
+        V = self._calc_V(Vmin, Vmax, T, xT)
+        z = np.float32(V * 96.5 / (8.314 * 308.0))
+        alpha, beta, k3, k5_, k6_, Pr, Ps, R = _calculate_V_dep_LCC_params(
+            V, self.params
+        )
+        currents_and_RyR[bpg_2d, tpb_2d, self.stream_kern1](
+            self.d_RyR,
+            self.RyR_rates,
+            self.d_ci,
+            self.d_cs,
+            self.d_cjsr,
+            self.d_cnsr,
+            self.d_cp,
+            self.Delta_ci,
+            self.Delta_cnsr,
+            self.sum_cs_nn,
+            self.dW,
+            self.rng_states_dW,
+            self.d_consts,
+            self.d_params,
+        )
+        if sync_LCC_stream:
+            # Must make sure copy has finished before updating LCC
+            self.stream_LCC.synchronize()
+        update_boundary_currents_and_LCC[bpg_1d, tpb_1d, self.stream_kern2](
+            self.d_LCC,
+            self.LCC_probs,
+            self.d_cp,
+            self.d_cs,
+            self.ICa,
+            self.INaCa,
+            self.rng_states_LCC,
+            alpha,
+            beta,
+            k3,
+            k3,
+            k5_,
+            k6_,
+            Pr,
+            Ps,
+            R,
+            z,
+            self.d_consts,
+            self.d_params,
+        )
+        # execute on default stream which waits for the previous two to finish
+        update_RyR_and_euler_step[bpg_2d, tpb_2d](
+            self.d_ci,
+            self.d_cs,
+            self.d_cp,
+            self.d_cnsr,
+            self.d_cjsr,
+            self.d_CaTi,
+            self.d_CaTs,
+            self.d_RyR,
+            self.RyR_sorted,
+            self.ICa,
+            self.INaCa,
+            self.Delta_ci,
+            self.Delta_cnsr,
+            self.sum_cs_nn,
+            self.RyR_rates,
+            self.dW,
+            self.d_consts,
+            self.d_params,
+        )
+
     def forward(
-        self, V: float, Nai: float, dt: float, nstep=1, seed=0, _tpb2d=16, _tpb1d=64
+        self,
+        dt: float,
+        T: float = 400.0,  # Pacing period
+        Vmin: float = -80.0,
+        Vmax: float = 15.0,
+        nstep: int = 1,
+        collect_every: int = 1,
+        seed1: int = 0,
+        seed2: int = 12345,
+        _tpb2d: int = 8,
+        _tpb1d: int = 16,
+        reset_t: bool = False,
+        profile: bool = False,
     ):
         if not self._memory_initialised:
-            self.init_memory(seed)
+            self.init_memory(seed1, seed2)
 
         if self._deallocated:
             self._reallocate()
 
-        alpha, beta, k3, k5_, k6_, Pr, Ps, R = _calculate_V_dep_LCC_params(
-            V, self.params
-        )
-
         sqrtdt = np.sqrt(dt, dtype=np.float32)
-        self.d_consts = cuda.to_device(constants_struct_array(np.float32(dt), sqrtdt))
+        # T should be in seconds here
+        Nai3 = np.float32(78.0 / (1.0 + 10.0 * np.sqrt(T / 1000))) ** 3
+        self.d_consts = cuda.to_device(
+            constants_struct_array(np.float32(dt), sqrtdt, Nai3)
+        )
 
         bpg_2d = (
             math.ceil(self.ci.shape[0] / _tpb2d),
@@ -266,84 +430,66 @@ class CRUs:
         bpg_1d = math.ceil(self.d_LCC.shape[0] / _tpb1d)
         tpb_1d = _tpb1d
 
-        Nai3 = np.float32(Nai**3)
-        z = np.float32(V * 96.5 / (8.314 * 308.0))
-        stream = cuda.stream()
-        for _ in range(nstep):
-            stream.synchronize()
-            currents_and_RyR[bpg_2d, tpb_2d, stream](
-                self.d_RyR,
-                self.RyR_rates,
-                self.d_ci,
-                self.d_cs,
-                self.d_cjsr,
-                self.d_cnsr,
-                self.d_cp,
-                self.Delta_ci,
-                self.Delta_cnsr,
-                self.sum_cs_nn,
-                self.dW,
-                self.rng_states,
-                self.d_consts,
-                self.d_params,
-            )
-            update_boundary_currents_and_LCC[bpg_1d, tpb_1d, stream](
-                self.d_LCC,
-                self.LCC_probs,
-                self.d_cp,
-                self.d_cs,
-                self.ICa,
-                self.INaCa,
-                self.rng_states,
-                Nai3,
-                alpha,
-                beta,
-                k3,
-                k3,
-                k5_,
-                k6_,
-                Pr,
-                Ps,
-                R,
-                z,
-                self.d_consts,
-                self.d_params,
-            )
-            stream.synchronize()  # sync all threads before applying any updates
-            update_RyR_and_euler_step[bpg_2d, tpb_2d, stream](
-                self.d_ci,
-                self.d_cs,
-                self.d_cp,
-                self.d_cnsr,
-                self.d_cjsr,
-                self.d_CaTi,
-                self.d_CaTs,
-                self.d_RyR,
-                self.RyR_sorted,
-                self.ICa,
-                self.INaCa,
-                self.Delta_ci,
-                self.Delta_cnsr,
-                self.sum_cs_nn,
-                self.RyR_rates,
-                self.dW,
-                self.d_consts,
-                self.d_params,
-            )
+        # Not mentioned in the paper, but T has to be in seconds here.
+        xT = np.float32(1000 * T * (2 / 3) / (1000 * (2 / 3) + T))
+        if reset_t:
+            self._t = np.float32(0.0)
+
+        ncollect = nstep // collect_every
+        self._init_results(ncollect)
+
+        if profile:
+            cuda.profile_start()
+
+        for i in range(1, nstep + 1):
+            sync_LCC_stream = ((i - 1) % collect_every) == 0
+            if i % collect_every == 0:
+                idx = i // collect_every
+                with cuda.pinned(
+                    self.ci_result[idx, ...],
+                    self.cs_result[idx, ...],
+                    self.cp_result[idx, ...],
+                    self.cnsr_result[idx, ...],
+                    self.cjsr_result[idx, ...],
+                    self.CaTi_result[idx, ...],
+                    self.CaTs_result[idx, ...],
+                    self.RyR_result[idx, ...],
+                    self.LCC_result[idx, ...],
+                ):
+                    self._call_kernels(
+                        Vmin,
+                        Vmax,
+                        T,
+                        xT,
+                        bpg_2d,
+                        tpb_2d,
+                        bpg_1d,
+                        tpb_1d,
+                        sync_LCC_stream,
+                    )
+                    self._copy_state(idx)
+            else:
+                self._call_kernels(
+                    Vmin, Vmax, T, xT, bpg_2d, tpb_2d, bpg_1d, tpb_1d, sync_LCC_stream
+                )
+            self._t += dt
+
+        if profile:
+            cuda.profile_stop()
+
+        self.d_ci.copy_to_host(self.ci, stream=self.stream_ci)
+        self.d_cnsr.copy_to_host(self.cnsr, stream=self.stream_cnsr)
+        self.d_cjsr.copy_to_host(self.cjsr, stream=self.stream_cjsr)
+        self.d_cs.copy_to_host(self.cs, stream=self.stream_cs)
+        self.d_cp.copy_to_host(self.cp, stream=self.stream_cp)
+        self.d_CaTi.copy_to_host(self.CaTi, stream=self.stream_CaTi)
+        self.d_CaTs.copy_to_host(self.CaTs, stream=self.stream_CaTs)
+
+        self.d_RyR.copy_to_host(self.RyR, stream=self.stream_RyR)
+        mangled_lcc = self.d_LCC.copy_to_host(stream=self.stream_LCC)
+        self._demangle_LCC(self.LCC, mangled_lcc)
 
         cuda.synchronize()
-
-        self.d_ci.copy_to_host(self.ci)
-        self.d_cnsr.copy_to_host(self.cnsr)
-        self.d_cjsr.copy_to_host(self.cjsr)
-        self.d_cs.copy_to_host(self.cs)
-        self.d_cp.copy_to_host(self.cp)
-        self.d_CaTi.copy_to_host(self.CaTi)
-        self.d_CaTs.copy_to_host(self.CaTs)
-
-        self.d_RyR.copy_to_host(self.RyR)
-        mangled_lcc = self.d_LCC.copy_to_host()
-        self._demangle_LCC(self.LCC, mangled_lcc)
 
     def free_gpu(self):
         if self._memory_initialised:

@@ -6,9 +6,9 @@ from numba import cuda
 from numba.cuda.random import xoroshiro128p_normal_float32
 
 from params import RestrepoParams
-from cuda.RyR import update_RyR_rates, update_RyR_diffusion
-from cuda.LCC import update_LCC_probs, sample_icdf
-from cuda.currents import (
+from .RyR import update_RyR_rates, update_RyR_diffusion
+from .LCC import update_LCC_probs, sample_icdf
+from .currents import (
     ITCa,
     Ileak,
     Iup,
@@ -19,7 +19,7 @@ from cuda.currents import (
     update_diffusive_fluxes,
     cp_cs_iter,
 )
-from cuda.utils import (
+from .utils import (
     square,
     boundary_from_flattened,
     flattened_from_boundary,
@@ -88,7 +88,6 @@ def update_boundary_currents_and_LCC(
     ICa: npt.NDArray,
     INaCa: npt.NDArray,
     rng_states: npt.NDArray,
-    Nai3: float,
     alpha: float,
     beta: float,
     k3: float,
@@ -140,7 +139,7 @@ def update_boundary_currents_and_LCC(
             INaCa,
             cs_,
             z,
-            Nai3,
+            consts.Nai3[0],
             params,
             idx,
         )

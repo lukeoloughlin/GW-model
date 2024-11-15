@@ -5,7 +5,7 @@ import numpy as np
 import numba.cuda as cuda
 
 from params import RestrepoParams
-from src.restrepo.cuda.utils import *
+from .utils import *
 
 
 def test_square():

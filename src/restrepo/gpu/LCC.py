@@ -7,7 +7,7 @@ import numba.cuda as cuda
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
 from params import RestrepoParams
-from cuda.utils import cube, pow4
+from .utils import cube, pow4
 
 # This does the LCC stuff. This should be called in a separate kernel because it only needs to work on the boundary of the domain
 

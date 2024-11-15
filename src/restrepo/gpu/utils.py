@@ -6,10 +6,10 @@ from numba import float32
 from numba import cuda
 
 
-def constants_struct_array(dt: float, sqrtdt: float) -> npt.ArrayLike:
+def constants_struct_array(dt: float, sqrtdt: float, Nai3: float) -> npt.ArrayLike:
     """Create a structured array of constants"""
-    values = (dt, sqrtdt)
-    names = ("dt", "sqrtdt")
+    values = (dt, sqrtdt, Nai3)
+    names = ("dt", "sqrtdt", "Nai3")
     offsets = 4 * np.arange(len(values))
     dtype = np.dtype(
         (

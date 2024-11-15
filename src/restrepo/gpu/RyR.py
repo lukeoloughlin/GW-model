@@ -6,7 +6,7 @@ from numba import float32
 import numba.cuda as cuda
 
 from params import RestrepoParams
-from cuda.utils import (
+from .utils import (
     square,
     bubble_sort_ryr,
     calculate_rho,

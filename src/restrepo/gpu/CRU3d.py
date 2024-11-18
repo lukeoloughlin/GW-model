@@ -3,17 +3,12 @@ import math
 
 import numpy as np
 import numpy.typing as npt
-from numba import float32
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
 from params import RestrepoParams
 from .utils import constants_struct_array, truncated_normal
-from .kernels import (
-    currents_and_RyR,
-    update_boundary_currents_and_LCC,
-    update_RyR_and_euler_step,
-)
+from .kernels3d import update_RyR_and_conc_3d, update_currents_and_lcc_3d
 from .LCC import calculate_V_dep_LCC_params
 
 f32 = np.float32
@@ -22,7 +17,7 @@ RNG_states = Any
 floating = np.floating | float
 
 
-class CRUs:
+class CRU3D:
 
     def __init__(
         self,
@@ -37,6 +32,7 @@ class CRUs:
         CaTi_init: npt.NDArray[np.floating],
         CaTs_init: npt.NDArray[np.floating],
         vp: npt.NDArray[np.floating] | None = None,
+        junctional: npt.NDArray[np.bool_] | None = None,
     ):
 
         self.params: RestrepoParams = params
@@ -56,6 +52,16 @@ class CRUs:
             ).astype(np.float32)
         else:
             self.vp = vp.astype(np.float32)
+        if junctional is None:
+            self.junctional = np.zeros((*ci_init.shape,), dtype=bool)
+            self.junctional[0, ...] = True
+            self.junctional[-1, ...] = True
+            self.junctional[:, 0, :] = True
+            self.junctional[:, -1, :] = True
+            self.junctional[..., 0] = True
+            self.junctional[..., -1] = True
+        else:
+            self.junctional = junctional
 
         # Device array to preallocate
         self.d_params: npt.ArrayLike | None = None
@@ -72,8 +78,7 @@ class CRUs:
         self.d_CaTs: npt.NDArray[f32] | None = None
 
         # Additional device memory to allocate
-        self.rng_states_dW: RNG_states | None = None
-        self.rng_states_LCC: RNG_states | None = None
+        self.rng_states: RNG_states | None = None
         self.dW: npt.NDArray[f32] | None = None
         self.RyR_rates: npt.NDArray[f32] | None = None
         self.RyR_sorted: npt.NDArray[f32] | None = None
@@ -83,7 +88,6 @@ class CRUs:
         self.Delta_ci: npt.NDArray[f32] | None = None
         self.Delta_cnsr: npt.NDArray[f32] | None = None
         self.Delta_cs: npt.NDArray[f32] | None = None
-        # self.sum_cs_nn: npt.NDArray[f32] | None = None
 
         self._t: f32 = f32(0.0)
         self._V: f32 = f32(0.0)
@@ -101,8 +105,7 @@ class CRUs:
         self.stream_RyR = cuda.stream()
         self.stream_LCC = cuda.stream()
 
-        self.stream_kern1 = cuda.stream()
-        self.stream_kern2 = cuda.stream()
+        # self.stream_kern = cuda.stream()
 
         # Variables holding simulation output
         self.t: npt.NDArray[np.floating] | None = None
@@ -117,26 +120,7 @@ class CRUs:
         self.RyR_result: npt.NDArray[f32] | None = None
         self.LCC_result: npt.NDArray[f32] | None = None
 
-    @staticmethod
-    def _mangle_LCC(LCC: npt.NDArray) -> npt.NDArray:
-        """Get the boundary elements of the LCC array"""
-        Nx, Ny, _ = LCC.shape
-        out = np.zeros((2 * Nx + 2 * (Ny - 2), 4), dtype=np.int32)
-        out[:Ny] = LCC[0, ...]  # Top row
-        out[Ny : 2 * Ny] = LCC[-1, ...]  # bottom row
-        out[2 * Ny : (2 * Ny + Nx - 2)] = LCC[1:-1, 0, :]  # left column without corners
-        out[(2 * Ny + Nx - 2) :] = LCC[1:-1, -1, :]  # right column without corners
-        return out
-
-    @staticmethod
-    def _demangle_LCC(LCC: npt.NDArray, mLCC: npt.NDArray) -> None:
-        Nx, Ny, _ = LCC.shape
-        LCC[0, ...] = mLCC[:Ny]
-        LCC[-1, ...] = mLCC[Ny : 2 * Ny]
-        LCC[1:-1, 0, :] = mLCC[2 * Ny : (2 * Ny + Nx - 2)]
-        LCC[1:-1, -1, :] = mLCC[(2 * Ny + Nx - 2) :]
-
-    def _init_memory(self, seed1: int, seed2: int) -> None:
+    def _init_memory(self, seed: int) -> None:
         # Convert namedtuple to numpy record array and allocate on device to avoid copying
         # Do this shit to make the array aligned in memory
         offsets = 4 * np.arange(len(self.params))
@@ -155,9 +139,10 @@ class CRUs:
         params_array = np.rec.array(tuple(self.params), dtype=dtype, aligned=True)[None]
         self.d_params = cuda.to_device(params_array)
         self.d_vp = cuda.to_device(self.vp)
+        self.d_junctional = cuda.to_device(self.junctional)
 
         self.d_RyR = cuda.to_device(self.RyR)
-        self.d_LCC = cuda.to_device(self._mangle_LCC(self.LCC))
+        self.d_LCC = cuda.to_device(self.LCC)
         self.d_ci = cuda.to_device(self.ci)
         self.d_cnsr = cuda.to_device(self.cnsr)
         self.d_cjsr = cuda.to_device(self.cjsr)
@@ -166,30 +151,25 @@ class CRUs:
         self.d_CaTi = cuda.to_device(self.CaTi)
         self.d_CaTs = cuda.to_device(self.CaTs)
 
-        self.dW = cuda.device_array(
-            (self.RyR.shape[0], self.RyR.shape[1], 4), dtype=np.float32
-        )
-        self.RyR_rates = cuda.device_array(
-            (self.RyR.shape[0], self.RyR.shape[1], 8), dtype=np.float32
-        )
+        self.dW = cuda.device_array((*self.RyR.shape,), dtype=np.float32)
+        self.RyR_rates = cuda.device_array((*self.ci.shape, 8), dtype=np.float32)
         self.RyR_sorted = cuda.device_array_like(self.RyR)
         self.LCC_probs = cuda.device_array(
-            (self.d_LCC.shape[0], 4, 7), dtype=np.float32  # type: ignore
+            (*self.LCC.shape, 7), dtype=np.float32  # type: ignore
         )
 
-        self.ICa = cuda.device_array((self.d_LCC.shape[0],), dtype=np.float32)  # type: ignore
+        self.ICa = cuda.device_array_like(self.d_cp)  # type: ignore
         self.INaCa = cuda.device_array_like(self.ICa)
         self.Delta_ci = cuda.device_array_like(self.ci)
         self.Delta_cnsr = cuda.device_array_like(self.cnsr)
-        # self.sum_cs_nn = cuda.device_array_like(self.cs)
         self.Delta_cs = cuda.device_array_like(self.cs)
 
-        self.rng_states_dW = create_xoroshiro128p_states(
-            self.RyR.shape[0] * self.RyR.shape[1], seed=seed1
+        self.rng_states = create_xoroshiro128p_states(
+            self.RyR.shape[0] * self.RyR.shape[1] * self.RyR.shape[2], seed=seed
         )
-        self.rng_states_LCC = create_xoroshiro128p_states(
-            self.d_LCC.shape[0], seed=seed2  # type: ignore
-        )
+        # self.rng_states_LCC = create_xoroshiro128p_states(
+        #    self.d_LCC.shape[0], seed=seed2  # type: ignore
+        # )
         cuda.synchronize()
         self._memory_initialised = True
 
@@ -247,10 +227,7 @@ class CRUs:
         self.CaTi_result[i, ...] = self.d_CaTi.copy_to_host(stream=self.stream_CaTi)  # type: ignore
         self.CaTs_result[i, ...] = self.d_CaTs.copy_to_host(stream=self.stream_CaTs)  # type: ignore
         self.RyR_result[i, ...] = self.d_RyR.copy_to_host(stream=self.stream_RyR)  # type: ignore
-        self._demangle_LCC(
-            self.LCC_result[i, ...],  # type: ignore
-            self.d_LCC.copy_to_host(stream=self.stream_LCC),  # type: ignore
-        )
+        self.LCC_result[i, ...] = self.d_LCC.copy_to_host(stream=self.stream_LCC)  # type: ignore
 
     def _call_kernels(
         self,
@@ -258,45 +235,32 @@ class CRUs:
         Vmax: floating,
         T: floating,
         xT: floating,
-        bpg_2d: tuple[int, int],
-        tpb_2d: tuple[int, int],
-        bpg_1d: int,
-        tpb_1d: int,
-        sync_LCC_stream: bool,
+        bpg: tuple[int, int, int],
+        tpb: tuple[int, int, int],
     ) -> None:
         self._V = self._calc_V(Vmin, Vmax, T, xT)  # type: ignore
-        z = np.float32(self._V * 96.5 / (8.314 * 308.0))
         alpha, beta, k3, k5_, k6_, Pr, Ps, R = calculate_V_dep_LCC_params(
             self._V, self.params, single_precision=True
         )
-        currents_and_RyR[bpg_2d, tpb_2d, self.stream_kern1](
+        bpg_kern1 = (2 * bpg[0], bpg[1], bpg[2])  # Execute 2 jobs in different blocks
+        update_currents_and_lcc_3d[bpg_kern1, tpb](
             self.d_RyR,
+            self.d_LCC,
             self.d_ci,
             self.d_cs,
             self.d_cjsr,
             self.d_cnsr,
             self.d_cp,
             self.RyR_rates,
+            self.LCC_probs,
             self.Delta_ci,
             self.Delta_cnsr,
-            # self.sum_cs_nn,
             self.Delta_cs,
-            self.dW,
-            self.rng_states_dW,
-            self.d_params,
-            self.d_consts,
-        )
-        if sync_LCC_stream:
-            # Must make sure copy has finished before updating LCC
-            self.stream_LCC.synchronize()
-        update_boundary_currents_and_LCC[bpg_1d, tpb_1d, self.stream_kern2](
-            self.d_LCC,
-            self.LCC_probs,
-            self.d_cp,
-            self.d_cs,
             self.ICa,
             self.INaCa,
-            self.rng_states_LCC,
+            self.d_junctional,
+            self.dW,
+            self.rng_states,
             alpha,
             beta,
             k3,
@@ -306,13 +270,11 @@ class CRUs:
             Pr,
             Ps,
             R,
-            z,
             self._V,
             self.d_params,
             self.d_consts,
         )
-        # execute on default stream which waits for the previous two to finish
-        update_RyR_and_euler_step[bpg_2d, tpb_2d](
+        update_RyR_and_conc_3d[bpg, tpb](
             self.d_ci,
             self.d_cs,
             self.d_cp,
@@ -326,11 +288,11 @@ class CRUs:
             self.INaCa,
             self.Delta_ci,
             self.Delta_cnsr,
-            # self.sum_cs_nn,
             self.Delta_cs,
             self.RyR_rates,
             self.dW,
             self.d_vp,
+            self.d_junctional,
             self.d_params,
             self.d_consts,
         )
@@ -343,15 +305,13 @@ class CRUs:
         Vmax: floating = 15.0,
         nstep: int = 1,
         collect_every: int = 1,
-        seed1: int = 0,
-        seed2: int = 12345,
-        tpb1d: int = 16,
-        tpb2d: tuple[int, int] = (8, 8),
+        seed: int = 0,
+        tpb: tuple[int, int, int] = (16, 2, 2),
         reset_t: bool = False,
         profile: bool = False,
     ) -> None:
         if not self._memory_initialised:
-            self._init_memory(seed1, seed2)
+            self._init_memory(seed)
 
         sqrtdt = np.sqrt(dt, dtype=np.float32)
         # T should be in seconds here
@@ -360,12 +320,11 @@ class CRUs:
             constants_struct_array(np.float32(dt), sqrtdt, Nai3)
         )
 
-        bpg2d = (
-            math.ceil(self.ci.shape[0] / tpb2d[0]),
-            math.ceil(self.ci.shape[1] / tpb2d[1]),
+        bpg = (
+            math.ceil(self.ci.shape[0] / tpb[0]),
+            math.ceil(self.ci.shape[1] / tpb[1]),
+            math.ceil(self.ci.shape[2] / tpb[2]),
         )
-
-        bpg1d = math.ceil(self.d_LCC.shape[0] / tpb1d)  # type: ignore
 
         # Not mentioned in the paper, but T has to be in seconds here.
         xT = np.float32(1000 * T * (2 / 3) / (1000 * (2 / 3) + T))
@@ -379,7 +338,6 @@ class CRUs:
             cuda.profile_start()
 
         for i in range(1, nstep + 1):
-            sync_LCC_stream = ((i - 1) % collect_every) == 0
             if i % collect_every == 0:
                 idx = i // collect_every
                 with cuda.pinned(
@@ -398,17 +356,12 @@ class CRUs:
                         Vmax,
                         T,
                         xT,
-                        bpg2d,
-                        tpb2d,
-                        bpg1d,
-                        tpb1d,
-                        sync_LCC_stream,
+                        bpg,
+                        tpb,
                     )
                     self._copy_state(idx)
             else:
-                self._call_kernels(
-                    Vmin, Vmax, T, xT, bpg2d, tpb2d, bpg1d, tpb1d, sync_LCC_stream
-                )
+                self._call_kernels(Vmin, Vmax, T, xT, bpg, tpb)
             self._t += dt
 
         if profile:
@@ -423,35 +376,6 @@ class CRUs:
         self.d_CaTs.copy_to_host(self.CaTs, stream=self.stream_CaTs)  # type: ignore
 
         self.d_RyR.copy_to_host(self.RyR, stream=self.stream_RyR)  # type: ignore
-        mangled_lcc = self.d_LCC.copy_to_host(stream=self.stream_LCC)  # type: ignore
-        self._demangle_LCC(self.LCC, mangled_lcc)
+        self.d_LCC.copy_to_host(self.LCC, stream=self.stream_LCC)  # type: ignore
 
         cuda.synchronize()
-
-    # def free_gpu(self):
-    #    if self._memory_initialised:
-    #        self.d_RyR = self.d_RyR.copy_to_host()
-    #        self.d_LCC = self.d_LCC.copy_to_host()
-    #        self.d_cp = self.d_cp.copy_to_host()
-    #        self.rng_states = self.rng_states.copy_to_host()
-
-    #        self.dW = self.dW.copy_to_host()
-    #        self.RyR_rates = self.RyR_rates.copy_to_host()
-    #        self.RyR_sorted = self.RyR_sorted.copy_to_host()
-    #        self.LCC_probs = self.LCC_probs.copy_to_host()
-
-    #        self._deallocated = True
-
-    # def _reallocate(self):
-    #    if self._deallocated:
-    #        self.d_RyR = cuda.to_device(self.d_RyR)
-    #        self.d_LCC = cuda.to_device(self.d_LCC)
-    #        self.d_cp = cuda.to_device(self.d_cp)
-    #        self.rng_states = cuda.to_device(self.rng_states)
-
-    #        self.dW = cuda.to_device(self.dW)
-    #        self.RyR_rates = cuda.to_device(self.RyR_rates)
-    #        self.RyR_sorted = cuda.to_device(self.RyR_sorted)
-    #        self.LCC_probs = cuda.to_device(self.LCC_probs)
-
-    #        self._deallocated = False

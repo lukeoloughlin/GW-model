@@ -9,21 +9,25 @@ from params import RestrepoParams
 from .utils import (
     square,
     bubble_sort_ryr,
+    bubble_sort_ryr_3d,
     calculate_rho,
     calculate_Mhat,
 )
 
+f32 = np.float32
+i32 = np.int32
+
 
 @cuda.jit(device=True, inline=True)
 def update_RyR_rates(
-    RyR_rates: npt.NDArray,
-    RyR: npt.NDArray,
-    cp: npt.NDArray,
-    cjsr: npt.NDArray,
+    RyR_rates: npt.NDArray[f32],
+    RyR: npt.NDArray[f32],
+    cp: npt.NDArray[f32],
+    cjsr: npt.NDArray[f32],
     params: RestrepoParams,
-    x: int,
-    y: int,
-):
+    x: i32,
+    y: i32,
+) -> None:
     """Device func to update RyR rates at position x, y"""
     Mhat = calculate_Mhat(
         calculate_rho(cjsr[x, y], params.K[0], params.rho_inf[0], params.h[0]),
@@ -31,7 +35,7 @@ def update_RyR_rates(
     )
 
     k12 = params.Ku[0] * square(cp[x, y])  # k12
-    k23 = Mhat * cp[x, y] / params.tau_b[0]  # k23
+    k23 = Mhat / params.tau_b[0]  # k23
 
     k43 = params.Kb[0] * square(cp[x, y])  # k43
     k32 = k12 / (k43 * params.tau_u[0])  # k32 = k41 * k12 / k43
@@ -47,7 +51,43 @@ def update_RyR_rates(
 
 
 @cuda.jit(device=True, inline=True)
-def RyR_orth_proj_simplex(RyR, RyR_sorted, x, y):
+def update_RyR_rates_3d(
+    RyR_rates: npt.NDArray[f32],
+    RyR: npt.NDArray[f32],
+    cp: f32,
+    cjsr: f32,
+    params: RestrepoParams,
+    x: i32,
+    y: i32,
+    z: i32,
+) -> None:
+    """Device func to update RyR rates at position x, y"""
+    Mhat = calculate_Mhat(
+        calculate_rho(cjsr, params.K[0], params.rho_inf[0], params.h[0]),
+        params.BCSQN[0],
+    )
+    cp2 = square(cp)
+
+    k12 = params.Ku[0] * cp2  # k12
+    k23 = Mhat / params.tau_b[0]  # k23
+
+    k43 = params.Kb[0] * cp2  # k43
+    k32 = k12 / (k43 * params.tau_u[0])  # k32 = k41 * k12 / k43
+
+    RyR_rates[x, y, z, 0] = k12 * RyR[x, y, z, 0]  # 1 -> 2
+    RyR_rates[x, y, z, 1] = RyR[x, y, z, 1] / params.tau_c[0]  # 2 -> 1; k21 = _1_tau_c
+    RyR_rates[x, y, z, 2] = k23 * RyR[x, y, z, 1]  # 2 -> 3
+    RyR_rates[x, y, z, 3] = k32 * RyR[x, y, z, 2]  # 3 -> 2
+    RyR_rates[x, y, z, 4] = RyR[x, y, z, 2] / params.tau_c[0]  # 3 -> 4; k34 = _1_tau_c
+    RyR_rates[x, y, z, 5] = k43 * RyR[x, y, z, 3]  # 4 -> 3
+    RyR_rates[x, y, z, 6] = RyR[x, y, z, 3] / params.tau_u[0]  # 4 -> 1; k41 = _1_tau_u
+    RyR_rates[x, y, z, 7] = k23 * RyR[x, y, z, 0]  # 1-> 4; k14 = k23
+
+
+@cuda.jit(device=True, inline=True)
+def RyR_orth_proj_simplex(
+    RyR: npt.NDArray[f32], RyR_sorted: npt.NDArray[f32], x: i32, y: i32
+) -> None:
     """Device func to perform orthogonal projection of RyR values onto simplex after Euler Maruyama update"""
     # Copy the RyR values into preallocated array and use bubble sort
 
@@ -69,7 +109,39 @@ def RyR_orth_proj_simplex(RyR, RyR_sorted, x, y):
 
 
 @cuda.jit(device=True, inline=True)
-def update_RyR_diffusion(RyR, RyR_sorted, RyR_rates, dW, dt, x, y):
+def RyR_orth_proj_simplex_3d(
+    RyR: npt.NDArray[f32], RyR_sorted: npt.NDArray[f32], x: i32, y: i32, z: i32
+) -> None:
+    """Device func to perform orthogonal projection of RyR values onto simplex after Euler Maruyama update"""
+    # Copy the RyR values into preallocated array and use bubble sort
+
+    bubble_sort_ryr_3d(RyR, RyR_sorted, x, y, z)
+
+    lambda_ = float32(0.0)
+    sum_ = float32(1.0)
+    for i in range(4):
+        if sum_ - (float32(4.0 - i)) * RyR_sorted[x, y, z, i] < float32(1.0):
+            lambda_ = (sum_ - 1.0) / (float32(4.0 - i))
+            break
+        else:
+            sum_ -= RyR_sorted[x, y, z, i]
+
+    RyR[x, y, z, 0] = max(RyR[x, y, z, 0] - lambda_, float32(0.0))
+    RyR[x, y, z, 1] = max(RyR[x, y, z, 1] - lambda_, float32(0.0))
+    RyR[x, y, z, 2] = max(RyR[x, y, z, 2] - lambda_, float32(0.0))
+    RyR[x, y, z, 3] = max(RyR[x, y, z, 3] - lambda_, float32(0.0))
+
+
+@cuda.jit(device=True, inline=True)
+def update_RyR_diffusion(
+    RyR: npt.NDArray[f32],
+    RyR_sorted: npt.NDArray[f32],
+    RyR_rates: npt.NDArray[f32],
+    dW: npt.NDArray[f32],
+    dt: f32,
+    x: i32,
+    y: i32,
+) -> None:
     """Euler Maruyama step for RyR model with reflecting boundary conditions."""
     drift1 = (
         RyR_rates[x, y, 1]
@@ -108,99 +180,86 @@ def update_RyR_diffusion(RyR, RyR_sorted, RyR_rates, dW, dt, x, y):
     RyR_orth_proj_simplex(RyR, RyR_sorted, x, y)
 
 
-# @cuda.jit
-# def RyR_kernel(
-#    RyR,
-#    RyR_rates,
-#    RyR_tmp,
-#    cp,
-#    cjsr,
-#    dW,
-#    eps,
-#    dt,
-#    sqrtdt,
-#    Ku,
-#    Kb,
-#    _1_tau_u,
-#    _1_tau_b,
-#    _1_tau_c,
-#    BCSQN,
-#    rho_inf,
-#    K,
-#    rng_states,
-# ):
-#    x, y = cuda.grid(2)
-
-#    N1, N2, _ = RyR.shape
-
-#    tid = y * N1 + x
-
-#    if x < N1 and y < N2:
-
-#        update_RyR_rates(
-#            RyR_rates,
-#            RyR,
-#            cp,
-#            cjsr,
-#            Ku,
-#            Kb,
-#            _1_tau_u,
-#            _1_tau_b,
-#            _1_tau_c,
-#            BCSQN,
-#            rho_inf,
-#            K,
-#            x,
-#            y,
-#        )
-
-# update normals
-#        for i in range(4):
-#            dW[x, y, i] = sqrtdt * xoroshiro128p_normal_float32(rng_states, tid)
-
-#        update_RyR_diffusion(RyR, RyR_tmp, RyR_rates, dW, eps, dt, x, y)
-
-
-def test_RyR_cpu(
-    RyR: npt.NDArray, RyR_rates: npt.NDArray, dW: npt.NDArray, dt: float
-) -> npt.NDArray:
+@cuda.jit(device=True, inline=True)
+def update_RyR_diffusion_3d(
+    RyR: npt.NDArray[f32],
+    RyR_sorted: npt.NDArray[f32],
+    RyR_rates: npt.NDArray[f32],
+    dW: npt.NDArray[f32],
+    dt: f32,
+    x: i32,
+    y: i32,
+    z: i32,
+) -> None:
+    """Euler Maruyama step for RyR model with reflecting boundary conditions."""
     drift1 = (
-        RyR_rates[..., 1] + RyR_rates[..., 6] - (RyR_rates[..., 0] + RyR_rates[..., 7])
+        RyR_rates[x, y, z, 1]
+        + RyR_rates[x, y, z, 6]
+        - (RyR_rates[x, y, z, 0] + RyR_rates[x, y, z, 7])
     )  # q21 + q41 - (q12 + q14)
     drift2 = (
-        RyR_rates[..., 0] + RyR_rates[..., 3] - (RyR_rates[..., 1] + RyR_rates[..., 2])
+        RyR_rates[x, y, z, 0]
+        + RyR_rates[x, y, z, 3]
+        - (RyR_rates[x, y, z, 1] + RyR_rates[x, y, z, 2])
     )  # q12 + q32 - (q21 + q23)
     drift3 = (
-        RyR_rates[..., 2] + RyR_rates[..., 5] - (RyR_rates[..., 3] + RyR_rates[..., 4])
+        RyR_rates[x, y, z, 2]
+        + RyR_rates[x, y, z, 5]
+        - (RyR_rates[x, y, z, 3] + RyR_rates[x, y, z, 4])
     )  # q23 + q43 - (q32 + q34)
 
-    sigma12 = 0.1 * np.sqrt(RyR_rates[..., 0] + RyR_rates[..., 1])  # q12 + q21
-    sigma23 = 0.1 * np.sqrt(RyR_rates[..., 2] + RyR_rates[..., 3])  # q23 + q32
-    sigma34 = 0.1 * np.sqrt(RyR_rates[..., 4] + RyR_rates[..., 5])  # q34 + q43
-    sigma14 = 0.1 * np.sqrt(RyR_rates[..., 6] + RyR_rates[..., 7])  # q41 + q14
+    sigma12 = float32(0.1) * math.sqrt(
+        RyR_rates[x, y, z, 0] + RyR_rates[x, y, z, 1]
+    )  # q12 + q21
+    sigma23 = float32(0.1) * math.sqrt(
+        RyR_rates[x, y, z, 2] + RyR_rates[x, y, z, 3]
+    )  # q23 + q32
+    sigma34 = float32(0.1) * math.sqrt(
+        RyR_rates[x, y, z, 4] + RyR_rates[x, y, z, 5]
+    )  # q34 + q43
+    sigma14 = float32(0.1) * math.sqrt(
+        RyR_rates[x, y, z, 6] + RyR_rates[x, y, z, 7]
+    )  # q41 + q14
 
-    RyR_out = np.copy(RyR)
+    RyR[x, y, z, 0] += dt * drift1 + sigma12 * dW[x, y, z, 0] + sigma14 * dW[x, y, z, 3]
+    RyR[x, y, z, 1] += dt * drift2 - sigma12 * dW[x, y, z, 0] + sigma23 * dW[x, y, z, 1]
+    RyR[x, y, z, 2] += dt * drift3 - sigma23 * dW[x, y, z, 1] + sigma34 * dW[x, y, z, 2]
+    RyR[x, y, z, 3] = float32(1.0) - (
+        RyR[x, y, z, 0] + RyR[x, y, z, 1] + RyR[x, y, z, 2]
+    )
 
-    RyR_out[..., 0] += dt * drift1 + sigma12 * dW[..., 0] + sigma14 * dW[..., 3]
-    RyR_out[..., 1] += dt * drift2 - sigma12 * dW[..., 0] + sigma23 * dW[..., 1]
-    RyR_out[..., 2] += dt * drift3 - sigma23 * dW[..., 1] + sigma34 * dW[..., 2]
-    RyR_out[..., 3] = 1.0 - (RyR_out[..., 0] + RyR_out[..., 1] + RyR_out[..., 2])
+    RyR_orth_proj_simplex_3d(RyR, RyR_sorted, x, y, z)
 
-    RyR_sorted = np.sort(RyR_out, axis=-1)
 
-    for x in range(RyR.shape[0]):
-        for y in range(RyR.shape[0]):
-            lambda_ = 0.0
-            sum_ = 1.0
-            for i in range(4):
-                if sum_ - (4.0 - i) * RyR_sorted[x, y, i] < 1:
-                    lambda_ = (sum_ - 1.0) / (4 - i)
-                    break
-                else:
-                    sum_ -= RyR_sorted[x, y, i]
-            RyR_out[x, y, 0] = max(RyR_out[x, y, 0] - lambda_, 0.0)
-            RyR_out[x, y, 1] = max(RyR_out[x, y, 1] - lambda_, 0.0)
-            RyR_out[x, y, 2] = max(RyR_out[x, y, 2] - lambda_, 0.0)
-            RyR_out[x, y, 3] = max(RyR_out[x, y, 3] - lambda_, 0.0)
+def RyR_stationary(
+    cp: npt.NDArray, params: RestrepoParams, single_precision: bool = True
+) -> npt.NDArray:
+    log_cp_K = np.log(cp) - np.log(params.K)
+    hill_fn = params.rho_inf / (1.0 + np.exp(23.0 * log_cp_K))
+    Mhat = (np.sqrt(1.0 + 8.0 * hill_fn * params.BCSQN) - 1.0) / (
+        4.0 * hill_fn * params.BCSQN
+    )
 
-    return RyR_out
+    k12 = params.Ku * cp**2  # k12
+    k21 = 1 / params.tau_c
+    k23 = Mhat / params.tau_b  # k23
+    k34 = 1 / params.tau_c
+    k43 = params.Kb * cp**2  # k43
+    k32 = k12 / (params.tau_u * k43)  # k32 = k41 * k12 / k43
+
+    pi2_un = k12 / k21
+    pi3_un = (k23 / k32) * pi2_un
+    pi4_un = (k34 / k43) * pi3_un
+
+    norm = 1.0 + pi2_un + pi3_un + pi4_un
+
+    RyR = np.zeros((*cp.shape, 4))
+    RyR[..., 0] = 1.0 / norm
+    RyR[..., 1] = pi2_un / norm
+    RyR[..., 2] = pi3_un / norm
+    RyR[..., 3] = pi4_un / norm
+
+    if single_precision:
+        return RyR.astype(f32)
+    else:
+        return RyR

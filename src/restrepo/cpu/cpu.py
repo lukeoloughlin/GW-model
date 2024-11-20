@@ -38,16 +38,16 @@ def CRU_step_non_boundary(
     Iup_ = utils.Iup(ci, cnsr, params)
     Ileak_ = utils.Ileak(cnsr, ci, params)
     ITCi = utils.ITCa(ci, CaTi, params)
-    ICi = (ci_neighbours - ci) * (2 / params.tau_iL + 2 / params.tau_iT)
+    ICi = (ci_neighbours - ci) * (2 / params.tau_iL_i + 2 / params.tau_iT_i)
 
     Idps = (cp - cs) / params.tau_ps
     ITCs = utils.ITCa(cs, CaTs, params)
-    ICs = (cs_neighbours - cs) * (2 / params.tau_sL + 2 / params.tau_sT)
+    ICs = (cs_neighbours - cs) * (2 / params.tau_sL_i + 2 / params.tau_sT_i)
 
     Ir_ = utils.Ir(cp, cjsr, ryr_open, params)
 
     Itr = (cnsr - cjsr) / params.tau_tr
-    ICnsr = (cnsr_neighbours - cnsr) * (2 / params.tau_nsrL + 2 / params.tau_nsrT)
+    ICnsr = (cnsr_neighbours - cnsr) * (2 / params.tau_nsrL_i + 2 / params.tau_nsrT_i)
 
     beta_i_ = utils.beta_i(ci, params)
     beta_s_ = utils.beta_s(cs, params)
@@ -115,18 +115,18 @@ def CRU_step_boundary(
     Iup_ = utils.Iup(ci, cnsr, params)
     Ileak_ = utils.Ileak(cnsr, ci, params)
     ITCi = utils.ITCa(ci, CaTi, params)
-    ICi = (ci_neighbours - ci) * (2 / params.tau_iL + 2 / params.tau_iT)
+    ICi = (ci_neighbours - ci) * (2 / params.tau_iL_i + 2 / params.tau_iT_i)
 
     Idps = (cp - cs) / params.tau_ps
     INCX = utils.INaCa(cs, z, Nai**3, params)
     ITCs = utils.ITCa(cs, CaTs, params)
-    ICs = (cs_neighbours - cs) * (2 / params.tau_sL + 2 / params.tau_sT)
+    ICs = (cs_neighbours - cs) * (2 / params.tau_sL_i + 2 / params.tau_sT_i)
 
     Ir_ = utils.Ir(cp, cjsr, ryr_open, params)
     ICa_ = utils.ICa(lcc_open, cp, z, params)
 
     Itr = (cnsr - cjsr) / params.tau_tr
-    ICnsr = (cnsr_neighbours - cnsr) * (2 / params.tau_nsrL + 2 / params.tau_nsrT)
+    ICnsr = (cnsr_neighbours - cnsr) * (2 / params.tau_nsrL_i + 2 / params.tau_nsrT_i)
 
     beta_i_ = utils.beta_i(ci, params)
     beta_s_ = utils.beta_s(cs, params)

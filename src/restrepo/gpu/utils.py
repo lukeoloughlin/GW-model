@@ -239,7 +239,7 @@ def time_const_backward_3d(
 
 
 @cuda.jit(device=True, inline=True)
-def time_const_left_3d(
+def time_const_right_3d(
     tau_y: f32,
     tau_y_bdy: f32,
     x: i32,
@@ -257,7 +257,7 @@ def time_const_left_3d(
 
 
 @cuda.jit(device=True, inline=True)
-def time_const_right_3d(
+def time_const_left_3d(
     tau_y: f32,
     tau_y_bdy: f32,
     x: i32,
@@ -311,15 +311,26 @@ def time_const_down_3d(
 
 
 def truncated_normal(
-    std: float, lower: float, upper: float, Nx: int, Ny: int
+    std: float, lower: float, upper: float, Nx: int, Ny: int, Nz: int | None
 ) -> npt.NDArray:
-    out = np.zeros((Nx, Ny))
-    for i in range(Nx):
-        for j in range(Ny):
-            while True:
-                sample = std * np.random.normal()
-                if sample > lower and sample < upper:
-                    out[i, j] = sample
-                    break
+    if Nz is None:
+        out = np.zeros((Nx, Ny))
+        for i in range(Nx):
+            for j in range(Ny):
+                while True:
+                    sample = std * np.random.normal()
+                    if sample > lower and sample < upper:
+                        out[i, j] = sample
+                        break
+    else:
+        out = np.zeros((Nx, Ny, Nz))
+        for i in range(Nx):
+            for j in range(Ny):
+                for k in range(Nz):
+                    while True:
+                        sample = std * np.random.normal()
+                        if sample > lower and sample < upper:
+                            out[i, j, k] = sample
+                            break
 
     return out

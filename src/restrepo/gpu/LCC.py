@@ -237,7 +237,7 @@ def update_LCC_probs_3d(
             LCC_probs[x, y, z, j, 4] = dt * k4_  # I1Ba
             LCC_probs[x, y, z, j, 5] = float32(1.0) - dt * (k5_ + k4_)  # I2Ba
             LCC_probs[x, y, z, j, 6] = float32(0.0)  # O
-        else:
+        elif LCC[x, y, z, j] == 7:
             LCC_probs[x, y, z, j, 0] = float32(0.0)  # C2
             LCC_probs[x, y, z, j, 1] = dt * params.r2[0]  # C1
             LCC_probs[x, y, z, j, 2] = dt * s1  # I1Ca
@@ -281,6 +281,7 @@ def sample_LCC_icdf_3d(
     y: i32,
     z: i32,
     lcc_num: i32,
+    junctional: bool,
     tid: i32,
 ) -> i32:
     """
@@ -294,13 +295,16 @@ def sample_LCC_icdf_3d(
     Returns:
         i32: The sampled state
     """
-    u = xoroshiro128p_uniform_float32(rng_states, tid)
-    cdf = float32(0.0)
-    for k in range(7):
-        cdf += LCC_probs[x, y, z, lcc_num, k]
-        if u < cdf:
-            return int32(k + 1)  # state starts at 1 so increment
-    return int32(7)
+    if junctional:
+        u = xoroshiro128p_uniform_float32(rng_states, tid)
+        cdf = float32(0.0)
+        for k in range(7):
+            cdf += LCC_probs[x, y, z, lcc_num, k]
+            if u < cdf:
+                return int32(k + 1)  # state starts at 1 so increment
+        return int32(7)
+    else:
+        return int32(0)
 
 
 def calculate_V_dep_LCC_params(

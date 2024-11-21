@@ -17,6 +17,66 @@ RNG_states = Any
 floating = np.floating | float
 
 
+class CRUSolution:
+
+    def __init__(self, params: RestrepoParams, nstep: int, Nx: int, Ny: int, Nz: int):
+        self.params = params
+        self.t = np.zeros(nstep + 1)
+        self.V = np.zeros(nstep + 1)
+        self.ci = np.zeros((nstep + 1, Nx, Ny, Nz), dtype=np.float32)
+        self.cs = np.zeros((nstep + 1, Nx, Ny, Nz), dtype=np.float32)
+        self.cp = np.zeros((nstep + 1, Nx, Ny, Nz), dtype=np.float32)
+        self.cnsr = np.zeros((nstep + 1, Nx, Ny, Nz), dtype=np.float32)
+        self.cjsr = np.zeros((nstep + 1, Nx, Ny, Nz), dtype=np.float32)
+        self.CaTi = np.zeros((nstep + 1, Nx, Ny, Nz), dtype=np.float32)
+        self.CaTs = np.zeros((nstep + 1, Nx, Ny, Nz), dtype=np.float32)
+        self.RyR = np.zeros((nstep + 1, Nx, Ny, Nz, 4), dtype=np.float32)
+        self.LCC = np.zeros((nstep + 1, Nx, Ny, Nz, 4), dtype=np.int32)
+
+    @property
+    def Itr(self):
+        return (self.cnsr - self.cjsr) / self.params.tau_tr
+
+    @property
+    def Ileak(self):
+        cnsr2 = self.cnsr**2
+        return (
+            self.params.gleak
+            * cnsr2
+            / (cnsr2 + self.params.Knsr**2)
+            * (self.cnsr - self.ci)
+        )
+
+    @property
+    def Iup(self):
+        ci_Ki_H = (self.ci / self.params.Ki) ** self.params.H
+        cnsr_Knsr_H = (self.cnsr / self.params.Knsr) ** self.params.H
+        return self.params.vup * (ci_Ki_H - cnsr_Knsr_H) / (1 + ci_Ki_H + cnsr_Knsr_H)
+
+    def line_scan(self, y: int, z: int):
+        centre = self.cp[..., y, z]
+        left = self.cp[..., y - 1, z]
+        right = self.cp[..., y + 1, z]
+        up = self.cp[..., y, z + 1]
+        down = self.cp[..., y, z - 1]
+        left_up = self.cp[..., y - 1, z + 1]
+        left_down = self.cp[..., y - 1, z - 1]
+        right_up = self.cp[..., y + 1, z + 1]
+        right_down = self.cp[..., y + 1, z - 1]
+
+        return (
+            centre
+            + left
+            + right
+            + up
+            + down
+            + left_up
+            + left_down
+            + right_up
+            + right_down
+        ) / 9.0
+
+
 class CRU3D:
 
     def __init__(
@@ -48,7 +108,10 @@ class CRU3D:
         self.CaTs = CaTs_init.astype(np.float32)
         if vp is None:
             self.vp = params.vp * (
-                1 + truncated_normal(0.3, -0.8, 0.8, ci_init.shape[0], ci_init.shape[1])
+                1
+                + truncated_normal(
+                    0.3, -0.8, 0.8, ci_init.shape[0], ci_init.shape[1], ci_init.shape[2]
+                )
             ).astype(np.float32)
         else:
             self.vp = vp.astype(np.float32)
@@ -80,6 +143,7 @@ class CRU3D:
         # Additional device memory to allocate
         self.rng_states: RNG_states | None = None
         self.dW: npt.NDArray[f32] | None = None
+        self.RyR_open: npt.NDArray[f32] | None = None
         self.RyR_rates: npt.NDArray[f32] | None = None
         self.RyR_sorted: npt.NDArray[f32] | None = None
         self.LCC_probs: npt.NDArray[f32] | None = None
@@ -88,6 +152,7 @@ class CRU3D:
         self.Delta_ci: npt.NDArray[f32] | None = None
         self.Delta_cnsr: npt.NDArray[f32] | None = None
         self.Delta_cs: npt.NDArray[f32] | None = None
+        self.d_junctional: npt.NDArray[np.bool_] | None = None
 
         self._t: f32 = f32(0.0)
         self._V: f32 = f32(0.0)
@@ -105,20 +170,7 @@ class CRU3D:
         self.stream_RyR = cuda.stream()
         self.stream_LCC = cuda.stream()
 
-        # self.stream_kern = cuda.stream()
-
-        # Variables holding simulation output
-        self.t: npt.NDArray[np.floating] | None = None
-        self.V: npt.NDArray[np.floating] | None = None
-        self.ci_result: npt.NDArray[f32] | None = None
-        self.cs_result: npt.NDArray[f32] | None = None
-        self.cp_result: npt.NDArray[f32] | None = None
-        self.cnsr_result: npt.NDArray[f32] | None = None
-        self.cjsr_result: npt.NDArray[f32] | None = None
-        self.CaTi_result: npt.NDArray[f32] | None = None
-        self.CaTs_result: npt.NDArray[f32] | None = None
-        self.RyR_result: npt.NDArray[f32] | None = None
-        self.LCC_result: npt.NDArray[f32] | None = None
+        self.stream_kern = cuda.stream()
 
     def _init_memory(self, seed: int) -> None:
         # Convert namedtuple to numpy record array and allocate on device to avoid copying
@@ -152,6 +204,7 @@ class CRU3D:
         self.d_CaTs = cuda.to_device(self.CaTs)
 
         self.dW = cuda.device_array((*self.RyR.shape,), dtype=np.float32)
+        self.RyR_open = cuda.device_array((*self.ci.shape,), dtype=np.float32)
         self.RyR_rates = cuda.device_array((*self.ci.shape, 8), dtype=np.float32)
         self.RyR_sorted = cuda.device_array_like(self.RyR)
         self.LCC_probs = cuda.device_array(
@@ -173,61 +226,46 @@ class CRU3D:
         cuda.synchronize()
         self._memory_initialised = True
 
-    def _calc_V(
-        self, Vmin: floating, Vmax: floating, T: floating, xT: floating
+    @staticmethod
+    def V_fn(
+        t: floating, Vmin: floating, Vmax: floating, T: floating, xT: floating
     ) -> floating:
-        t_mod_T = self._t % T
+        t_mod_T = t % T
         return (
             np.float32(Vmin + (Vmax - Vmin) * np.sqrt(1.0 - (t_mod_T / xT) ** 2))
             if t_mod_T < xT
             else np.float32(Vmin)
         )
 
-    def _init_results(self, nstep: int):
+    def _init_results(self, nstep: int) -> CRUSolution:
         # Initialise result arrays
-        self.t = np.zeros(nstep + 1)
-        self.V = np.zeros(nstep + 1)
-        self.ci_result = np.zeros((nstep + 1, *self.ci.shape), dtype=self.ci.dtype)
-        self.cs_result = np.zeros((nstep + 1, *self.cs.shape), dtype=self.cs.dtype)
-        self.cp_result = np.zeros((nstep + 1, *self.cp.shape), dtype=self.cp.dtype)
-        self.cnsr_result = np.zeros(
-            (nstep + 1, *self.cnsr.shape), dtype=self.cnsr.dtype
-        )
-        self.cjsr_result = np.zeros(
-            (nstep + 1, *self.cjsr.shape), dtype=self.cjsr.dtype
-        )
-        self.CaTi_result = np.zeros(
-            (nstep + 1, *self.CaTi.shape), dtype=self.CaTi.dtype
-        )
-        self.CaTs_result = np.zeros(
-            (nstep + 1, *self.CaTs.shape), dtype=self.CaTs.dtype
-        )
-        self.RyR_result = np.zeros((nstep + 1, *self.RyR.shape), dtype=self.RyR.dtype)
-        self.LCC_result = np.zeros((nstep + 1, *self.LCC.shape), dtype=self.LCC.dtype)
+        sol = CRUSolution(self.params, nstep, *self.cs.shape)
 
-        self.t[0] = self._t
-        self.ci_result[0, ...] = self.ci
-        self.cs_result[0, ...] = self.cs
-        self.cp_result[0, ...] = self.cp
-        self.cnsr_result[0, ...] = self.cnsr
-        self.cjsr_result[0, ...] = self.cjsr
-        self.CaTi_result[0, ...] = self.CaTi
-        self.CaTs_result[0, ...] = self.CaTs
-        self.RyR_result[0, ...] = self.RyR
-        self.LCC_result[0, ...] = self.LCC
+        sol.t[0] = self._t
+        sol.V[0] = self._V
+        sol.ci[0, ...] = self.ci
+        sol.cs[0, ...] = self.cs
+        sol.cp[0, ...] = self.cp
+        sol.cnsr[0, ...] = self.cnsr
+        sol.cjsr[0, ...] = self.cjsr
+        sol.CaTi[0, ...] = self.CaTi
+        sol.CaTs[0, ...] = self.CaTs
+        sol.RyR[0, ...] = self.RyR
+        sol.LCC[0, ...] = self.LCC
+        return sol
 
-    def _copy_state(self, i: int) -> None:
-        self.t[i] = self._t  # type: ignore
-        self.V[i] = self._V  # type: ignore
-        self.ci_result[i, ...] = self.d_ci.copy_to_host(stream=self.stream_ci)  # type: ignore
-        self.cs_result[i, ...] = self.d_cs.copy_to_host(stream=self.stream_cs)  # type: ignore
-        self.cp_result[i, ...] = self.d_cp.copy_to_host(stream=self.stream_cp)  # type: ignore
-        self.cnsr_result[i, ...] = self.d_cnsr.copy_to_host(stream=self.stream_cnsr)  # type: ignore
-        self.cjsr_result[i, ...] = self.d_cjsr.copy_to_host(stream=self.stream_cjsr)  # type: ignore
-        self.CaTi_result[i, ...] = self.d_CaTi.copy_to_host(stream=self.stream_CaTi)  # type: ignore
-        self.CaTs_result[i, ...] = self.d_CaTs.copy_to_host(stream=self.stream_CaTs)  # type: ignore
-        self.RyR_result[i, ...] = self.d_RyR.copy_to_host(stream=self.stream_RyR)  # type: ignore
-        self.LCC_result[i, ...] = self.d_LCC.copy_to_host(stream=self.stream_LCC)  # type: ignore
+    def _copy_state(self, i: int, sol: CRUSolution) -> None:
+        sol.t[i] = self._t  # type: ignore
+        sol.V[i] = self._V  # type: ignore
+        sol.ci[i, ...] = self.d_ci.copy_to_host(stream=self.stream_ci)  # type: ignore
+        sol.cs[i, ...] = self.d_cs.copy_to_host(stream=self.stream_cs)  # type: ignore
+        sol.cp[i, ...] = self.d_cp.copy_to_host(stream=self.stream_cp)  # type: ignore
+        sol.cnsr[i, ...] = self.d_cnsr.copy_to_host(stream=self.stream_cnsr)  # type: ignore
+        sol.cjsr[i, ...] = self.d_cjsr.copy_to_host(stream=self.stream_cjsr)  # type: ignore
+        sol.CaTi[i, ...] = self.d_CaTi.copy_to_host(stream=self.stream_CaTi)  # type: ignore
+        sol.CaTs[i, ...] = self.d_CaTs.copy_to_host(stream=self.stream_CaTs)  # type: ignore
+        sol.RyR[i, ...] = self.d_RyR.copy_to_host(stream=self.stream_RyR)  # type: ignore
+        sol.LCC[i, ...] = self.d_LCC.copy_to_host(stream=self.stream_LCC)  # type: ignore
 
     def _call_kernels(
         self,
@@ -238,12 +276,13 @@ class CRU3D:
         bpg: tuple[int, int, int],
         tpb: tuple[int, int, int],
     ) -> None:
-        self._V = self._calc_V(Vmin, Vmax, T, xT)  # type: ignore
+        self._V = self.V_fn(self._t, Vmin, Vmax, T, xT)  # type: ignore
         alpha, beta, k3, k5_, k6_, Pr, Ps, R = calculate_V_dep_LCC_params(
             self._V, self.params, single_precision=True
         )
-        bpg_kern1 = (2 * bpg[0], bpg[1], bpg[2])  # Execute 2 jobs in different blocks
-        update_currents_and_lcc_3d[bpg_kern1, tpb](
+        bpg_kern1 = (3 * bpg[0], bpg[1], bpg[2])  # Execute 3 jobs in different blocks
+        bpg_kern2 = (3 * bpg[0], bpg[1], bpg[2])  # Execute 3 jobs in different blocks
+        update_currents_and_lcc_3d[bpg_kern1, tpb, self.stream_kern](
             self.d_RyR,
             self.d_LCC,
             self.d_ci,
@@ -252,6 +291,7 @@ class CRU3D:
             self.d_cnsr,
             self.d_cp,
             self.RyR_rates,
+            self.RyR_open,
             self.LCC_probs,
             self.Delta_ci,
             self.Delta_cnsr,
@@ -274,7 +314,7 @@ class CRU3D:
             self.d_params,
             self.d_consts,
         )
-        update_RyR_and_conc_3d[bpg, tpb](
+        update_RyR_and_conc_3d[bpg_kern2, tpb](
             self.d_ci,
             self.d_cs,
             self.d_cp,
@@ -283,7 +323,10 @@ class CRU3D:
             self.d_CaTi,
             self.d_CaTs,
             self.d_RyR,
+            self.d_LCC,
+            self.RyR_open,
             self.RyR_sorted,
+            self.LCC_probs,
             self.ICa,
             self.INaCa,
             self.Delta_ci,
@@ -293,6 +336,7 @@ class CRU3D:
             self.dW,
             self.d_vp,
             self.d_junctional,
+            self.rng_states,
             self.d_params,
             self.d_consts,
         )
@@ -309,7 +353,7 @@ class CRU3D:
         tpb: tuple[int, int, int] = (16, 2, 2),
         reset_t: bool = False,
         profile: bool = False,
-    ) -> None:
+    ) -> CRUSolution:
         if not self._memory_initialised:
             self._init_memory(seed)
 
@@ -332,7 +376,8 @@ class CRU3D:
             self._t = np.float32(0.0)
 
         ncollect = nstep // collect_every
-        self._init_results(ncollect)
+        self._V = self.V_fn(self._t, Vmin, Vmax, T, xT)  # type: ignore
+        sol = self._init_results(ncollect)
 
         if profile:
             cuda.profile_start()
@@ -341,15 +386,15 @@ class CRU3D:
             if i % collect_every == 0:
                 idx = i // collect_every
                 with cuda.pinned(
-                    self.ci_result[idx, ...],  # type: ignore
-                    self.cs_result[idx, ...],  # type: ignore
-                    self.cp_result[idx, ...],  # type: ignore
-                    self.cnsr_result[idx, ...],  # type: ignore
-                    self.cjsr_result[idx, ...],  # type: ignore
-                    self.CaTi_result[idx, ...],  # type: ignore
-                    self.CaTs_result[idx, ...],  # type: ignore
-                    self.RyR_result[idx, ...],  # type: ignore
-                    self.LCC_result[idx, ...],  # type: ignore
+                    sol.ci[idx, ...],  # type: ignore
+                    sol.cs[idx, ...],  # type: ignore
+                    sol.cp[idx, ...],  # type: ignore
+                    sol.cnsr[idx, ...],  # type: ignore
+                    sol.cjsr[idx, ...],  # type: ignore
+                    sol.CaTi[idx, ...],  # type: ignore
+                    sol.CaTs[idx, ...],  # type: ignore
+                    sol.RyR[idx, ...],  # type: ignore
+                    sol.LCC[idx, ...],  # type: ignore
                 ):
                     self._call_kernels(
                         Vmin,
@@ -359,7 +404,7 @@ class CRU3D:
                         bpg,
                         tpb,
                     )
-                    self._copy_state(idx)
+                    self._copy_state(idx, sol)
             else:
                 self._call_kernels(Vmin, Vmax, T, xT, bpg, tpb)
             self._t += dt
@@ -379,3 +424,4 @@ class CRU3D:
         self.d_LCC.copy_to_host(self.LCC, stream=self.stream_LCC)  # type: ignore
 
         cuda.synchronize()
+        return sol

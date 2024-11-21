@@ -23,6 +23,7 @@ from .currents import (
 from .utils import square
 
 f32 = np.float32
+i32 = np.int32
 RNG_states = Any
 RestrepoConsts = Any
 
@@ -30,13 +31,14 @@ RestrepoConsts = Any
 @cuda.jit
 def update_currents_and_lcc_3d(
     RyR: npt.NDArray[f32],
-    LCC: npt.NDArray[f32],
+    LCC: npt.NDArray[i32],
     ci: npt.NDArray[f32],
     cs: npt.NDArray[f32],
     cjsr: npt.NDArray[f32],
     cnsr: npt.NDArray[f32],
     cp: npt.NDArray[f32],
     RyR_rates: npt.NDArray[f32],
+    RyR_open: npt.NDArray[f32],
     LCC_probs: npt.NDArray[f32],
     Delta_ci: npt.NDArray[f32],
     Delta_cnsr: npt.NDArray[f32],
@@ -59,37 +61,44 @@ def update_currents_and_lcc_3d(
     params: RestrepoParams,
     consts: RestrepoConsts,
 ) -> None:
-    # strategy -- launch kernel with blockspergrid.x = 2 * ceil(Nx // threadsperblock.x), then use the first half to do the regular updates, and the second
-    # half to do the junctional CRU work
+    # strategy -- launch kernel with blockspergrid.x = 3 * ceil(Nx // threadsperblock.x), then use the first third to do the RyR rate updates, the second
+    # third to calculate the diffusion terms, and the last third to do the junctional CRU work
 
     Nx, Ny, Nz = cs.shape
-    blocks_per_task = cuda.gridDim.x // 2
+    blocks_per_task = cuda.gridDim.x // 3
     if cuda.blockIdx.x < blocks_per_task:
         x = cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x
         y = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y
         z = cuda.threadIdx.z + cuda.blockIdx.z * cuda.blockDim.z
         task = 0
-    else:
+    elif cuda.blockIdx.x < 2 * blocks_per_task:
         x = cuda.threadIdx.x + (cuda.blockIdx.x - blocks_per_task) * cuda.blockDim.x
         y = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y
         z = cuda.threadIdx.z + cuda.blockIdx.z * cuda.blockDim.z
         task = 1
+    else:
+        x = cuda.threadIdx.x + (cuda.blockIdx.x - 2 * blocks_per_task) * cuda.blockDim.x
+        y = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y
+        z = cuda.threadIdx.z + cuda.blockIdx.z * cuda.blockDim.z
+        task = 2
 
     if x < Nx and y < Ny and z < Nz:
+        cp_tmp = cp[x, y, z]
+        cs_tmp = cs[x, y, z]
+        cjsr_tmp = cjsr[x, y, z]
         if task == 0:
+            RyR_open[x, y, z] = RyR[x, y, z, 1] + RyR[x, y, z, 2]
             # update RyR rates
             update_RyR_rates_3d(
                 RyR_rates,
                 RyR,
-                cp[x, y, z],
-                cjsr[x, y, z],
+                cp_tmp,
+                cjsr_tmp,
                 params,
                 x,
                 y,
                 z,
             )
-
-            # Update ci and cnsr diffusions
             update_diffusive_fluxes_3d(
                 Delta_ci,
                 Delta_cnsr,
@@ -104,53 +113,55 @@ def update_currents_and_lcc_3d(
                 z,
             )
         elif task == 1:
+            # Update ci and cnsr diffusions
             VF_RT = float32(V * 96.5 / (8.314 * 308.0))
-            dt = consts.dt[0]
-            tid = z * Ny * Nx + y * Nx + x
-
-            # Only need to apply these updates to junctional CRUs
-            if junctional[x, y, z]:
-                update_LCC_probs_3d(
-                    LCC_probs,
-                    LCC,
-                    cp[x, y, z],
-                    dt,
-                    alpha,
-                    beta,
-                    k3,
-                    k3_,
-                    k5_,
-                    k6_,
-                    Pr,
-                    Ps,
-                    R,
-                    V,
-                    params,
-                    x,
-                    y,
-                    z,
-                )
-
-                update_ICa_3d(
-                    ICa,
-                    LCC,
-                    cp[x, y, z],
-                    params.PCa[0],
-                    VF_RT,
-                    params.gamma[0],
-                    params.Cao[0],
-                    x,
-                    y,
-                    z,
-                )
-                update_INaCa_3d(INaCa, cs[x, y, z], z, consts.Nai3[0], params, x, y, z)
-
-                for j in range(4):
-                    LCC[x, y, z, j] = sample_LCC_icdf_3d(
-                        LCC_probs, rng_states, x, y, z, j, tid
-                    )
-
+            update_LCC_probs_3d(
+                LCC_probs,
+                LCC,
+                cp_tmp,
+                consts.dt[0],
+                alpha,
+                beta,
+                k3,
+                k3_,
+                k5_,
+                k6_,
+                Pr,
+                Ps,
+                R,
+                V,
+                params,
+                x,
+                y,
+                z,
+            )
+            update_ICa_3d(
+                ICa,
+                LCC,
+                cp_tmp,
+                params.PCa[0],
+                VF_RT,
+                params.gamma[0],
+                params.Cao[0],
+                junctional[x, y, z],
+                x,
+                y,
+                z,
+            )
+            update_INaCa_3d(
+                INaCa,
+                cs_tmp,
+                VF_RT,
+                consts.Nai3[0],
+                params,
+                junctional[x, y, z],
+                x,
+                y,
+                z,
+            )
+        elif task == 2:
             # May as well get the idle threads to do something
+            tid = z * Ny * Nx + y * Nx + x
             for i in range(4):
                 dW[x, y, z, i] = consts.sqrtdt[0] * xoroshiro128p_normal_float32(
                     rng_states, tid
@@ -167,7 +178,10 @@ def update_RyR_and_conc_3d(
     CaTi: npt.NDArray[f32],
     CaTs: npt.NDArray[f32],
     RyR: npt.NDArray[f32],
+    LCC: npt.NDArray[i32],
+    RyR_open: npt.NDArray[f32],
     RyR_sorted: npt.NDArray[f32],
+    LCC_probs: npt.NDArray[f32],
     ICa: npt.NDArray[f32],
     INaCa: npt.NDArray[f32],
     Delta_ci: npt.NDArray[f32],
@@ -177,91 +191,124 @@ def update_RyR_and_conc_3d(
     dW: npt.NDArray[f32],
     vp: npt.NDArray[f32],
     junctional: npt.NDArray[np.bool_],
+    rng_states: RNG_states,
     params: RestrepoParams,
     consts: RestrepoConsts,
 ):
-    x, y, z = cuda.grid(3)
+    # x, y, z = cuda.grid(3)
     Nx, Ny, Nz = cs.shape
-    dt = consts.dt[0]
+    blocks_per_task = cuda.gridDim.x // 3
+    if cuda.blockIdx.x < blocks_per_task:
+        x = cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x
+        y = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y
+        z = cuda.threadIdx.z + cuda.blockIdx.z * cuda.blockDim.z
+        task = 0
+    elif cuda.blockIdx.x < 2 * blocks_per_task:
+        x = cuda.threadIdx.x + (cuda.blockIdx.x - blocks_per_task) * cuda.blockDim.x
+        y = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y
+        z = cuda.threadIdx.z + cuda.blockIdx.z * cuda.blockDim.z
+        task = 1
+    else:
+        x = cuda.threadIdx.x + (cuda.blockIdx.x - 2 * blocks_per_task) * cuda.blockDim.x
+        y = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y
+        z = cuda.threadIdx.z + cuda.blockIdx.z * cuda.blockDim.z
+        task = 2
 
     if x < Nx and y < Ny and z < Nz:
-        ryr_open = RyR[x, y, z, 1] + RyR[x, y, z, 2]
-        ci_ = ci[x, y, z]
-        cnsr_ = cnsr[x, y, z]
-        cjsr_ = cjsr[x, y, z]
-        cs_ = cs[x, y, z]
-        cp_ = cp[x, y, z]
-        CaTi_ = CaTi[x, y, z]
-        CaTs_ = CaTs[x, y, z]
-        vp_ = vp[x, y, z]
-        is_junctional = junctional[x, y, z]
+        dt = consts.dt[0]
+        if task == 0:
+            ryr_open = RyR_open[x, y, z]
+            ci_tmp = ci[x, y, z]
+            cnsr_tmp = cnsr[x, y, z]
+            cjsr_tmp = cjsr[x, y, z]
+            cs_tmp = cs[x, y, z]
+            cp_tmp = cp[x, y, z]
+            CaTi_tmp = CaTi[x, y, z]
+            CaTs_tmp = CaTs[x, y, z]
+            vp_tmp = vp[x, y, z]
+            is_junctional = junctional[x, y, z]
 
-        ITCi = ITCa(ci_, CaTi_, params.kon[0], params.koff[0], params.BT[0])
-        ITCs = ITCa(cs_, CaTs_, params.kon[0], params.koff[0], params.BT[0])
-        Ileak_ = Ileak(cnsr_, ci_, params.gleak[0], square(params.Knsr[0]))
-        Iup_ = Iup(ci_, cnsr_, params.Ki[0], params.Knsr[0], params.vup[0])
-        Ir_ = Ir(cp_, cjsr_, ryr_open, params.Jmax[0], vp_)
-        Ici = Delta_ci[x, y, z]
-        Icnsr = Delta_cnsr[x, y, z]
-        Ics = Delta_cs[x, y, z]
+            ITCi = ITCa(ci_tmp, CaTi_tmp, params.kon[0], params.koff[0], params.BT[0])
+            ITCs = ITCa(cs_tmp, CaTs_tmp, params.kon[0], params.koff[0], params.BT[0])
+            Ileak_ = Ileak(cnsr_tmp, ci_tmp, params.gleak[0], square(params.Kjsr[0]))
+            Iup_ = Iup(
+                ci_tmp,
+                cnsr_tmp,
+                params.Ki[0],
+                params.Knsr[0],
+                params.vup[0],
+                params.H[0],
+            )
+            Ir_ = Ir(cp_tmp, cjsr_tmp, ryr_open, params.Jmax[0], vp_tmp)
+            Ici = Delta_ci[x, y, z]
+            Icnsr = Delta_cnsr[x, y, z]
+            Ics = Delta_cs[x, y, z]
 
-        Itr = (cnsr_ - cjsr_) / params.tau_tr[0]
-        Idsi = (cs_ - ci_) / params.tau_si[0]
-        Idps_scaled = (
-            (cp_ - cs_) * vp_ / (params.tau_ps[0] * params.vs[0])
-        )  # Idps * (vp/vs)
+            Itr = (cnsr_tmp - cjsr_tmp) / params.tau_tr[0]
+            Idsi = (cs_tmp - ci_tmp) / params.tau_si[0]
+            Idps_scaled = (
+                (cp_tmp - cs_tmp) * vp_tmp / (params.tau_ps[0] * params.vs[0])
+            )  # Idps * (vp/vs)
 
-        INaCa_ = float32(0.0)
-        ICa_ = float32(0.0)
-        if is_junctional:
-            INaCa_ = INaCa[x, y, z]
-            ICa_ = ICa[x, y, z]
+            INaCa_ = INaCa[x, y, z] if is_junctional else float32(0.0)
+            ICa_ = ICa[x, y, z] if is_junctional else float32(0.0)
 
-        calmodulin_buf_i = (
-            params.KCAM[0] * params.BCAM[0] / square(params.KCAM[0] + ci_)
-        )
-        SR_buf = params.KSR[0] * params.BSR[0] / square(params.KSR[0] + ci_)
-        myosin_Ca_buf = params.KMCa[0] * params.BMCa[0] / square(params.KMCa[0] + ci_)
-        myosin_Mg_buf = params.KMMg[0] * params.BMMg[0] / square(params.KMMg[0] + ci_)
+            calmodulin_buf_i = (
+                params.KCAM[0] * params.BCAM[0] / square(params.KCAM[0] + ci_tmp)
+            )
+            SR_buf = params.KSR[0] * params.BSR[0] / square(params.KSR[0] + ci_tmp)
+            myosin_Ca_buf = (
+                params.KMCa[0] * params.BMCa[0] / square(params.KMCa[0] + ci_tmp)
+            )
+            myosin_Mg_buf = (
+                params.KMMg[0] * params.BMMg[0] / square(params.KMMg[0] + ci_tmp)
+            )
 
-        calmodulin_buf_s = (
-            params.KCAM[0] * params.BCAM[0] / square(params.KCAM[0] + cs_)
-        )
-        SLH_buf = params.KSLH[0] * params.BSLH[0] / square(params.KSLH[0] + cs_)
+            calmodulin_buf_s = (
+                params.KCAM[0] * params.BCAM[0] / square(params.KCAM[0] + cs_tmp)
+            )
+            SLH_buf = params.KSLH[0] * params.BSLH[0] / square(params.KSLH[0] + cs_tmp)
 
-        beta_i = float32(1.0) / (
-            float32(1.0) + calmodulin_buf_i + SR_buf + myosin_Ca_buf + myosin_Mg_buf
-        )
-        beta_s = float32(1.0) / (float32(1.0) + calmodulin_buf_s + SLH_buf)
-        beta_jsr = luminal_buffer(
-            cjsr_,
-            params.rho_inf[0],
-            params.K[0],
-            params.BCSQN[0],
-            params.nM[0],
-            params.nD[0],
-            params.KC[0],
-            params.h[0],
-        )
+            beta_i = float32(1.0) / (
+                float32(1.0) + calmodulin_buf_i + SR_buf + myosin_Ca_buf + myosin_Mg_buf
+            )
+            beta_s = float32(1.0) / (float32(1.0) + calmodulin_buf_s + SLH_buf)
+            beta_jsr = luminal_buffer(
+                cjsr_tmp,
+                params.rho_inf[0],
+                params.K[0],
+                params.BCSQN[0],
+                params.nM[0],
+                params.nD[0],
+                params.KC[0],
+                params.h[0],
+            )
 
-        # Euler-Maruyama step for RyRs
-        update_RyR_diffusion_3d(RyR, RyR_sorted, RyR_rates, dW, dt, x, y, z)
-
-        kr = (params.Jmax[0] / vp_) * ryr_open
-        cp[x, y, z] = (cs_ + params.tau_ps[0] * (kr * cjsr_ - ICa_)) / (
-            float32(1.0) + params.tau_ps[0] * kr
-        )
-        ci[x, y, z] += (
-            dt
-            * beta_i
-            * ((params.vs[0] / params.vi[0]) * Idsi - Iup_ + Ileak_ - ITCi + Ici)
-        )
-        cs[x, y, z] += dt * beta_s * (Idps_scaled + INaCa_ - Idsi - ITCs + Ics)
-        cnsr[x, y, z] += dt * (
-            (params.vi[0] / params.vnsr[0]) * (Iup_ - Ileak_)
-            - (params.vjsr[0] / params.vnsr[0]) * Itr
-            + Icnsr
-        )
-        cjsr[x, y, z] += dt * beta_jsr * (Itr - (vp_ / params.vjsr[0]) * Ir_)
-        CaTi[x, y, z] += dt * ITCi
-        CaTs[x, y, z] += dt * ITCs
+            kr = (params.Jmax[0] / vp_tmp) * ryr_open
+            cp[x, y, z] = (cs_tmp + params.tau_ps[0] * (kr * cjsr_tmp - ICa_)) / (
+                float32(1.0) + params.tau_ps[0] * kr
+            )
+            ci[x, y, z] += (
+                dt
+                * beta_i
+                * ((params.vs[0] / params.vi[0]) * Idsi - Iup_ + Ileak_ - ITCi + Ici)
+            )
+            cs[x, y, z] += dt * beta_s * (Idps_scaled + INaCa_ - Idsi - ITCs + Ics)
+            cnsr[x, y, z] += dt * (
+                (params.vi[0] / params.vnsr[0]) * (Iup_ - Ileak_)
+                - (params.vjsr[0] / params.vnsr[0]) * Itr
+                + Icnsr
+            )
+            cjsr[x, y, z] += dt * beta_jsr * (Itr - (vp_tmp / params.vjsr[0]) * Ir_)
+            CaTi[x, y, z] += dt * ITCi
+            CaTs[x, y, z] += dt * ITCs
+        elif task == 1:
+            tid = z * Ny * Nx + y * Nx + x
+            is_junctional = junctional[x, y, z]
+            for j in range(4):
+                LCC[x, y, z, j] = sample_LCC_icdf_3d(
+                    LCC_probs, rng_states, x, y, z, j, is_junctional, tid
+                )
+        elif task == 2:
+            # Euler-Maruyama step for RyRs
+            update_RyR_diffusion_3d(RyR, RyR_sorted, RyR_rates, dW, dt, x, y, z)

@@ -20,13 +20,13 @@ def ITCa(c: f32, CaT: f32, kon: f32, koff: f32, BT: f32) -> f32:
 @cuda.jit(device=True, inline=True)
 def Ileak(cnsr: f32, ci: f32, gleak: f32, Knsr2: f32) -> f32:
     cnsr2 = square(cnsr)
-    return gleak * cnsr2 / (cnsr2 + Knsr2) * (cnsr - ci)
+    return gleak * (cnsr2 / (cnsr2 + Knsr2)) * (cnsr - ci)
 
 
 @cuda.jit(device=True, inline=True)
-def Iup(ci: f32, cnsr: f32, Ki: f32, Knsr: f32, vup: f32) -> f32:
-    ci_term = math.pow(ci / Ki, float32(1.787))
-    cnsr_term = math.pow(cnsr / Knsr, float32(1.787))
+def Iup(ci: f32, cnsr: f32, Ki: f32, Knsr: f32, vup: f32, H: f32) -> f32:
+    ci_term = math.pow(ci / Ki, H)
+    cnsr_term = math.pow(cnsr / Knsr, H)
 
     return vup * (ci_term - cnsr_term) / (float32(1.0) + ci_term + cnsr_term)
 
@@ -118,6 +118,7 @@ def update_ICa_3d(
     VF_RT: f32,
     gamma: f32,
     Cao: f32,
+    junctional: bool,
     x: i32,
     y: i32,
     z: i32,
@@ -131,25 +132,33 @@ def update_ICa_3d(
             NLCC += float32(1.0)
     if math.fabs(VF_RT) > float32(0.01):
         ICa[x, y, z] = (
-            NLCC
-            * float32(4.0)
-            * PCa
-            * VF_RT
-            * F
-            * gamma
-            * (cp * float32(1e-3) * exp2VF_RT - Cao)
-            / (exp2VF_RT - float32(1.0))
+            (
+                NLCC
+                * float32(4.0)
+                * PCa
+                * VF_RT
+                * F
+                * gamma
+                * (cp * float32(1e-3) * exp2VF_RT - Cao)
+                / (exp2VF_RT - float32(1.0))
+            )
+            if junctional
+            else float32(0.0)
         )
     else:
         # Approximate z/(exp(2z)-1) by 1/(2+2z) for small z
         ICa[x, y, z] = (
-            NLCC
-            * float32(2.0)
-            * PCa
-            * F
-            * gamma
-            * (cp * float32(1e-3) * exp2VF_RT - Cao)
-            / (float32(1.0) + VF_RT)
+            (
+                NLCC
+                * float32(2.0)
+                * PCa
+                * F
+                * gamma
+                * (cp * float32(1e-3) * exp2VF_RT - Cao)
+                / (float32(1.0) + VF_RT)
+            )
+            if junctional
+            else float32(0.0)
         )
 
 
@@ -192,6 +201,7 @@ def update_INaCa_3d(
     VF_RT: f32,
     Nai3: f32,
     params: RestrepoParams,
+    junctional: bool,
     x: i32,
     y: i32,
     z: i32,
@@ -212,10 +222,14 @@ def update_INaCa_3d(
     exp_etam1z = math.exp((params.eta[0] - float32(1.0)) * VF_RT)
 
     INaCa[x, y, z] = (
-        Ka
-        * params.vNaCa[0]
-        * (exp_etaz * Nai3 * params.Cao[0] - exp_etam1z * Nao3 * cs_mM)
-        / ((t1 + t2 + t3) * (float32(1.0) + params.ksat[0] * exp_etam1z))
+        (
+            Ka
+            * params.vNaCa[0]
+            * (exp_etaz * Nai3 * params.Cao[0] - exp_etam1z * Nao3 * cs_mM)
+            / ((t1 + t2 + t3) * (float32(1.0) + params.ksat[0] * exp_etam1z))
+        )
+        if junctional
+        else float32(0.0)
     )
 
 

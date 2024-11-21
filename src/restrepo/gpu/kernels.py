@@ -195,7 +195,7 @@ def update_RyR_and_euler_step(
 
         ITCi = ITCa(ci_, CaTi_, params.kon[0], params.koff[0], params.BT[0])
         ITCs = ITCa(cs_, CaTs_, params.kon[0], params.koff[0], params.BT[0])
-        Ileak_ = Ileak(cnsr_, ci_, params.gleak[0], square(params.Knsr[0]))
+        Ileak_ = Ileak(cnsr_, ci_, params.gleak[0], square(params.Kjsr[0]))
         Iup_ = Iup(ci_, cnsr_, params.Ki[0], params.Knsr[0], params.vup[0])
         Ir_ = Ir(cp_, cjsr_, ryr_open, params.Jmax[0], vp_)
         Ici = Delta_ci[x, y]

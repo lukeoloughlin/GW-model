@@ -39,12 +39,15 @@ class RestrepoParams(NamedTuple):
     gleak: f32 = f32(1.035e-5)
     Kjsr: f32 = f32(500.0)
 
-    vNaCa: f32 = f32(1.05)
-    KmCai: f32 = f32(3.59)
+    vNaCa: f32 = f32(21.0)
+    KmCai: f32 = f32(0.0036)  # in mM. #f32(3.59)
     KmCao: f32 = f32(1.3)
     KmNai: f32 = f32(12.3)
     KmNao: f32 = f32(87.5)
     Kda: f32 = f32(0.11)
+    # cNaCa: f32 = f32(
+    #    0.3
+    # )  # Using the term from Mahajan et al (2008). Note this is in micromolar
     ksat: f32 = f32(0.27)
     eta: f32 = f32(0.35)
     Cao: f32 = f32(1.8)
@@ -52,11 +55,11 @@ class RestrepoParams(NamedTuple):
 
     PCa: f32 = f32(11.9)
     gamma: f32 = f32(0.341)
-    cp_bar: f32 = f32(1.5)
-    cp_tilde: f32 = f32(0.5)
+    cp_bar: f32 = f32(6.09365)  # 1.5
+    cp_tilde: f32 = f32(3.0)  # 0.5
     tau_po: f32 = f32(1.0)
     r1: f32 = f32(0.3)
-    r2: f32 = f32(6.0)
+    r2: f32 = f32(3.0)  # 6.0
     s1_: f32 = f32(0.00195)
     k1_: f32 = f32(0.00413)
     k2: f32 = f32(0.0001)

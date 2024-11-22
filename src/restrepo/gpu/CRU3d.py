@@ -19,7 +19,15 @@ floating = np.floating | float
 
 class CRUSolution:
 
-    def __init__(self, params: RestrepoParams, nstep: int, Nx: int, Ny: int, Nz: int):
+    def __init__(
+        self,
+        params: RestrepoParams,
+        nstep: int,
+        Nx: int,
+        Ny: int,
+        Nz: int,
+        Nai: floating,
+    ):
         self.params = params
         self.t = np.zeros(nstep + 1)
         self.V = np.zeros(nstep + 1)
@@ -32,6 +40,9 @@ class CRUSolution:
         self.CaTs = np.zeros((nstep + 1, Nx, Ny, Nz), dtype=np.float32)
         self.RyR = np.zeros((nstep + 1, Nx, Ny, Nz, 4), dtype=np.float32)
         self.LCC = np.zeros((nstep + 1, Nx, Ny, Nz, 4), dtype=np.int32)
+        self.junctional = np.zeros((Nx, Ny, Nz), dtype=np.bool_)
+
+        self.Nai = Nai
 
     @property
     def Itr(self):
@@ -52,6 +63,71 @@ class CRUSolution:
         ci_Ki_H = (self.ci / self.params.Ki) ** self.params.H
         cnsr_Knsr_H = (self.cnsr / self.params.Knsr) ** self.params.H
         return self.params.vup * (ci_Ki_H - cnsr_Knsr_H) / (1 + ci_Ki_H + cnsr_Knsr_H)
+
+    @property
+    def ICa(self):
+        broadcast_shape = (
+            self.cs.shape[3],
+            self.cs.shape[2],
+            self.cs.shape[1],
+            1,
+        )  # Reversed broadcast shape
+        VF_RT = np.tile(self.V * 96.5 / (8.314 * 308.0), broadcast_shape).T
+        return np.where(
+            np.abs(VF_RT) > 0.01, self._ICa_normal(VF_RT), self._ICa_small_V(VF_RT)
+        )
+
+    @property
+    def INCX(self):
+        VF_RT = (self.V * 96.5 / (8.314 * 308.0)).reshape(-1, 1, 1, 1)
+
+        Nai3 = self.Nai**3
+        Nao3 = self.params.Nao**3
+        KmNao3 = self.params.KmNao**3
+        KmNai3 = self.params.KmNai**3
+        Ka = 1.0 / (1.0 + (self.params.Kda / self.cs) ** 3)
+
+        cs_mM = self.cs * 1e-3  # convert cs to mM
+        t1 = self.params.KmCai * Nao3 * (1.0 + Nai3 / KmNai3)
+        t2 = KmNao3 * cs_mM * (1.0 + (cs_mM / self.params.KmCai))
+        t3 = self.params.KmCao * Nai3 + Nai3 * self.params.Cao + Nao3 * cs_mM
+
+        exp_etaz = np.exp(self.params.eta * VF_RT)
+        exp_etam1z = np.exp((self.params.eta - 1.0) * VF_RT)
+
+        return (
+            self.junctional[None, ...]
+            * self.params.vNaCa
+            * Ka
+            * (exp_etaz * Nai3 * self.params.Cao - exp_etam1z * Nao3 * cs_mM)
+            / ((t1 + t2 + t3) * (1 + self.params.ksat * exp_etam1z))
+        )
+
+    def _ICa_normal(self, VF_RT):
+        NLCC = (self.LCC == 7).sum(axis=-1)
+        return (
+            NLCC
+            * 4
+            * self.params.PCa
+            * VF_RT
+            * 96.5
+            * self.params.gamma
+            * (self.cp * 1e-3 * np.exp(2 * VF_RT) - self.params.Cao)
+            / (np.exp(2 * VF_RT) - 1)
+        )
+
+    def _ICa_small_V(self, VF_RT):
+        NLCC = (self.LCC == 7).sum(axis=-1)
+        return (
+            NLCC
+            * 2
+            * self.params.PCa
+            * VF_RT
+            * 96.5
+            * self.params.gamma
+            * (self.cp * 1e-3 * np.exp(2 * VF_RT) - self.params.Cao)
+            / (1 + VF_RT)
+        )
 
     def line_scan(self, y: int, z: int):
         centre = self.cp[..., y, z]
@@ -228,18 +304,26 @@ class CRU3D:
 
     @staticmethod
     def V_fn(
-        t: floating, Vmin: floating, Vmax: floating, T: floating, xT: floating
+        t: floating,
+        Vmin: floating,
+        Vmax: floating,
+        T: floating,
+        xT: floating,
+        delay_pulse_by: float = 0.0,
     ) -> floating:
-        t_mod_T = t % T
-        return (
-            np.float32(Vmin + (Vmax - Vmin) * np.sqrt(1.0 - (t_mod_T / xT) ** 2))
-            if t_mod_T < xT
-            else np.float32(Vmin)
-        )
+        if t < delay_pulse_by:
+            return Vmin
+        else:
+            t_mod_T = (t - delay_pulse_by) % T
+            return (
+                np.float32(Vmin + (Vmax - Vmin) * np.sqrt(1.0 - (t_mod_T / xT) ** 2))
+                if t_mod_T < xT
+                else np.float32(Vmin)
+            )
 
-    def _init_results(self, nstep: int) -> CRUSolution:
+    def _init_results(self, nstep: int, Nai: floating) -> CRUSolution:
         # Initialise result arrays
-        sol = CRUSolution(self.params, nstep, *self.cs.shape)
+        sol = CRUSolution(self.params, nstep, *self.cs.shape, Nai)  # type: ignore
 
         sol.t[0] = self._t
         sol.V[0] = self._V
@@ -252,6 +336,7 @@ class CRU3D:
         sol.CaTs[0, ...] = self.CaTs
         sol.RyR[0, ...] = self.RyR
         sol.LCC[0, ...] = self.LCC
+        sol.junctional = self.junctional
         return sol
 
     def _copy_state(self, i: int, sol: CRUSolution) -> None:
@@ -275,8 +360,9 @@ class CRU3D:
         xT: floating,
         bpg: tuple[int, int, int],
         tpb: tuple[int, int, int],
+        delay_pulse_by: float,
     ) -> None:
-        self._V = self.V_fn(self._t, Vmin, Vmax, T, xT)  # type: ignore
+        self._V = self.V_fn(self._t, Vmin, Vmax, T, xT, delay_pulse_by)  # type: ignore
         alpha, beta, k3, k5_, k6_, Pr, Ps, R = calculate_V_dep_LCC_params(
             self._V, self.params, single_precision=True
         )
@@ -353,13 +439,15 @@ class CRU3D:
         tpb: tuple[int, int, int] = (16, 2, 2),
         reset_t: bool = False,
         profile: bool = False,
+        delay_pulse_by: float = 0.0,
     ) -> CRUSolution:
         if not self._memory_initialised:
             self._init_memory(seed)
 
         sqrtdt = np.sqrt(dt, dtype=np.float32)
         # T should be in seconds here
-        Nai3 = np.float32(78.0 / (1.0 + 10.0 * np.sqrt(T / 1000))) ** 3
+        Nai = np.float32(78.0 / (1.0 + 10.0 * np.sqrt(T / 1000)))
+        Nai3 = Nai**3
         self.d_consts = cuda.to_device(
             constants_struct_array(np.float32(dt), sqrtdt, Nai3)
         )
@@ -376,8 +464,8 @@ class CRU3D:
             self._t = np.float32(0.0)
 
         ncollect = nstep // collect_every
-        self._V = self.V_fn(self._t, Vmin, Vmax, T, xT)  # type: ignore
-        sol = self._init_results(ncollect)
+        self._V = self.V_fn(self._t, Vmin, Vmax, T, xT, delay_pulse_by)  # type: ignore
+        sol = self._init_results(ncollect, Nai)
 
         if profile:
             cuda.profile_start()
@@ -396,17 +484,10 @@ class CRU3D:
                     sol.RyR[idx, ...],  # type: ignore
                     sol.LCC[idx, ...],  # type: ignore
                 ):
-                    self._call_kernels(
-                        Vmin,
-                        Vmax,
-                        T,
-                        xT,
-                        bpg,
-                        tpb,
-                    )
+                    self._call_kernels(Vmin, Vmax, T, xT, bpg, tpb, delay_pulse_by)
                     self._copy_state(idx, sol)
             else:
-                self._call_kernels(Vmin, Vmax, T, xT, bpg, tpb)
+                self._call_kernels(Vmin, Vmax, T, xT, bpg, tpb, delay_pulse_by)
             self._t += dt
 
         if profile:

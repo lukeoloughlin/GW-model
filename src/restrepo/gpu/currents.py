@@ -194,6 +194,7 @@ def update_INaCa(
     )
 
 
+# Using the form given in Shiferaw et al (2018).
 @cuda.jit(device=True, inline=True)
 def update_INaCa_3d(
     INaCa: npt.NDArray[f32],
@@ -211,20 +212,29 @@ def update_INaCa_3d(
     KmNao3 = cube(params.KmNao[0])
     KmNai3 = cube(params.KmNai[0])
     Ka = float32(1.0) / (float32(1.0) + cube(params.Kda[0] / cs))
+    # ANaCa = float32(1.0) / (float32(1.0) + cube(params.cNaCa[0] / cs))
 
     cs_mM = cs * float32(1e-3)  # convert cs to mM
-    KmCai_mM = params.KmCai[0] * float32(1e-3)  # convert KmCai to mM
+    # KmCai_mM = params.KmCai[0] * float32(1e-3)  # convert KmCai to mM
 
-    t1 = KmCai_mM * Nao3 * (float32(1.0) + Nai3 / KmNai3)
-    t2 = KmNao3 * cs_mM * (float32(1.0) + (cs_mM / KmCai_mM))
+    t1 = params.KmCai[0] * Nao3 * (float32(1.0) + Nai3 / KmNai3)
+    t2 = KmNao3 * cs_mM * (float32(1.0) + (cs_mM / params.KmCai[0]))
     t3 = params.KmCao[0] * Nai3 + Nai3 * params.Cao[0] + Nao3 * cs_mM
+    # U = (
+    #    params.KmCao[0] * Nai3
+    #    + KmNao3 * cs_mM
+    #    + KmNai3 * params.Cao[0] * (float32(1.0) + cs_mM / params.KmCai[0])
+    #    + params.KmCai[0] * Nao3 * (float32(1.0) + Nai3 / KmNai3)
+    #    + Nai3 * params.Cao[0]
+    #    + Nao3 * cs_mM
+    # )
     exp_etaz = math.exp(params.eta[0] * VF_RT)
     exp_etam1z = math.exp((params.eta[0] - float32(1.0)) * VF_RT)
 
     INaCa[x, y, z] = (
         (
-            Ka
-            * params.vNaCa[0]
+            params.vNaCa[0]
+            * Ka
             * (exp_etaz * Nai3 * params.Cao[0] - exp_etam1z * Nao3 * cs_mM)
             / ((t1 + t2 + t3) * (float32(1.0) + params.ksat[0] * exp_etam1z))
         )

@@ -163,13 +163,16 @@ def update_LCC_probs_3d(
 ):
     """Does euler step for Kolmogorov equations. Assumed that the LCCs are stored in a 1d array and the indexing semantics are dealt with elsewhere"""
     cptilde_cp3 = cube(params.cp_tilde[0] / cp)
-    TCa = (
-        float32(78.0329) + float32(0.1) * pow4(float32(1.0) + cp / params.cp_bar[0])
-    ) / (float32(1.0) + pow4(cp / params.cp_bar[0]))
+    # TCa = (
+    #    float32(78.0329) + float32(0.1) * pow4(float32(1.0) + cp / params.cp_bar[0])
+    # ) / (
+    #    float32(1.0) + pow4(cp / params.cp_bar[0])
+    # )
+    TCa = float32(78.0329) / (float32(1.0) + pow4(cp / params.cp_bar[0])) + float32(0.1)
     tauCa = (R - TCa) * Pr + TCa
 
-    s1 = float32(0.02) / (float32(1.0) + cptilde_cp3)
-    k1 = float32(0.03) / (float32(1.0) + cptilde_cp3)
+    s1 = float32(0.0182688) / (float32(1.0) + cptilde_cp3)
+    k1 = float32(0.024168) / (float32(1.0) + cptilde_cp3)
     if V < float32(-40.0):
         k5 = k5_
         k6 = k6_
@@ -311,7 +314,8 @@ def calculate_V_dep_LCC_params(
     V: float | f32, params: RestrepoParams, single_precision: bool = True
 ) -> LCC_params:
     po_inf = 1.0 / (1.0 + np.exp(-V / 8))
-    Pr = 1.0 / (1.0 + np.exp(-(V + 40.0) / 4.0))
+    #Pr = 1.0 / (1.0 + np.exp(-(V + 40.0) / 4.0))  ### Dont think this is right
+    Pr = 1.0 - 1.0 / (1.0 + np.exp(-(V + 40.0) / 4.0))
     Ps = 1.0 / (1.0 + np.exp(-(V + 40.0) / 11.32))
     R = 10.0 + 4954.0 * np.exp(V / 15.6)
     tauBa = (R - params.TBa) * Pr + params.TBa

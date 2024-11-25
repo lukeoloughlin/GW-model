@@ -68,17 +68,17 @@ class RestrepoParams(NamedTuple):
 
     tau_iT_i: f32 = f32(1.47)
     tau_iL_i: f32 = f32(1.16)
-    tau_nsrT_i: f32 = f32(3.60)
-    tau_nsrL_i: f32 = f32(12.0)
     tau_sT_i: f32 = f32(0.71)
     tau_sL_i: f32 = f32(0.85)
+    tau_nsrT_i: f32 = f32(3.60)
+    tau_nsrL_i: f32 = f32(12.0)
 
     tau_iT_p: f32 = f32(2.93)
     tau_iL_p: f32 = f32(2.32)
-    tau_nsrT_p: f32 = f32(7.2)
-    tau_nsrL_p: f32 = f32(24.0)
     tau_sT_p: f32 = f32(1.42)
     tau_sL_p: f32 = f32(1.7)
+    tau_nsrT_p: f32 = f32(7.2)
+    tau_nsrL_p: f32 = f32(24.0)
 
     tau_tr: f32 = f32(5.0)
     tau_ps: f32 = f32(0.022)

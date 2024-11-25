@@ -2,11 +2,13 @@ import math
 
 import numpy as np
 import numpy.typing as npt
-from numba import float32
+from numba import float32, int64
 from numba import cuda
+from numba.cuda.random import xoroshiro128p_uniform_float32
 
 f32 = np.float32
 i32 = np.int32
+TWO_PI_FLOAT32 = np.float32(2 * math.pi)
 
 
 def constants_struct_array(dt: f32, sqrtdt: f32, Nai3: f32) -> npt.ArrayLike:
@@ -205,7 +207,7 @@ def time_const_right(
 @cuda.jit(device=True, inline=True)
 def time_const_forward_3d(
     tau_x: f32,
-    tau_x_bdy: f32,
+    tau_x_p: f32,
     x: i32,
     y: i32,
     z: i32,
@@ -215,7 +217,7 @@ def time_const_forward_3d(
     if x == (Nx - 1):
         return float32(0.0)
     elif junctional[x, y, z] or junctional[x + 1, y, z]:
-        return float32(1.0) / tau_x_bdy
+        return float32(1.0) / tau_x_p
     else:
         return float32(1.0) / tau_x
 
@@ -223,7 +225,7 @@ def time_const_forward_3d(
 @cuda.jit(device=True, inline=True)
 def time_const_backward_3d(
     tau_x: f32,
-    tau_x_bdy: f32,
+    tau_x_p: f32,
     x: i32,
     y: i32,
     z: i32,
@@ -233,7 +235,7 @@ def time_const_backward_3d(
     if x == 0:
         return float32(0.0)
     elif junctional[x, y, z] or junctional[x - 1, y, z]:
-        return float32(1.0) / tau_x_bdy
+        return float32(1.0) / tau_x_p
     else:
         return float32(1.0) / tau_x
 
@@ -241,7 +243,7 @@ def time_const_backward_3d(
 @cuda.jit(device=True, inline=True)
 def time_const_right_3d(
     tau_y: f32,
-    tau_y_bdy: f32,
+    tau_y_p: f32,
     x: i32,
     y: i32,
     z: i32,
@@ -251,7 +253,7 @@ def time_const_right_3d(
     if y == (Ny - 1):
         return float32(0.0)
     elif junctional[x, y, z] or junctional[x, y + 1, z]:
-        return float32(1.0) / tau_y_bdy
+        return float32(1.0) / tau_y_p
     else:
         return float32(1.0) / tau_y
 
@@ -259,7 +261,7 @@ def time_const_right_3d(
 @cuda.jit(device=True, inline=True)
 def time_const_left_3d(
     tau_y: f32,
-    tau_y_bdy: f32,
+    tau_y_p: f32,
     x: i32,
     y: i32,
     z: i32,
@@ -269,7 +271,7 @@ def time_const_left_3d(
     if y == 0:
         return float32(0.0)
     elif junctional[x, y, z] or junctional[x, y - 1, z]:
-        return float32(1.0) / tau_y_bdy
+        return float32(1.0) / tau_y_p
     else:
         return float32(1.0) / tau_y
 
@@ -295,7 +297,7 @@ def time_const_up_3d(
 @cuda.jit(device=True, inline=True)
 def time_const_down_3d(
     tau_z: f32,
-    tau_z_bdy: f32,
+    tau_z_p: f32,
     x: i32,
     y: i32,
     z: i32,
@@ -305,9 +307,61 @@ def time_const_down_3d(
     if z == 0:
         return float32(0.0)
     elif junctional[x, y, z] or junctional[x, y, z - 1]:
-        return float32(1.0) / tau_z_bdy
+        return float32(1.0) / tau_z_p
     else:
         return float32(1.0) / tau_z
+
+
+@cuda.jit(device=True, inline=True)
+def ryr_normal_inplace(
+    arr: npt.NDArray[f32], rng_states, rng_idx: int, x: int, y: int, z: int, scale: f32
+):
+    """Copied xoroshiro128p_normal_float32, but make use of the second normal value"""
+    rng_idx = int64(rng_idx)
+
+    # Make use of the two N(0, 1) produced by Box-Muller
+    u1 = xoroshiro128p_uniform_float32(rng_states, rng_idx)
+    u2 = xoroshiro128p_uniform_float32(rng_states, rng_idx)
+
+    r = scale * math.sqrt(-float32(2.0) * math.log(u1))
+    arr[x, y, z, 0] = r * math.cos(TWO_PI_FLOAT32 * u2)
+    arr[x, y, z, 1] = r * math.sin(TWO_PI_FLOAT32 * u2)
+
+    u1 = xoroshiro128p_uniform_float32(rng_states, rng_idx)
+    u2 = xoroshiro128p_uniform_float32(rng_states, rng_idx)
+
+    r = scale * math.sqrt(-float32(2.0) * math.log(u1))
+    arr[x, y, z, 2] = r * math.cos(TWO_PI_FLOAT32 * u2)
+    arr[x, y, z, 3] = r * math.sin(TWO_PI_FLOAT32 * u2)
+
+
+@cuda.jit(device=True, inline=True)
+def sample_poisson(rate: f32, rng_states, rng_idx: int) -> i32:
+    L = math.exp(-rate)
+    p = float32(1.0)
+    k = i32(0)
+    while p > L:
+        k += 1
+        p *= xoroshiro128p_uniform_float32(rng_states, rng_idx)
+    # floating point round off error can cause the loop to be bypassed when rate is small, in which case k-1 = -1, so clamp the return value
+    return max(k - 1, i32(0))
+
+
+@cuda.jit(device=True, inline=True)
+def sample_bernoulli(p: f32, rng_states, rng_idx: int) -> i32:
+    u = xoroshiro128p_uniform_float32(rng_states, rng_idx)
+    if u < p:
+        return i32(1)
+    else:
+        return i32(0)
+
+
+@cuda.jit(device=True, inline=True)
+def sample_binomial(N: i32, p: f32, rng_states, rng_idx: int) -> i32:
+    out = i32(0)
+    for _ in range(N):
+        out += sample_bernoulli(p, rng_states, rng_idx)
+    return out
 
 
 def truncated_normal(

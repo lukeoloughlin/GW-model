@@ -63,12 +63,12 @@ def update_LCC_probs(
 
     s1 = float32(0.02) / (float32(1.0) + cptilde_cp3)
     k1 = float32(0.03) / (float32(1.0) + cptilde_cp3)
-    if V < float32(-40.0):
-        k5 = k5_
-        k6 = k6_
-    else:
-        k5 = (float32(1.0) - Ps) / tauCa
-        k6 = Ps / (tauCa * (float32(1.0) + cptilde_cp3))
+    # if V < float32(-40.0):
+    #    k5 = k5_
+    #    k6 = k6_
+    # else:
+    k5 = (float32(1.0) - Ps) / tauCa
+    k6 = Ps / (tauCa * (float32(1.0) + cptilde_cp3))
 
     s2 = s1 * params.k2[0] * params.r1[0] / (k1 * params.r2[0])
     s2_ = params.s1_[0] * params.k2_[0] * params.r1[0] / (params.k1_[0] * params.r2[0])
@@ -163,22 +163,17 @@ def update_LCC_probs_3d(
 ):
     """Does euler step for Kolmogorov equations. Assumed that the LCCs are stored in a 1d array and the indexing semantics are dealt with elsewhere"""
     cptilde_cp3 = cube(params.cp_tilde[0] / cp)
-    # TCa = (
-    #    float32(78.0329) + float32(0.1) * pow4(float32(1.0) + cp / params.cp_bar[0])
-    # ) / (
-    #    float32(1.0) + pow4(cp / params.cp_bar[0])
-    # )
     TCa = float32(78.0329) / (float32(1.0) + pow4(cp / params.cp_bar[0])) + float32(0.1)
     tauCa = (R - TCa) * Pr + TCa
 
     s1 = float32(0.0182688) / (float32(1.0) + cptilde_cp3)
     k1 = float32(0.024168) / (float32(1.0) + cptilde_cp3)
-    if V < float32(-40.0):
-        k5 = k5_
-        k6 = k6_
-    else:
-        k5 = (float32(1.0) - Ps) / tauCa
-        k6 = Ps / (tauCa * (float32(1.0) + cptilde_cp3))
+    # if V < float32(-40.0):
+    #    k5 = k5_
+    #    k6 = k6_
+    # else:
+    k5 = (float32(1.0) - Ps) / tauCa
+    k6 = Ps / (tauCa * (float32(1.0) + cptilde_cp3))
 
     s2 = s1 * params.k2[0] * params.r1[0] / (k1 * params.r2[0])
     s2_ = params.s1_[0] * params.k2_[0] * params.r1[0] / (params.k1_[0] * params.r2[0])
@@ -279,13 +274,13 @@ def sample_LCC_icdf(
 @cuda.jit(device=True, inline=True)
 def sample_LCC_icdf_3d(
     LCC_probs: npt.NDArray[f32],
-    rng_states: RNG_state,
+    lcc_now: i32,
+    u: f32,
     x: i32,
     y: i32,
     z: i32,
     lcc_num: i32,
     junctional: bool,
-    tid: i32,
 ) -> i32:
     """
     Sample LCC state using inverse cdf method
@@ -299,13 +294,26 @@ def sample_LCC_icdf_3d(
         i32: The sampled state
     """
     if junctional:
-        u = xoroshiro128p_uniform_float32(rng_states, tid)
-        cdf = float32(0.0)
-        for k in range(7):
-            cdf += LCC_probs[x, y, z, lcc_num, k]
-            if u < cdf:
-                return int32(k + 1)  # state starts at 1 so increment
-        return int32(7)
+        # 32bit float round off errors cause u to be exactly 0 or 1 sometimes, so need to treat edge cases
+        if u == float32(0.0):
+            if lcc_now == 1 or lcc_now == 2 or lcc_now == 4 or lcc_now == 6:
+                return i32(1)
+            else:
+                return i32(2)
+        elif u == float32(1.0):
+            if lcc_now == 1:
+                return i32(6)
+            elif lcc_now == 2 or lcc_now == 3 or lcc_now == 5:
+                return i32(7)
+            else:  # states 4, 6, 7 have a max non-zero index of 4, 6, 7 respectively
+                return lcc_now
+        else:
+            cdf = float32(0.0)
+            for k in range(7):
+                cdf += LCC_probs[x, y, z, lcc_num, k]
+                if u < cdf:
+                    return int32(k + 1)  # state starts at 1 so increment
+            return int32(7)
     else:
         return int32(0)
 
@@ -314,7 +322,7 @@ def calculate_V_dep_LCC_params(
     V: float | f32, params: RestrepoParams, single_precision: bool = True
 ) -> LCC_params:
     po_inf = 1.0 / (1.0 + np.exp(-V / 8))
-    #Pr = 1.0 / (1.0 + np.exp(-(V + 40.0) / 4.0))  ### Dont think this is right
+    # Pr = 1.0 / (1.0 + np.exp(-(V + 40.0) / 4.0))  ### Dont think this is right
     Pr = 1.0 - 1.0 / (1.0 + np.exp(-(V + 40.0) / 4.0))
     Ps = 1.0 / (1.0 + np.exp(-(V + 40.0) / 11.32))
     R = 10.0 + 4954.0 * np.exp(V / 15.6)

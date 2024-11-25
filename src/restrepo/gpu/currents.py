@@ -63,7 +63,7 @@ def luminal_buffer(
 
     return float32(1.0) / (
         float32(1.0)
-        + BCSQN * (KC * ncjsr + dn * (cjsr * KC + square(cjsr))) / (square(KC + cjsr))
+        + BCSQN * (KC * ncjsr + dn * (cjsr * KC + square(cjsr))) / square(KC + cjsr)
     )
 
 
@@ -127,6 +127,7 @@ def update_ICa_3d(
     F = float32(96.5)
     exp2VF_RT = math.exp(float32(2.0) * VF_RT)
     NLCC = float32(0.0)
+    cp_mM = cp * float32(1e-3)
     for k in range(4):
         if LCC[x, y, z, k] == 7:
             NLCC += float32(1.0)
@@ -139,7 +140,7 @@ def update_ICa_3d(
                 * VF_RT
                 * F
                 * gamma
-                * (cp * float32(1e-3) * exp2VF_RT - Cao)
+                * (cp_mM * exp2VF_RT - Cao)
                 / (exp2VF_RT - float32(1.0))
             )
             if junctional
@@ -154,7 +155,7 @@ def update_ICa_3d(
                 * PCa
                 * F
                 * gamma
-                * (cp * float32(1e-3) * exp2VF_RT - Cao)
+                * (cp_mM * exp2VF_RT - Cao)
                 / (float32(1.0) + VF_RT)
             )
             if junctional
@@ -212,22 +213,12 @@ def update_INaCa_3d(
     KmNao3 = cube(params.KmNao[0])
     KmNai3 = cube(params.KmNai[0])
     Ka = float32(1.0) / (float32(1.0) + cube(params.Kda[0] / cs))
-    # ANaCa = float32(1.0) / (float32(1.0) + cube(params.cNaCa[0] / cs))
 
     cs_mM = cs * float32(1e-3)  # convert cs to mM
-    # KmCai_mM = params.KmCai[0] * float32(1e-3)  # convert KmCai to mM
 
     t1 = params.KmCai[0] * Nao3 * (float32(1.0) + Nai3 / KmNai3)
     t2 = KmNao3 * cs_mM * (float32(1.0) + (cs_mM / params.KmCai[0]))
     t3 = params.KmCao[0] * Nai3 + Nai3 * params.Cao[0] + Nao3 * cs_mM
-    # U = (
-    #    params.KmCao[0] * Nai3
-    #    + KmNao3 * cs_mM
-    #    + KmNai3 * params.Cao[0] * (float32(1.0) + cs_mM / params.KmCai[0])
-    #    + params.KmCai[0] * Nao3 * (float32(1.0) + Nai3 / KmNai3)
-    #    + Nai3 * params.Cao[0]
-    #    + Nao3 * cs_mM
-    # )
     exp_etaz = math.exp(params.eta[0] * VF_RT)
     exp_etam1z = math.exp((params.eta[0] - float32(1.0)) * VF_RT)
 

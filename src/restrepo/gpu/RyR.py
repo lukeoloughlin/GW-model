@@ -12,6 +12,8 @@ from .utils import (
     bubble_sort_ryr_3d,
     calculate_rho,
     calculate_Mhat,
+    sample_poisson,
+    sample_binomial,
 )
 
 f32 = np.float32
@@ -93,19 +95,20 @@ def RyR_orth_proj_simplex(
 
     bubble_sort_ryr(RyR, RyR_sorted, x, y)
 
-    lambda_ = float32(0.0)
-    sum_ = float32(1.0)
+    t = f32(0.0)
+    sum_ = f32(0.0)
     for i in range(4):
-        if sum_ - (float32(4.0 - i)) * RyR_sorted[x, y, i] < float32(1.0):
-            lambda_ = (sum_ - 1.0) / (float32(4.0 - i))
+        sum_ += RyR_sorted[x, y, 3 - i]
+        t = (sum_ - f32(1)) / f32(i + 1)
+        if i == 3:
             break
-        else:
-            sum_ -= RyR_sorted[x, y, i]
+        elif t >= RyR_sorted[x, y, 2 - i]:
+            break
 
-    RyR[x, y, 0] = max(RyR[x, y, 0] - lambda_, float32(0.0))
-    RyR[x, y, 1] = max(RyR[x, y, 1] - lambda_, float32(0.0))
-    RyR[x, y, 2] = max(RyR[x, y, 2] - lambda_, float32(0.0))
-    RyR[x, y, 3] = max(RyR[x, y, 3] - lambda_, float32(0.0))
+    RyR[x, y, 0] = max(RyR[x, y, 0] - t, float32(0))
+    RyR[x, y, 1] = max(RyR[x, y, 1] - t, float32(0))
+    RyR[x, y, 2] = max(RyR[x, y, 2] - t, float32(0))
+    RyR[x, y, 3] = max(RyR[x, y, 3] - t, float32(0))
 
 
 @cuda.jit(device=True, inline=True)
@@ -117,19 +120,20 @@ def RyR_orth_proj_simplex_3d(
 
     bubble_sort_ryr_3d(RyR, RyR_sorted, x, y, z)
 
-    lambda_ = float32(0.0)
-    sum_ = float32(1.0)
+    t = f32(0.0)
+    sum_ = f32(0.0)
     for i in range(4):
-        if sum_ - (float32(4.0 - i)) * RyR_sorted[x, y, z, i] < float32(1.0):
-            lambda_ = (sum_ - 1.0) / (float32(4.0 - i))
+        sum_ += RyR_sorted[x, y, z, 3 - i]
+        t = (sum_ - f32(1)) / f32(i + 1)
+        if i == 3:
             break
-        else:
-            sum_ -= RyR_sorted[x, y, z, i]
+        elif t >= RyR_sorted[x, y, z, 2 - i]:
+            break
 
-    RyR[x, y, z, 0] = max(RyR[x, y, z, 0] - lambda_, float32(0.0))
-    RyR[x, y, z, 1] = max(RyR[x, y, z, 1] - lambda_, float32(0.0))
-    RyR[x, y, z, 2] = max(RyR[x, y, z, 2] - lambda_, float32(0.0))
-    RyR[x, y, z, 3] = max(RyR[x, y, z, 3] - lambda_, float32(0.0))
+    RyR[x, y, z, 0] = max(RyR[x, y, z, 0] - t, f32(0))
+    RyR[x, y, z, 1] = max(RyR[x, y, z, 1] - t, f32(0))
+    RyR[x, y, z, 2] = max(RyR[x, y, z, 2] - t, f32(0))
+    RyR[x, y, z, 3] = max(RyR[x, y, z, 3] - t, f32(0))
 
 
 @cuda.jit(device=True, inline=True)
@@ -207,6 +211,11 @@ def update_RyR_diffusion_3d(
         + RyR_rates[x, y, z, 5]
         - (RyR_rates[x, y, z, 3] + RyR_rates[x, y, z, 4])
     )  # q23 + q43 - (q32 + q34)
+    drift4 = (
+        RyR_rates[x, y, z, 4]
+        + RyR_rates[x, y, z, 7]
+        - (RyR_rates[x, y, z, 5] + RyR_rates[x, y, z, 6])
+    )
 
     sigma12 = float32(0.1) * math.sqrt(
         RyR_rates[x, y, z, 0] + RyR_rates[x, y, z, 1]
@@ -224,11 +233,75 @@ def update_RyR_diffusion_3d(
     RyR[x, y, z, 0] += dt * drift1 + sigma12 * dW[x, y, z, 0] + sigma14 * dW[x, y, z, 3]
     RyR[x, y, z, 1] += dt * drift2 - sigma12 * dW[x, y, z, 0] + sigma23 * dW[x, y, z, 1]
     RyR[x, y, z, 2] += dt * drift3 - sigma23 * dW[x, y, z, 1] + sigma34 * dW[x, y, z, 2]
-    RyR[x, y, z, 3] = float32(1.0) - (
-        RyR[x, y, z, 0] + RyR[x, y, z, 1] + RyR[x, y, z, 2]
-    )
+    RyR[x, y, z, 3] += dt * drift4 - sigma14 * dW[x, y, z, 3] - sigma34 * dW[x, y, z, 2]
+    # RyR[x, y, z, 3] = float32(1.0) - (
+    #    RyR[x, y, z, 0] + RyR[x, y, z, 1] + RyR[x, y, z, 2]
+    # )
 
     RyR_orth_proj_simplex_3d(RyR, RyR_sorted, x, y, z)
+
+
+@cuda.jit(device=True, inline=True)
+def update_RyR_tau_leap_3d(
+    RyR: npt.NDArray[i32],
+    RyR_rates: npt.NDArray[f32],
+    dt: f32,
+    rng_states,
+    x: int,
+    y: int,
+    z: int,
+    rng_idx: int,
+) -> None:
+    """Euler Maruyama step for RyR model with reflecting boundary conditions."""
+
+    # Outgoings from state 1
+    lambda_ = RyR_rates[x, y, z, 0] + RyR_rates[x, y, z, 7]
+    Nout1 = (
+        min(sample_poisson(dt * lambda_, rng_states, rng_idx), RyR[x, y, z, 0])
+        if RyR[x, y, z, 0] > 0
+        else i32(0)
+    )
+    p = RyR_rates[x, y, z, 0] / lambda_
+    N12 = sample_binomial(Nout1, p, rng_states, rng_idx) if Nout1 > 0 else i32(0)
+    N14 = Nout1 - N12
+
+    # Outgoings from state 2
+    lambda_ = RyR_rates[x, y, z, 1] + RyR_rates[x, y, z, 2]
+    Nout2 = (
+        min(sample_poisson(dt * lambda_, rng_states, rng_idx), RyR[x, y, z, 1])
+        if RyR[x, y, z, 1] > 0
+        else i32(0)
+    )
+    p = RyR_rates[x, y, z, 1] / lambda_
+    N21 = sample_binomial(Nout2, p, rng_states, rng_idx) if Nout2 > 0 else i32(0)
+    N23 = Nout2 - N21
+
+    # Outgoings from state 3
+    lambda_ = RyR_rates[x, y, z, 3] + RyR_rates[x, y, z, 4]
+    Nout3 = (
+        min(sample_poisson(dt * lambda_, rng_states, rng_idx), RyR[x, y, z, 2])
+        if RyR[x, y, z, 2] > 0
+        else 0
+    )
+    p = RyR_rates[x, y, z, 3] / lambda_
+    N32 = sample_binomial(Nout3, p, rng_states, rng_idx) if Nout3 > 0 else i32(0)
+    N34 = Nout3 - N32
+
+    # Outgoings from state 4
+    lambda_ = RyR_rates[x, y, z, 5] + RyR_rates[x, y, z, 6]
+    Nout4 = (
+        min(sample_poisson(dt * lambda_, rng_states, rng_idx), RyR[x, y, z, 3])
+        if RyR[x, y, z, 3] > 0
+        else 0
+    )
+    p = RyR_rates[x, y, z, 5] / lambda_
+    N43 = sample_binomial(Nout4, p, rng_states, rng_idx) if Nout4 > 0 else i32(0)
+    N41 = Nout4 - N43
+
+    RyR[x, y, z, 0] += N21 + N41 - N12 - N14
+    RyR[x, y, z, 1] += N12 + N32 - N21 - N23
+    RyR[x, y, z, 2] += N23 + N43 - N32 - N34
+    RyR[x, y, z, 3] += N14 + N34 - N43 - N41
 
 
 def RyR_stationary(

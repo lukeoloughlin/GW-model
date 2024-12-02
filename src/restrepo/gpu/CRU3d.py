@@ -284,12 +284,14 @@ class CRU3D:
         self.RyR_open: npt.NDArray[f32] | None = None
         self.RyR_rates: npt.NDArray[f32] | None = None
         self.RyR_sorted: npt.NDArray[f32] | None = None
+        self.corrections: npt.NDArray[f32] | None = None
         self.LCC_probs: npt.NDArray[f32] | None = None
         self.ICa: npt.NDArray[f32] | None = None
         self.INaCa: npt.NDArray[f32] | None = None
         self.Delta_ci: npt.NDArray[f32] | None = None
         self.Delta_cnsr: npt.NDArray[f32] | None = None
         self.Delta_cs: npt.NDArray[f32] | None = None
+        self.time_consts_cs: npt.NDArray[f32] | None = None
         self.d_junctional: npt.NDArray[np.bool_] | None = None
 
         self.rng_states = create_xoroshiro128p_states(
@@ -369,7 +371,7 @@ class CRU3D:
         reset_t: bool = False,
         profile: bool = False,
         delay_pulse_by: float = 0.0,
-        Po_shift: float = 0.0,
+        cs_rapid_eq: bool = False,
     ) -> CRUSolution:
         self._check_memory(tau_leap=False)
 
@@ -383,7 +385,6 @@ class CRU3D:
         Nai3 = np.float32(Nai**3)
         Vmin = np.float32(Vmin)
         Vmax = np.float32(Vmax)
-        Po_shift = np.float32(Po_shift)
 
         self.d_consts = cuda.to_device(
             constants_struct_array(np.float32(dt), sqrtdt, Nai3)
@@ -420,12 +421,12 @@ class CRU3D:
                     sol.LCC[idx, ...],  # type: ignore
                 ):
                     self._call_kernels_diffusion(
-                        Vmin, Vmax, T, bpg, tpb, delay_pulse_by, Po_shift
+                        Vmin, Vmax, T, bpg, tpb, delay_pulse_by, cs_rapid_eq
                     )
                     self._copy_state(idx, sol, tau_leap=False)
             else:
                 self._call_kernels_diffusion(
-                    Vmin, Vmax, T, bpg, tpb, delay_pulse_by, Po_shift
+                    Vmin, Vmax, T, bpg, tpb, delay_pulse_by, cs_rapid_eq
                 )
             self._t += dt
 
@@ -537,7 +538,7 @@ class CRU3D:
         bpg: tuple[int, int, int],
         tpb: tuple[int, int, int],
         delay_pulse_by: float,
-        Po_shift: f32,
+        cs_rapid_eq: bool,
     ) -> None:
         self._V = self.V_fn(self._t, Vmin, Vmax, T, delay_pulse_by)
         alpha, beta, k3, k5_, k6_, Pr, Ps, R = calculate_V_dep_LCC_params(
@@ -545,66 +546,132 @@ class CRU3D:
         )
         bpg_kern1 = (3 * bpg[0], bpg[1], bpg[2])  # Execute 3 jobs in different blocks
         bpg_kern2 = (3 * bpg[0], bpg[1], bpg[2])  # Execute 3 jobs in different blocks
-        update_currents_and_lcc_3d[bpg_kern1, tpb, self.stream_kern](
-            self.d_RyR,
-            self.d_LCC,
-            self.d_ci,
-            self.d_cs,
-            self.d_cjsr,
-            self.d_cnsr,
-            self.d_cp,
-            self.RyR_rates,
-            self.RyR_open,
-            self.LCC_probs,
-            self.Delta_ci,
-            self.Delta_cnsr,
-            self.Delta_cs,
-            self.ICa,
-            self.INaCa,
-            self.d_junctional,
-            self.dW,
-            self.d_lcc_rns,
-            self.rng_states,
-            alpha,
-            beta,
-            k3,
-            k3,
-            k5_,
-            k6_,
-            Pr,
-            Ps,
-            R,
-            self._V,
-            self.d_params,
-            self.d_consts,
-        )
-        update_RyR_and_conc_3d[bpg_kern2, tpb](
-            self.d_ci,
-            self.d_cs,
-            self.d_cp,
-            self.d_cnsr,
-            self.d_cjsr,
-            self.d_CaTi,
-            self.d_CaTs,
-            self.d_RyR,
-            self.d_LCC,
-            self.RyR_open,
-            self.RyR_sorted,
-            self.LCC_probs,
-            self.ICa,
-            self.INaCa,
-            self.Delta_ci,
-            self.Delta_cnsr,
-            self.Delta_cs,
-            self.RyR_rates,
-            self.dW,
-            self.d_lcc_rns,
-            self.d_vp,
-            self.d_junctional,
-            Po_shift,
-            self.d_params,
-            self.d_consts,
-        )
+        if cs_rapid_eq:
+            update_currents_and_lcc_3d_rapid_cs[bpg_kern1, tpb, self.stream_kern](
+                self.d_RyR,
+                self.d_LCC,
+                self.d_ci,
+                self.d_cs,
+                self.d_cjsr,
+                self.d_cnsr,
+                self.d_cp,
+                self.RyR_rates,
+                self.RyR_open,
+                self.corrections,
+                self.LCC_probs,
+                self.Delta_ci,
+                self.Delta_cnsr,
+                self.Delta_cs,  # Use this to hold the sum nearest neighbours terms
+                self.time_consts_cs,
+                self.ICa,
+                self.INaCa,
+                self.d_junctional,
+                self.dW,
+                self.d_lcc_rns,
+                self.rng_states,
+                alpha,
+                beta,
+                k3,
+                k3,
+                k5_,
+                k6_,
+                Pr,
+                Ps,
+                R,
+                self._V,
+                self.d_params,
+                self.d_consts,
+            )
+            update_RyR_and_conc_3d_rapid_cs[bpg_kern2, tpb](
+                self.d_ci,
+                self.d_cs,
+                self.d_cp,
+                self.d_cnsr,
+                self.d_cjsr,
+                self.d_CaTi,
+                self.d_CaTs,
+                self.d_RyR,
+                self.d_LCC,
+                self.RyR_open,
+                self.RyR_sorted,
+                self.corrections,
+                self.LCC_probs,
+                self.ICa,
+                self.INaCa,
+                self.Delta_ci,
+                self.Delta_cnsr,
+                self.Delta_cs,
+                self.time_consts_cs,
+                self.RyR_rates,
+                self.dW,
+                self.d_lcc_rns,
+                self.d_vp,
+                self.d_junctional,
+                self.d_params,
+                self.d_consts,
+            )
+        else:
+            update_currents_and_lcc_3d[bpg_kern1, tpb, self.stream_kern](
+                self.d_RyR,
+                self.d_LCC,
+                self.d_ci,
+                self.d_cs,
+                self.d_cjsr,
+                self.d_cnsr,
+                self.d_cp,
+                self.RyR_rates,
+                self.RyR_open,
+                self.corrections,
+                self.LCC_probs,
+                self.Delta_ci,
+                self.Delta_cnsr,
+                self.Delta_cs,
+                self.ICa,
+                self.INaCa,
+                self.d_junctional,
+                self.dW,
+                self.d_lcc_rns,
+                self.rng_states,
+                alpha,
+                beta,
+                k3,
+                k3,
+                k5_,
+                k6_,
+                Pr,
+                Ps,
+                R,
+                self._V,
+                self.d_params,
+                self.d_consts,
+            )
+            update_RyR_and_conc_3d[bpg_kern2, tpb](
+                self.d_ci,
+                self.d_cs,
+                self.d_cp,
+                self.d_cnsr,
+                self.d_cjsr,
+                self.d_CaTi,
+                self.d_CaTs,
+                self.d_RyR,
+                self.d_LCC,
+                self.RyR_open,
+                self.RyR_sorted,
+                self.corrections,
+                self.LCC_probs,
+                self.ICa,
+                self.INaCa,
+                self.Delta_ci,
+                self.Delta_cnsr,
+                self.Delta_cs,
+                self.RyR_rates,
+                self.dW,
+                self.d_lcc_rns,
+                self.d_vp,
+                self.d_junctional,
+                self.d_params,
+                self.d_consts,
+            )
 
     def _call_kernels_tau_leap(
         self,
@@ -742,6 +809,7 @@ class CRU3D:
         self.RyR_open = cuda.device_array((*self.ci.shape,), dtype=np.float32)
         self.RyR_rates = cuda.device_array((*self.ci.shape, 8), dtype=np.float32)
         self.RyR_sorted = cuda.device_array_like(self.RyR)
+        self.corrections = cuda.device_array_like(self.RyR)
         self.LCC_probs = cuda.device_array(
             (*self.LCC.shape, 7), dtype=np.float32  # type: ignore
         )
@@ -752,6 +820,7 @@ class CRU3D:
         self.Delta_ci = cuda.device_array_like(self.ci)
         self.Delta_cnsr = cuda.device_array_like(self.cnsr)
         self.Delta_cs = cuda.device_array_like(self.cs)
+        self.time_consts_cs = cuda.device_array_like(self.cs)
 
         self._memory_initialised = True
 
@@ -762,6 +831,7 @@ class CRU3D:
         self.d_RyR = None
         self.dW = None
         self.RyR_sorted = None
+        self.corrections = None
 
         # initialise this in tau leap mode
         self.d_RyR_int = cuda.to_device(self.RyR)
@@ -778,3 +848,4 @@ class CRU3D:
         self.d_RyR = cuda.to_device(self.RyR)
         self.dW = cuda.device_array_like(self.RyR)
         self.RyR_sorted = cuda.device_array_like(self.RyR)
+        self.corrections = cuda.device_array_like(self.RyR)

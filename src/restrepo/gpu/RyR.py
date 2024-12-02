@@ -56,6 +56,7 @@ def update_RyR_rates(
 def update_RyR_rates_3d(
     RyR_rates: npt.NDArray[f32],
     RyR: npt.NDArray[f32],
+    corrections: npt.NDArray[f32],
     cp: f32,
     cjsr: f32,
     params: RestrepoParams,
@@ -71,19 +72,68 @@ def update_RyR_rates_3d(
     cp2 = square(cp)
 
     k12 = params.Ku[0] * cp2  # k12
+    k21 = float32(1) / params.tau_c[0]
     k23 = Mhat / params.tau_b[0]  # k23
-
+    k32 = params.Ku[0] / (params.Kb[0] * params.tau_u[0])
+    k34 = float32(1) / params.tau_c[0]
     k43 = params.Kb[0] * cp2  # k43
-    k32 = k12 / (k43 * params.tau_u[0])  # k32 = k41 * k12 / k43
+    k41 = float32(1) / params.tau_u[0]
+    k14 = k23
 
     RyR_rates[x, y, z, 0] = k12 * RyR[x, y, z, 0]  # 1 -> 2
-    RyR_rates[x, y, z, 1] = RyR[x, y, z, 1] / params.tau_c[0]  # 2 -> 1; k21 = _1_tau_c
+    RyR_rates[x, y, z, 1] = k21 * RyR[x, y, z, 1]  # 2 -> 1
     RyR_rates[x, y, z, 2] = k23 * RyR[x, y, z, 1]  # 2 -> 3
     RyR_rates[x, y, z, 3] = k32 * RyR[x, y, z, 2]  # 3 -> 2
-    RyR_rates[x, y, z, 4] = RyR[x, y, z, 2] / params.tau_c[0]  # 3 -> 4; k34 = _1_tau_c
+    RyR_rates[x, y, z, 4] = k34 * RyR[x, y, z, 2]  # 3 -> 4
     RyR_rates[x, y, z, 5] = k43 * RyR[x, y, z, 3]  # 4 -> 3
-    RyR_rates[x, y, z, 6] = RyR[x, y, z, 3] / params.tau_u[0]  # 4 -> 1; k41 = _1_tau_u
-    RyR_rates[x, y, z, 7] = k23 * RyR[x, y, z, 0]  # 1-> 4; k14 = k23
+    RyR_rates[x, y, z, 6] = k41 * RyR[x, y, z, 3]  # 4 -> 1
+    RyR_rates[x, y, z, 7] = k14 * RyR[x, y, z, 0]  # 1-> 4; k14 = k23
+
+    corrections[x, y, z, 0] = float32(0.0025) * (k12 + k14 - (k21 + k41))
+    corrections[x, y, z, 1] = float32(0.0025) * (k21 + k23 - (k12 + k32))
+    corrections[x, y, z, 2] = float32(0.0025) * (k32 + k34 - (k23 + k43))
+    corrections[x, y, z, 3] = float32(0.0025) * (k41 + k43 - (k14 + k34))
+    # corrections[x, y, z, 0] = float32(0.0025) * (k12 - k21)
+    # corrections[x, y, z, 1] = float32(0.0025) * (k21 - k12)
+    # corrections[x, y, z, 2] = float32(0.0025) * (k34 - k43)
+    # corrections[x, y, z, 3] = float32(0.0025) * (k43 - k34)
+
+
+@cuda.jit(device=True, inline=True)
+def update_RyR_rates_3d_tau_leap(
+    RyR_rates: npt.NDArray[f32],
+    RyR: npt.NDArray[i32],
+    cp: f32,
+    cjsr: f32,
+    params: RestrepoParams,
+    x: i32,
+    y: i32,
+    z: i32,
+) -> None:
+    """Device func to update RyR rates at position x, y"""
+    Mhat = calculate_Mhat(
+        calculate_rho(cjsr, params.K[0], params.rho_inf[0], params.h[0]),
+        params.BCSQN[0],
+    )
+    cp2 = square(cp)
+
+    k12 = params.Ku[0] * cp2  # k12
+    k21 = float32(1) / params.tau_c[0]
+    k23 = Mhat / params.tau_b[0]  # k23
+    k32 = params.Ku[0] / (params.Kb[0] * params.tau_u[0])
+    k34 = float32(1) / params.tau_c[0]
+    k43 = params.Kb[0] * cp2  # k43
+    k41 = float32(1) / params.tau_u[0]
+    k14 = k23
+
+    RyR_rates[x, y, z, 0] = k12 * RyR[x, y, z, 0]  # 1 -> 2
+    RyR_rates[x, y, z, 1] = k21 * RyR[x, y, z, 1]  # 2 -> 1
+    RyR_rates[x, y, z, 2] = k23 * RyR[x, y, z, 1]  # 2 -> 3
+    RyR_rates[x, y, z, 3] = k32 * RyR[x, y, z, 2]  # 3 -> 2
+    RyR_rates[x, y, z, 4] = k34 * RyR[x, y, z, 2]  # 3 -> 4
+    RyR_rates[x, y, z, 5] = k43 * RyR[x, y, z, 3]  # 4 -> 3
+    RyR_rates[x, y, z, 6] = k41 * RyR[x, y, z, 3]  # 4 -> 1
+    RyR_rates[x, y, z, 7] = k14 * RyR[x, y, z, 0]  # 1-> 4; k14 = k23
 
 
 @cuda.jit(device=True, inline=True)
@@ -189,6 +239,7 @@ def update_RyR_diffusion_3d(
     RyR: npt.NDArray[f32],
     RyR_sorted: npt.NDArray[f32],
     RyR_rates: npt.NDArray[f32],
+    corrections: npt.NDArray[f32],
     dW: npt.NDArray[f32],
     dt: f32,
     x: i32,
@@ -230,10 +281,26 @@ def update_RyR_diffusion_3d(
         RyR_rates[x, y, z, 6] + RyR_rates[x, y, z, 7]
     )  # q41 + q14
 
-    RyR[x, y, z, 0] += dt * drift1 + sigma12 * dW[x, y, z, 0] + sigma14 * dW[x, y, z, 3]
-    RyR[x, y, z, 1] += dt * drift2 - sigma12 * dW[x, y, z, 0] + sigma23 * dW[x, y, z, 1]
-    RyR[x, y, z, 2] += dt * drift3 - sigma23 * dW[x, y, z, 1] + sigma34 * dW[x, y, z, 2]
-    RyR[x, y, z, 3] += dt * drift4 - sigma14 * dW[x, y, z, 3] - sigma34 * dW[x, y, z, 2]
+    RyR[x, y, z, 0] += (
+        dt * (drift1 - corrections[x, y, z, 0])
+        + sigma12 * dW[x, y, z, 0]
+        + sigma14 * dW[x, y, z, 3]
+    )
+    RyR[x, y, z, 1] += (
+        dt * (drift2 - corrections[x, y, z, 1])
+        - sigma12 * dW[x, y, z, 0]
+        + sigma23 * dW[x, y, z, 1]
+    )
+    RyR[x, y, z, 2] += (
+        dt * (drift3 - corrections[x, y, z, 2])
+        - sigma23 * dW[x, y, z, 1]
+        + sigma34 * dW[x, y, z, 2]
+    )
+    RyR[x, y, z, 3] += (
+        dt * (drift4 - corrections[x, y, z, 3])
+        - sigma14 * dW[x, y, z, 3]
+        - sigma34 * dW[x, y, z, 2]
+    )
     # RyR[x, y, z, 3] = float32(1.0) - (
     #    RyR[x, y, z, 0] + RyR[x, y, z, 1] + RyR[x, y, z, 2]
     # )

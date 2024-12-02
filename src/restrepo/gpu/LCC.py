@@ -311,7 +311,7 @@ def sample_LCC_icdf_3d(
             cdf = float32(0.0)
             for k in range(7):
                 cdf += LCC_probs[x, y, z, lcc_num, k]
-                if u < cdf:
+                if u <= cdf:
                     return int32(k + 1)  # state starts at 1 so increment
             return int32(7)
     else:

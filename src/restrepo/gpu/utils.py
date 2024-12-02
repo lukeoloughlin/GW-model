@@ -216,7 +216,7 @@ def time_const_forward_3d(
 ) -> f32:
     if x == (Nx - 1):
         return float32(0.0)
-    elif junctional[x, y, z] or junctional[x + 1, y, z]:
+    elif junctional[x, y, z] ^ junctional[x + 1, y, z]:
         return float32(1.0) / tau_x_p
     else:
         return float32(1.0) / tau_x
@@ -234,7 +234,7 @@ def time_const_backward_3d(
 ) -> f32:
     if x == 0:
         return float32(0.0)
-    elif junctional[x, y, z] or junctional[x - 1, y, z]:
+    elif junctional[x, y, z] ^ junctional[x - 1, y, z]:
         return float32(1.0) / tau_x_p
     else:
         return float32(1.0) / tau_x
@@ -252,7 +252,7 @@ def time_const_right_3d(
 ) -> f32:
     if y == (Ny - 1):
         return float32(0.0)
-    elif junctional[x, y, z] or junctional[x, y + 1, z]:
+    elif junctional[x, y, z] ^ junctional[x, y + 1, z]:
         return float32(1.0) / tau_y_p
     else:
         return float32(1.0) / tau_y
@@ -270,7 +270,7 @@ def time_const_left_3d(
 ) -> f32:
     if y == 0:
         return float32(0.0)
-    elif junctional[x, y, z] or junctional[x, y - 1, z]:
+    elif junctional[x, y, z] ^ junctional[x, y - 1, z]:
         return float32(1.0) / tau_y_p
     else:
         return float32(1.0) / tau_y
@@ -288,7 +288,7 @@ def time_const_up_3d(
 ) -> f32:
     if z == (Nz - 1):
         return float32(0.0)
-    elif junctional[x, y, z] or junctional[x, y, z + 1]:
+    elif junctional[x, y, z] ^ junctional[x, y, z + 1]:
         return float32(1.0) / tau_z_bdy
     else:
         return float32(1.0) / tau_z
@@ -306,7 +306,7 @@ def time_const_down_3d(
 ) -> f32:
     if z == 0:
         return float32(0.0)
-    elif junctional[x, y, z] or junctional[x, y, z - 1]:
+    elif junctional[x, y, z] ^ junctional[x, y, z - 1]:
         return float32(1.0) / tau_z_p
     else:
         return float32(1.0) / tau_z

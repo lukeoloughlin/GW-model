@@ -63,12 +63,12 @@ def update_LCC_probs(
 
     s1 = float32(0.02) / (float32(1.0) + cptilde_cp3)
     k1 = float32(0.03) / (float32(1.0) + cptilde_cp3)
-    # if V < float32(-40.0):
-    #    k5 = k5_
-    #    k6 = k6_
-    # else:
-    k5 = (float32(1.0) - Ps) / tauCa
-    k6 = Ps / (tauCa * (float32(1.0) + cptilde_cp3))
+    if V < float32(-40.0):
+        k5 = k5_
+        k6 = k6_
+    else:
+        k5 = (float32(1.0) - Ps) / tauCa
+        k6 = Ps / (tauCa * (float32(1.0) + cptilde_cp3))
 
     s2 = s1 * params.k2[0] * params.r1[0] / (k1 * params.r2[0])
     s2_ = params.s1_[0] * params.k2_[0] * params.r1[0] / (params.k1_[0] * params.r2[0])
@@ -168,12 +168,12 @@ def update_LCC_probs_3d(
 
     s1 = float32(0.0182688) / (float32(1.0) + cptilde_cp3)
     k1 = float32(0.024168) / (float32(1.0) + cptilde_cp3)
-    # if V < float32(-40.0):
-    #    k5 = k5_
-    #    k6 = k6_
-    # else:
-    k5 = (float32(1.0) - Ps) / tauCa
-    k6 = Ps / (tauCa * (float32(1.0) + cptilde_cp3))
+    if V < float32(-40.0):
+        k5 = k5_
+        k6 = k6_
+    else:
+        k5 = (float32(1.0) - Ps) / tauCa
+        k6 = Ps / (tauCa * (float32(1.0) + cptilde_cp3))
 
     s2 = s1 * params.k2[0] * params.r1[0] / (k1 * params.r2[0])
     s2_ = params.s1_[0] * params.k2_[0] * params.r1[0] / (params.k1_[0] * params.r2[0])

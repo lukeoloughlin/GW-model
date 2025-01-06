@@ -408,3 +408,120 @@ def update_diffusive_fluxes_3d(
         + _1_tau_nsr_d * (cnsr[x, y, down] - cnsr_centre)
         + _1_tau_nsr_u * (cnsr[x, y, up] - cnsr_centre)
     )
+
+
+@cuda.jit(device=True, inline=True)
+def update_diffusive_fluxes_3d_rapid_cs(
+    Delta_ci: npt.NDArray[f32],
+    Delta_cnsr: npt.NDArray[f32],
+    sum_cs_nn: npt.NDArray[f32],
+    time_const_cs: npt.NDArray[f32],
+    ci: npt.NDArray[f32],
+    cnsr: npt.NDArray[f32],
+    cs: npt.NDArray[f32],
+    junctional: npt.NDArray[np.bool_],
+    params: RestrepoParams,
+    x: i32,
+    y: i32,
+    z: i32,
+) -> None:
+    Nx, Ny, Nz = ci.shape
+    # Calculate the inverse time constants here to avoid dealing with all the checks at the boundaries
+    _1_tau_i_f = time_const_forward_3d(
+        params.tau_iL_i[0], params.tau_iL_p[0], x, y, z, Nx, junctional
+    )
+    _1_tau_i_b = time_const_backward_3d(
+        params.tau_iL_i[0], params.tau_iL_p[0], x, y, z, Nx, junctional
+    )
+    _1_tau_i_l = time_const_left_3d(
+        params.tau_iT_i[0], params.tau_iT_p[0], x, y, z, Ny, junctional
+    )
+    _1_tau_i_r = time_const_right_3d(
+        params.tau_iT_i[0], params.tau_iT_p[0], x, y, z, Ny, junctional
+    )
+    _1_tau_i_u = time_const_up_3d(
+        params.tau_iT_i[0], params.tau_iT_p[0], x, y, z, Nz, junctional
+    )
+    _1_tau_i_d = time_const_down_3d(
+        params.tau_iT_i[0], params.tau_iT_p[0], x, y, z, Nz, junctional
+    )
+
+    _1_tau_s_f = time_const_forward_3d(
+        params.tau_sL_i[0], params.tau_sL_p[0], x, y, z, Nx, junctional
+    )
+    _1_tau_s_b = time_const_backward_3d(
+        params.tau_sL_i[0], params.tau_sL_p[0], x, y, z, Nx, junctional
+    )
+    _1_tau_s_l = time_const_left_3d(
+        params.tau_sT_i[0], params.tau_sT_p[0], x, y, z, Ny, junctional
+    )
+    _1_tau_s_r = time_const_right_3d(
+        params.tau_sT_i[0], params.tau_sT_p[0], x, y, z, Ny, junctional
+    )
+    _1_tau_s_u = time_const_up_3d(
+        params.tau_sT_i[0], params.tau_sT_p[0], x, y, z, Nz, junctional
+    )
+    _1_tau_s_d = time_const_down_3d(
+        params.tau_sT_i[0], params.tau_sT_p[0], x, y, z, Nz, junctional
+    )
+
+    _1_tau_nsr_f = time_const_forward_3d(
+        params.tau_nsrL_i[0], params.tau_nsrL_p[0], x, y, z, Nx, junctional
+    )
+    _1_tau_nsr_b = time_const_backward_3d(
+        params.tau_nsrL_i[0], params.tau_nsrL_p[0], x, y, z, Nx, junctional
+    )
+    _1_tau_nsr_l = time_const_left_3d(
+        params.tau_nsrT_i[0], params.tau_nsrT_p[0], x, y, z, Ny, junctional
+    )
+    _1_tau_nsr_r = time_const_right_3d(
+        params.tau_nsrT_i[0], params.tau_nsrT_p[0], x, y, z, Ny, junctional
+    )
+    _1_tau_nsr_u = time_const_up_3d(
+        params.tau_nsrT_i[0], params.tau_nsrT_p[0], x, y, z, Nz, junctional
+    )
+    _1_tau_nsr_d = time_const_down_3d(
+        params.tau_nsrT_i[0], params.tau_nsrT_p[0], x, y, z, Nz, junctional
+    )
+
+    backward = x - 1 if x > 0 else x
+    forward = x + 1 if x < (Nx - 1) else x
+    left = y - 1 if y > 0 else y
+    right = y + 1 if y < (Ny - 1) else y
+    down = z - 1 if z > 0 else z
+    up = z + 1 if z < (Nz - 1) else z
+
+    ci_centre = ci[x, y, z]
+    # cs_centre = cs[x, y, z]
+    cnsr_centre = cnsr[x, y, z]
+
+    Delta_ci[x, y, z] = (
+        _1_tau_i_b * (ci[backward, y, z] - ci_centre)
+        + _1_tau_i_f * (ci[forward, y, z] - ci_centre)
+        + _1_tau_i_l * (ci[x, left, z] - ci_centre)
+        + _1_tau_i_r * (ci[x, right, z] - ci_centre)
+        + _1_tau_i_d * (ci[x, y, down] - ci_centre)
+        + _1_tau_i_u * (ci[x, y, up] - ci_centre)
+    )
+
+    Delta_cnsr[x, y, z] = (
+        _1_tau_nsr_b * (cnsr[backward, y, z] - cnsr_centre)
+        + _1_tau_nsr_f * (cnsr[forward, y, z] - cnsr_centre)
+        + _1_tau_nsr_l * (cnsr[x, left, z] - cnsr_centre)
+        + _1_tau_nsr_r * (cnsr[x, right, z] - cnsr_centre)
+        + _1_tau_nsr_d * (cnsr[x, y, down] - cnsr_centre)
+        + _1_tau_nsr_u * (cnsr[x, y, up] - cnsr_centre)
+    )
+
+    sum_cs_nn[x, y, z] = (
+        _1_tau_s_b * cs[backward, y, z]
+        + _1_tau_s_f * cs[forward, y, z]
+        + _1_tau_s_l * cs[x, left, z]
+        + _1_tau_s_r * cs[x, right, z]
+        + _1_tau_s_d * cs[x, y, down]
+        + _1_tau_s_u * cs[x, y, up]
+    )
+
+    time_const_cs[x, y, z] = (
+        _1_tau_s_b + _1_tau_s_f + _1_tau_s_l + _1_tau_s_r + _1_tau_s_d + _1_tau_s_u
+    )

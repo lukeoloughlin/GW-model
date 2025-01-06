@@ -128,6 +128,56 @@ def update_RyR_rates_3d_tau_leap(
 
 
 @cuda.jit(device=True, inline=True)
+def RyR_orth_proj_simplex(
+    RyR: npt.NDArray[f32], RyR_sorted: npt.NDArray[f32], x: i32, y: i32
+) -> None:
+    """Device func to perform orthogonal projection of RyR values onto simplex after Euler Maruyama update"""
+    # Copy the RyR values into preallocated array and use bubble sort
+
+    bubble_sort_ryr(RyR, RyR_sorted, x, y)
+
+    t = f32(0.0)
+    sum_ = f32(0.0)
+    for i in range(4):
+        sum_ += RyR_sorted[x, y, 3 - i]
+        t = (sum_ - f32(1)) / f32(i + 1)
+        if i == 3:
+            break
+        elif t >= RyR_sorted[x, y, 2 - i]:
+            break
+
+    RyR[x, y, 0] = max(RyR[x, y, 0] - t, float32(0))
+    RyR[x, y, 1] = max(RyR[x, y, 1] - t, float32(0))
+    RyR[x, y, 2] = max(RyR[x, y, 2] - t, float32(0))
+    RyR[x, y, 3] = max(RyR[x, y, 3] - t, float32(0))
+
+
+@cuda.jit(device=True, inline=True)
+def RyR_orth_proj_simplex_3d(
+    RyR: npt.NDArray[f32], RyR_sorted: npt.NDArray[f32], x: i32, y: i32, z: i32
+) -> None:
+    """Device func to perform orthogonal projection of RyR values onto simplex after Euler Maruyama update"""
+    # Copy the RyR values into preallocated array and use bubble sort
+
+    bubble_sort_ryr_3d(RyR, RyR_sorted, x, y, z)
+
+    t = f32(0.0)
+    sum_ = f32(0.0)
+    for i in range(4):
+        sum_ += RyR_sorted[x, y, z, 3 - i]
+        t = (sum_ - f32(1)) / f32(i + 1)
+        if i == 3:
+            break
+        elif t >= RyR_sorted[x, y, z, 2 - i]:
+            break
+
+    RyR[x, y, z, 0] = max(RyR[x, y, z, 0] - t, f32(0))
+    RyR[x, y, z, 1] = max(RyR[x, y, z, 1] - t, f32(0))
+    RyR[x, y, z, 2] = max(RyR[x, y, z, 2] - t, f32(0))
+    RyR[x, y, z, 3] = max(RyR[x, y, z, 3] - t, f32(0))
+
+
+@cuda.jit(device=True, inline=True)
 def update_RyR_diffusion(
     RyR: npt.NDArray[f32],
     RyR_sorted: npt.NDArray[f32],
@@ -155,22 +205,24 @@ def update_RyR_diffusion(
     )  # q23 + q43 - (q32 + q34)
 
     sigma12 = float32(0.1) * math.sqrt(
-        max(RyR_rates[x, y, 0] + RyR_rates[x, y, 1], f32(0))
+        RyR_rates[x, y, 0] + RyR_rates[x, y, 1]
     )  # q12 + q21
     sigma23 = float32(0.1) * math.sqrt(
-        max(RyR_rates[x, y, 2] + RyR_rates[x, y, 3], f32(0))
+        RyR_rates[x, y, 2] + RyR_rates[x, y, 3]
     )  # q23 + q32
     sigma34 = float32(0.1) * math.sqrt(
-        max(RyR_rates[x, y, 4] + RyR_rates[x, y, 5], f32(0))
+        RyR_rates[x, y, 4] + RyR_rates[x, y, 5]
     )  # q34 + q43
     sigma14 = float32(0.1) * math.sqrt(
-        max(RyR_rates[x, y, 6] + RyR_rates[x, y, 7], f32(0))
+        RyR_rates[x, y, 6] + RyR_rates[x, y, 7]
     )  # q41 + q14
 
     RyR[x, y, 0] += dt * drift1 + sigma12 * dW[x, y, 0] + sigma14 * dW[x, y, 3]
     RyR[x, y, 1] += dt * drift2 - sigma12 * dW[x, y, 0] + sigma23 * dW[x, y, 1]
     RyR[x, y, 2] += dt * drift3 - sigma23 * dW[x, y, 1] + sigma34 * dW[x, y, 2]
     RyR[x, y, 3] = float32(1.0) - (RyR[x, y, 0] + RyR[x, y, 1] + RyR[x, y, 2])
+
+    RyR_orth_proj_simplex(RyR, RyR_sorted, x, y)
 
 
 @cuda.jit(device=True, inline=True)
